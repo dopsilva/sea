@@ -10,8 +10,8 @@ SEA_SRC = ../../src
 
 all: tensor.so
 
-tensor.so: tensor.c $(wildcard ../../src/*.h)
-	$(CC) $(CFLAGS) -I$(SEA_SRC) -o $@ $< -lm
+tensor.so: tensor.c tensor_kernels.h $(wildcard ../../src/*.h)
+	$(CC) $(CFLAGS) -I$(SEA_SRC) -o $@ $< -lm -pthread
 
 clean:
 	rm -f tensor.so

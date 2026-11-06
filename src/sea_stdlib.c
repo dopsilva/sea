@@ -178,6 +178,7 @@ static SeaValue fn_len(SeaVM *vm, int argc, SeaValue *args) {
     if (sea_is_struct(v))     return sea_int_val(SEA_AS_STRUCT(v)->field_count);
     if (sea_is_int_array(v))  return sea_int_val(SEA_AS_INT_ARRAY(v)->len);
     if (sea_is_float_array(v)) return sea_int_val(SEA_AS_FLOAT_ARRAY(v)->len);
+    if (sea_is_float32_array(v)) return sea_int_val(SEA_AS_FLOAT32_ARRAY(v)->len);
     return sea_int_val(0);
 }
 
@@ -587,6 +588,16 @@ static SeaValue fn_float_array(SeaVM *vm, int argc, SeaValue *args) {
     return sea_obj_val(&a->obj);
 }
 
+// float32_array(cap?) → SeaFloat32Array (elements rounded to float)
+static SeaValue fn_float32_array(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm;
+    uint32_t cap = 8;
+    if (argc > 0 && (sea_is_int(args[0]) || sea_is_number(args[0])))
+        cap = (uint32_t)(sea_is_int(args[0]) ? sea_as_int(args[0]) : sea_as_number(args[0]));
+    SeaFloat32Array *a = sea_float32_array_new(cap);
+    return sea_obj_val(&a->obj);
+}
+
 /* Native libraries compiled into the binary (EMBED_LIBS in the Makefile):
  * libs/json/json.c and libs/csv/csv.c, whose sea_open is renamed. */
 SeaValue sea_open_json(SeaVM *vm);
@@ -679,6 +690,7 @@ void sea_lib_core_register(SeaVM *vm) {
     sea_vm_register_native(vm, "load",     fn_load);
     sea_vm_register_native(vm, "int_array",   fn_int_array);
     sea_vm_register_native(vm, "float_array", fn_float_array);
+    sea_vm_register_native(vm, "float32_array", fn_float32_array);
 }
 
 void sea_stdlib_register(SeaVM *vm) {

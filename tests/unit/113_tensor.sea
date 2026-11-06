@@ -134,3 +134,197 @@ off = tensor.load(path, b2, off)
 print("save/load", s1, s2, off, show(b1), show(b2))
 print("load past end", is_error(tensor.load(path, zeros(4), 0)))
 os.exec("rm -f " .. path)
+
+-- matmul / matmul_back: T rows at once, against matvec row by row (sizes that are not
+-- multiples of the 4×8 tile, and nin above the 256-wide K block)
+local function rnd(n, seed)
+    local a = float_array()
+    local s = seed
+    for i = 1, n do
+        s = (s * 1103515245 + 12345) % 2147483648
+        a[] = s / 2147483648 - 0.5
+    end
+    return a
+end
+for _, sz in [ [1, 3, 2], [5, 7, 11], [9, 300, 19] ] do
+    local T = sz[0]
+    local nin = sz[1]
+    local nout = sz[2]
+    local xm = rnd(T * nin + 2, 1)
+    local wm = rnd(nin * nout, 2)
+    local gm = rnd(T * nout + 1, 3)
+    local o1 = zeros(T * nout + 3)
+    local o2 = zeros(T * nout + 3)
+    for t = 0, T - 1 do tensor.matvec(xm, 2 + t * nin, wm, nin, nout, o1, 3 + t * nout) end
+    tensor.matmul(xm, 2, wm, T, nin, nout, o2, 3)
+    local dw1 = zeros(nin * nout)
+    local dw2 = zeros(nin * nout)
+    local dx1 = zeros(T * nin)
+    local dx2 = zeros(T * nin)
+    for t = 0, T - 1 do tensor.matvec_back(gm, 1 + t * nout, xm, 2 + t * nin, wm, dw1, nin, nout, dx1, t * nin) end
+    tensor.matmul_back(gm, 1, xm, 2, wm, dw2, T, nin, nout, dx2, 0)
+    print(`matmul ${T}x${nin}x${nout}`, close(o1, o2), close(dw1, dw2), close(dx1, dx2))
+end
+-- matmul_back with nil skips that gradient
+local dwo = zeros(6)
+tensor.matmul_back(fa("1 0 -1"), 0, x, 0, w, dwo, 1, 2, 3, nil, 0)
+print("matmul_back nil dx", show(dwo))
+
+-- scale
+local sc = fa("1 2 3 4")
+tensor.scale(sc, 1, 2, 0.5)
+print("scale", show(sc))
+
+-- float32_array: every kernel against its float_array version on the same data
+local function f32(a)
+    local b = float32_array()
+    for i = 0, len(a) - 1 do b[] = a[i] end
+    return b
+end
+local function near32(a, b)
+    if len(a) ~= len(b) then return false end
+    for i = 0, len(a) - 1 do
+        if math.abs(a[i] - b[i]) > 1e-4 * (1 + math.abs(a[i])) then return false end
+    end
+    return true
+end
+local function z32(n)
+    local a = float32_array()
+    for i = 1, n do a[] = 0.0 end
+    return a
+end
+do
+    local T, nin, nout = 9, 300, 37
+    local X, W, G = rnd(T * nin, 4), rnd(nin * nout, 5), rnd(T * nout, 6)
+    local x32, w32, g32 = f32(X), f32(W), f32(G)
+    local o64, o32 = zeros(T * nout), z32(T * nout)
+    tensor.matmul(X, 0, W, T, nin, nout, o64, 0)
+    tensor.matmul(x32, 0, w32, T, nin, nout, o32, 0)
+    local dw64, dw32, dx64, dx32 = zeros(nin * nout), z32(nin * nout), zeros(T * nin), z32(T * nin)
+    tensor.matmul_back(G, 0, X, 0, W, dw64, T, nin, nout, dx64, 0)
+    tensor.matmul_back(g32, 0, x32, 0, w32, dw32, T, nin, nout, dx32, 0)
+    print("f32 matmul", near32(o64, o32), near32(dw64, dw32), near32(dx64, dx32))
+    local v64, v32 = zeros(nout), z32(nout)
+    tensor.matvec(X, nin, W, nin, nout, v64, 0)
+    tensor.matvec(x32, nin, w32, nin, nout, v32, 0)
+    local mw64, mw32, mx64, mx32 = zeros(nin * nout), z32(nin * nout), zeros(nin), z32(nin)
+    tensor.matvec_back(G, 0, X, 0, W, mw64, nin, nout, mx64, 0)
+    tensor.matvec_back(g32, 0, x32, 0, w32, mw32, nin, nout, mx32, 0)
+    local cols2 = int_array()
+    cols2[] = 5
+    cols2[] = 0
+    local c64, c32 = zeros(2), z32(2)
+    tensor.matvec_cols(X, 0, W, nin, nout, cols2, 2, c64, 0)
+    tensor.matvec_cols(x32, 0, w32, nin, nout, cols2, 2, c32, 0)
+    local cw64, cw32, cx64, cx32 = zeros(nin * nout), z32(nin * nout), zeros(nin), z32(nin)
+    tensor.matvec_cols_back(G, 0, X, 0, W, cw64, nin, nout, cols2, 2, cx64, 0)
+    tensor.matvec_cols_back(g32, 0, x32, 0, w32, cw32, nin, nout, cols2, 2, cx32, 0)
+    print("f32 matvec", near32(v64, v32), near32(mw64, mw32), near32(mx64, mx32), near32(c64, c32), near32(cw64, cw32), near32(cx64, cx32))
+
+    local y64, y32 = zeros(nin), z32(nin)
+    local r64 = tensor.rmsnorm(X, 0, y64, 0, nin)
+    local r32 = tensor.rmsnorm(x32, 0, y32, 0, nin)
+    local rb64, rb32 = zeros(nin), z32(nin)
+    tensor.rmsnorm_back(G, 0, X, 0, r64, nin, rb64, 0)
+    tensor.rmsnorm_back(g32, 0, x32, 0, r32, nin, rb32, 0)
+    local re64, re32 = zeros(nin), z32(nin)
+    tensor.relu(X, 0, re64, 0, nin)
+    tensor.relu(x32, 0, re32, 0, nin)
+    local rd64 = zeros(nin)
+    tensor.copy(rd64, 0, G, 0, nin)
+    local rd32 = f32(rd64)
+    tensor.relu_back(rd64, 0, X, 0, nin)
+    tensor.relu_back(rd32, 0, x32, 0, nin)
+    local s64, s32 = zeros(nout), z32(nout)
+    tensor.copy(s64, 0, G, 0, nout)
+    tensor.copy(s32, 0, g32, 0, nout)
+    tensor.softmax(s64, 0, nout)
+    tensor.softmax(s32, 0, nout)
+    print("f32 norm/act", math.abs(r64 - r32) < 1e-5, near32(y64, y32), near32(rb64, rb32), near32(re64, re32), near32(rd64, rd32), near32(s64, s32))
+
+    local At, Ac, Ah, Ab = 7, 8, 2, 9
+    local q, k, v, dy = rnd(At * Ac, 7), rnd(At * Ac, 8), rnd(At * Ac, 9), rnd(At * Ac, 10)
+    local att64, att32 = zeros(Ah * Ab * Ab), z32(Ah * Ab * Ab)
+    local ay64, ay32 = zeros(At * Ac), z32(At * Ac)
+    tensor.attention(q, k, v, att64, ay64, At, Ac, Ah, Ab)
+    tensor.attention(f32(q), f32(k), f32(v), att32, ay32, At, Ac, Ah, Ab)
+    local dq64, dk64, dv64 = zeros(At * Ac), zeros(At * Ac), zeros(At * Ac)
+    local dq32, dk32, dv32 = z32(At * Ac), z32(At * Ac), z32(At * Ac)
+    tensor.attention_back(q, k, v, att64, dy, dq64, dk64, dv64, At, Ac, Ah, Ab)
+    tensor.attention_back(f32(q), f32(k), f32(v), att32, f32(dy), dq32, dk32, dv32, At, Ac, Ah, Ab)
+    print("f32 attention", near32(ay64, ay32), near32(att64, att32), near32(dq64, dq32), near32(dk64, dk32), near32(dv64, dv32))
+
+    local aw64 = zeros(nout)
+    tensor.copy(aw64, 0, W, 0, nout)
+    local aw32 = f32(aw64)
+    local am64, am32, av64, av32 = zeros(nout), z32(nout), zeros(nout), z32(nout)
+    for step = 1, 3 do
+        tensor.adam(aw64, G, am64, av64, nout, 0.01, 0.9, 0.95, 1 - 0.9 ^ step, 1 - 0.95 ^ step, 1e-8)
+        tensor.adam(aw32, g32, am32, av32, nout, 0.01, 0.9, 0.95, 1 - 0.9 ^ step, 1 - 0.95 ^ step, 1e-8)
+    end
+    local vs = f32(fa("1 2 3 4"))
+    tensor.scale(vs, 1, 2, 0.5)
+    tensor.add(vs, 0, f32(fa("10 20 30 40")), 0, 4)
+    tensor.zero(vs, 3, 1)
+    print("f32 vectors", near32(aw64, aw32), show(vs))
+end
+-- save / load of a float32_array writes 4 bytes per element
+local p32 = "/tmp/sea_tensor_test32.bin"
+print("f32 save/load", tensor.save(p32, f32(fa("1.5 -2.25 3"))), (function()
+    local back = z32(3)
+    local nxt = tensor.load(p32, back, 0)
+    return `${nxt} ${show(back)}`
+end)())
+local mix = try(function() tensor.add(zeros(2), 0, z32(2), 0, 2) end)
+print("f32 mixed", mix ~= nil and string.contains(mix, "mixes float_array and float32_array"))
+
+-- threads: products above the threshold split across the pool (by columns or by rows of
+-- the result); each element is computed the same way, so the results are identical
+local function same(a, b)
+    if len(a) ~= len(b) then return false end
+    for i = 0, len(a) - 1 do
+        if a[i] ~= b[i] then return false end
+    end
+    return true
+end
+local function product(mk, T, nin, nout, nthreads)
+    tensor.threads(nthreads)
+    local x, w, g = mk(rnd(T * nin, 11)), mk(rnd(nin * nout, 12)), mk(rnd(T * nout, 13))
+    local o, dw, dx = mk(zeros(T * nout)), mk(zeros(nin * nout)), mk(zeros(T * nin))
+    tensor.matmul(x, 0, w, T, nin, nout, o, 0)
+    tensor.matmul_back(g, 0, x, 0, w, dw, T, nin, nout, dx, 0)
+    return [o, dw, dx]
+end
+local function ident(a) return a end
+local default_threads = tensor.threads()
+print("threads", default_threads >= 1)
+for _, mk in [ident, f32] do
+    for _, sz in [ [64, 300, 200], [1000, 300, 20] ] do
+        local one = product(mk, sz[0], sz[1], sz[2], 1)
+        local many = product(mk, sz[0], sz[1], sz[2], 4)
+        print(`threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`, same(one[0], many[0]), same(one[1], many[1]), same(one[2], many[2]))
+    end
+end
+-- 8 goroutines at once: one gets the pool, the others run on their own threads
+do
+    local want = product(ident, 64, 300, 200, 1)
+    tensor.threads(4)
+    local results = chan(8)
+    for _ = 1, 8 do
+        go function()
+            local ok = true
+            for _ = 1, 5 do
+                local x, w = rnd(64 * 300, 11), rnd(300 * 200, 12)
+                local o = zeros(64 * 200)
+                tensor.matmul(x, 0, w, 64, 300, 200, o, 0)
+                ok = ok and same(o, want[0])
+            end
+            results <- ok
+        end()
+    end
+    local all = true
+    for _ = 1, 8 do all = all and <-results end
+    print("threads concurrent", all)
+end
+tensor.threads(default_threads)
+print("threads restored", tensor.threads() == default_threads)
