@@ -115,7 +115,7 @@ end
 
 local function is_list(v)
     local ty = type(v)
-    return ty == "array" or ty == "int_array" or ty == "float_array"
+    return ty == "array" or ty == "int_array" or ty == "float_array" or ty == "float32_array"
 end
 
 local function sorted_keys(v)

@@ -221,6 +221,10 @@ void sea_obj_free(SeaObject *obj) {
             sea_int_array_free((SeaIntArray*)obj);
             return;
         }
+        case OBJ_FLOAT32_ARRAY: {
+            sea_float32_array_free((SeaFloat32Array*)obj);
+            break;
+        }
         case OBJ_FLOAT_ARRAY: {
             sea_float_array_free((SeaFloatArray*)obj);
             return;
@@ -257,6 +261,7 @@ const char* sea_type_name(SeaValue v) {
         case OBJ_STRUCT:      return "struct";
         case OBJ_INT_ARRAY:   return "int_array";
         case OBJ_FLOAT_ARRAY: return "float_array";
+        case OBJ_FLOAT32_ARRAY: return "float32_array";
         case OBJ_BIGINT:      return "bigint";
         default:              return "object";
     }
