@@ -644,10 +644,10 @@ a number (by value: `bigint.new(5) == 5`).
 | `print` | `print(...)` | Print values separated by tabs, followed by newline (as `tostring` shows them) |
 | `dump` | `dump(...)` | Print each value on its own line for inspection: strings quoted, containers indented over several lines when they don't fit in 80 columns |
 | `printf` | `printf(fmt, ...)` | Format and print to stdout using `string.format` specifiers (`%d`, `%s`, `%f`, `%x`, etc.); no implicit newline |
-| `type` | `type(v) → string` | Return the type name of `v`: `"nil"`, `"bool"`, `"int"`, `"number"`, `"string"`, `"array"`, `"table"`, `"map"`, `"struct"`, `"function"`, `"channel"`, `"int_array"`, `"float_array"`, `"bigint"` |
+| `type` | `type(v) → string` | Return the type name of `v`: `"nil"`, `"bool"`, `"int"`, `"number"`, `"string"`, `"array"`, `"table"`, `"map"`, `"struct"`, `"function"`, `"channel"`, `"int_array"`, `"float_array"`, `"float32_array"`, `"bigint"` |
 | `tostring` | `tostring(v) → string` | Convert any value to its string representation. Containers show their contents on one line: `[1, "two"]`, `{name = "ana", n = 1}` (keys sorted; a struct in its literal's order), `{"a", "b"}`, `[="k" = 1]` (map), `int_array[1, 2]`; at most 100 items per container (`... (N more)`), 4 levels deep (`[...]`), `<cycle>` for a container inside itself |
 | `tonumber` | `tonumber(v) → int\|number\|nil` | Parse a string to a number (an int when it fits Sea's 48-bit range, else a number): decimal, or hex with `0x`; leading zeros are not octal (`"010"` is 10); a bigint becomes a number; `nil` on failure |
-| `len` | `len(v) → int` | Length of string, array, table, map, struct, int_array, or float_array |
+| `len` | `len(v) → int` | Length of string, array, table, map, struct, int_array, float_array or float32_array |
 | `error` | `error(msg) → error` | Create an error value |
 | `is_error` | `is_error(v) → bool` | Check whether a value is an error |
 | `assert` | `assert(v, msg?)` | Abort with `msg` if `v` is falsy |
@@ -655,6 +655,7 @@ a number (by value: `bigint.new(5) == 5`).
 | `load` | `load(src [, name]) → function\|error` | Compile a string of Sea code into a function that runs it: its arguments are the code's `...`, its top-level `return` is the result. It sees globals, not the caller's locals. `name` is the source name in errors and tracebacks (default `"load"`). A syntax or compile error is an error value |
 | `int_array` | `int_array(cap?) → IntArray` | Create a typed integer array (no per-element RC) |
 | `float_array` | `float_array(cap?) → FloatArray` | Create a typed float array (no per-element RC) |
+| `float32_array` | `float32_array(cap?) → Float32Array` | Create a typed array of 32-bit floats: half the memory of a float_array; values are rounded to float when stored and read back as numbers |
 
 ### Channels
 
@@ -1585,13 +1586,17 @@ for k, v in s do              -- iterates all fields
 end
 ```
 
-### Typed arrays (int_array / float_array)
+### Typed arrays (int_array / float_array / float32_array)
 
 No per-element reference counting — more efficient for numeric data.
+`float32_array` stores 32-bit floats (half the memory of `float_array`):
+a stored value is rounded to float (`0.1` reads back as `0.10000000149012`,
+`16777217` as `16777216`, `1e40` as `inf`) and read back as a `number`.
 
 ```sea
 local ia = int_array()      -- typed int64 array
 local fa = float_array(64)  -- with initial capacity hint
+local f32 = float32_array() -- typed float32 array (rounded on store)
 ia[] = 42                   -- append
 ia[0] = 99                  -- set (0-based); past the end grows, filling with 0
 v = ia[0]                   -- get
@@ -1852,7 +1857,7 @@ once can stall the other goroutines.
 | `table` / struct | `(key string, value)` | all fields |
 | `map` (`[=]`) | `(key, value)` | any-type key |
 | `channel` | `(value)` | blocks per value; exits on `close()` |
-| `int_array`, `float_array` | — | **not supported**; use numeric `for` |
+| `int_array`, `float_array`, `float32_array` | — | **not supported**; use numeric `for` |
 
 ---
 

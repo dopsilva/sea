@@ -1651,8 +1651,8 @@ The font table also has `units_per_em`, `num_glyphs`, `ascender`,
 ## `tensor`
 
 Numeric kernels on `float_array`: the heavy loops of a small transformer
-(matrix-vector products and their backward passes, RMSNorm, causal
-attention, softmax, Adam), so a model written in Sea trains at C speed while
+(matrix-vector and batched matrix products and their backward passes,
+RMSNorm, causal attention, softmax, Adam), so a model written in Sea trains at C speed while
 the orchestration stays in Sea. On a small transformer written in Sea, swapping
 these kernels in for the same functions written in Sea gave identical results,
 58× faster.
@@ -1660,8 +1660,12 @@ these kernels in for the same functions written in Sea gave identical results,
 **Require:** `require("tensor")` (relative to your file)
 **Build:** `make -C libs/tensor` (compiled with `-O3 -march=native`)
 
-Every function works in place on float_arrays addressed as `(array, offset)`
-and returns `nil` unless noted. Matrices are row-major: `w[i*nout + j]` links
+Every function works in place on arrays addressed as `(array, offset)`
+and returns `nil` unless noted. The arrays are `float_array`s (double) or
+`float32_array`s (float), all of the same kind in one call (mixing them is a
+panic): float32 takes half the memory and runs the matrix products about
+twice as fast. Reductions (RMSNorm, softmax, the attention's dot products)
+accumulate in double for both; `save` writes 8 or 4 bytes per element. Matrices are row-major: `w[i*nout + j]` links
 input `i` to output `j`. Backward functions accumulate (`+=`) into their
 gradient arguments; the caller zeroes them. A range outside an array, or an
 argument of the wrong type, is a runtime error (a panic).
@@ -1672,6 +1676,8 @@ argument of the wrong type, is a runtime error (a panic).
 | `matvec_back(dout, doo, x, xo, w, dw, nin, nout, dx, dxo)` | `dw += x ⊗ dout`, `dx += w · dout` |
 | `matvec_cols(x, xo, w, nin, nout, cols, ncols, out, oo)` | only the outputs listed in `cols` (an `int_array`): `out[oo+k] = Σ_i x[xo+i]·w[i·nout+cols[k]]` |
 | `matvec_cols_back(dout, doo, x, xo, w, dw, nin, nout, cols, ncols, dx, dxo)` | its backward |
+| `matmul(x, xo, w, T, nin, nout, out, oo)` | `matvec` for `T` rows at once (`x` and `out` hold `T` rows of `nin` and `nout`): `out[oo+t·nout+j] = Σ_i x[xo+t·nin+i]·w[i·nout+j]`. Blocked for the cache: several times faster than `T` calls of `matvec` |
+| `matmul_back(dout, doo, x, xo, w, dw, T, nin, nout, dx, dxo)` | its backward: `dw += xᵀ·dout`, `dx += dout·wᵀ`; `dw` or `dx` may be `nil` to skip it |
 | `rmsnorm(x, xo, y, yo, n) → r` | `y = x·r` with `r = 1/√(mean(x²) + 1e-5)` |
 | `rmsnorm_back(dy, dyo, x, xo, r, n, dx, dxo)` | `dx += r·dy − x·r³·(dy·x)/n` |
 | `relu(x, xo, y, yo, n)` | `y = max(x, 0)` |
@@ -1682,8 +1688,9 @@ argument of the wrong type, is a runtime error (a panic).
 | `zero(a [, off, n])` | zero a range (the whole array by default) |
 | `add(dst, doff, src, soff, n)` | `dst[doff+i] += src[soff+i]` |
 | `copy(dst, doff, src, soff, n)` | copy a range (overlap allowed) |
+| `scale(a, off, n, k)` | `a[off+i] *= k` |
 | `adam(w, g, m, v, n, lr, beta1, beta2, c1, c2, eps)` | one Adam step; `c1 = 1 − beta1^t`, `c2 = 1 − beta2^t` |
-| `save(path, a [, append]) → bytes` | write the array as raw doubles (native byte order); an error value on failure |
+| `save(path, a [, append]) → bytes` | write the array as raw elements, doubles or floats (native byte order); an error value on failure |
 | `load(path, a, offset) → next offset` | fill the whole array from the file at a byte offset; an error value if the file is short |
 
 ```sea
