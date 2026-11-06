@@ -16,3 +16,8 @@ range error	true
 type error	true
 save/load	16	8	24	1.5000 -2.2500	3.0000
 load past end	true
+matmul 1x3x2	true	true	true
+matmul 5x7x11	true	true	true
+matmul 9x300x19	true	true	true
+matmul_back nil dx	1.0000 0.0000 -1.0000 2.0000 0.0000 -2.0000
+scale	1.0000 1.0000 1.5000 4.0000

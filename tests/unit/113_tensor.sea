@@ -134,3 +134,43 @@ off = tensor.load(path, b2, off)
 print("save/load", s1, s2, off, show(b1), show(b2))
 print("load past end", is_error(tensor.load(path, zeros(4), 0)))
 os.exec("rm -f " .. path)
+
+-- matmul / matmul_back: T rows at once, against matvec row by row (sizes that are not
+-- multiples of the 4×8 tile, and nin above the 256-wide K block)
+local function rnd(n, seed)
+    local a = float_array()
+    local s = seed
+    for i = 1, n do
+        s = (s * 1103515245 + 12345) % 2147483648
+        a[] = s / 2147483648 - 0.5
+    end
+    return a
+end
+for _, sz in [ [1, 3, 2], [5, 7, 11], [9, 300, 19] ] do
+    local T = sz[0]
+    local nin = sz[1]
+    local nout = sz[2]
+    local xm = rnd(T * nin + 2, 1)
+    local wm = rnd(nin * nout, 2)
+    local gm = rnd(T * nout + 1, 3)
+    local o1 = zeros(T * nout + 3)
+    local o2 = zeros(T * nout + 3)
+    for t = 0, T - 1 do tensor.matvec(xm, 2 + t * nin, wm, nin, nout, o1, 3 + t * nout) end
+    tensor.matmul(xm, 2, wm, T, nin, nout, o2, 3)
+    local dw1 = zeros(nin * nout)
+    local dw2 = zeros(nin * nout)
+    local dx1 = zeros(T * nin)
+    local dx2 = zeros(T * nin)
+    for t = 0, T - 1 do tensor.matvec_back(gm, 1 + t * nout, xm, 2 + t * nin, wm, dw1, nin, nout, dx1, t * nin) end
+    tensor.matmul_back(gm, 1, xm, 2, wm, dw2, T, nin, nout, dx2, 0)
+    print(`matmul ${T}x${nin}x${nout}`, close(o1, o2), close(dw1, dw2), close(dx1, dx2))
+end
+-- matmul_back with nil skips that gradient
+local dwo = zeros(6)
+tensor.matmul_back(fa("1 0 -1"), 0, x, 0, w, dwo, 1, 2, 3, nil, 0)
+print("matmul_back nil dx", show(dwo))
+
+-- scale
+local sc = fa("1 2 3 4")
+tensor.scale(sc, 1, 2, 0.5)
+print("scale", show(sc))
