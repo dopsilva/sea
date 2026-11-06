@@ -1,0 +1,42 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- Test: float32_array — a typed array of 32-bit floats (values are rounded
+-- to float when stored and read back as numbers)
+
+local a = float32_array()
+a[] = 1.5
+a[] = 0.1
+a[] = 3
+print(type(a), len(a))
+print(a[0], a[1] == 0.1, math.abs(a[1] - 0.1) < 1e-7, a[2], type(a[2]))
+print(a)
+print(a[-1], a[9])
+
+-- writing past the end grows it with zeros
+local z = float32_array(4)
+z[5] = 2.25
+print(len(z), z[0], z[5])
+
+-- rounding: 16777217 is not a float, 1e40 overflows to inf
+local r = float32_array()
+r[] = 16777217
+r[] = 1e40
+r[] = -0.0
+print(r[0], r[1], 1 / r[2])
+
+-- list functions see the elements
+print(list.sum(a), list.max(a), list.map(a, function(x) return x * 2 end))
+
+-- a hot loop (JIT-compiled under sea-jit): read and write through a parameter
+local function fill(arr, n)
+    for i = 0, n - 1 do arr[i] = i * 0.5 end
+    local s = 0.0
+    for i = 0, n - 1 do s = s + arr[i] end
+    return s
+end
+local big = float32_array(1000)
+print(fill(big, 1000), big[999])
+
+-- nested in an array
+print([float32_array(), a])

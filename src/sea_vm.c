@@ -435,7 +435,7 @@ SeaString* sea_vm_tostring(SeaVM *vm, SeaValue v) {
         SeaObject *obj = sea_as_obj(v);
         switch (obj->type) {
             case OBJ_ARRAY: case OBJ_TABLE: case OBJ_MAP: case OBJ_STRUCT:
-            case OBJ_INT_ARRAY: case OBJ_FLOAT_ARRAY:
+            case OBJ_INT_ARRAY: case OBJ_FLOAT_ARRAY: case OBJ_FLOAT32_ARRAY:
                 /* the contents: [1, "a"], {k = 1} (src/sea_show.c) */
                 return sea_show(vm, v, SEA_SHOW_DEPTH);
             case OBJ_CLOSURE:
@@ -538,6 +538,10 @@ static SeaValue table_get(SeaVM *vm, SeaValue obj_val, SeaValue key) {
         int64_t idx = sea_is_int(key) ? sea_as_int(key) : (int64_t)sea_as_number(key);
         return sea_number_val(sea_float_array_get(SEA_AS_FLOAT_ARRAY(obj_val), idx));
     }
+    if (sea_is_float32_array(obj_val)) {
+        int64_t idx = sea_is_int(key) ? sea_as_int(key) : (int64_t)sea_as_number(key);
+        return sea_number_val(sea_float32_array_get(SEA_AS_FLOAT32_ARRAY(obj_val), idx));
+    }
     if (sea_is_string(obj_val)) {
         // String method access
         SeaValue str_mod;
@@ -614,6 +618,12 @@ static void table_set(SeaVM *vm, SeaValue obj_val, SeaValue key, SeaValue value)
         int64_t idx = sea_is_int(key) ? sea_as_int(key) : (int64_t)sea_as_number(key);
         double v = sea_is_number(value) ? sea_as_number(value) : (double)sea_as_int(value);
         sea_float_array_set(SEA_AS_FLOAT_ARRAY(obj_val), idx, v);
+        return;
+    }
+    if (sea_is_float32_array(obj_val)) {
+        int64_t idx = sea_is_int(key) ? sea_as_int(key) : (int64_t)sea_as_number(key);
+        double v = sea_is_number(value) ? sea_as_number(value) : (double)sea_as_int(value);
+        sea_float32_array_set(SEA_AS_FLOAT32_ARRAY(obj_val), idx, v);
         return;
     }
     sea_vm_error_noreturn(vm, "attempt to index a %s value", sea_type_name(obj_val));
@@ -1101,6 +1111,8 @@ static inline void vm_array_push_move(SeaValue *base, int a, int b) {
         sea_int_array_push(SEA_AS_INT_ARRAY(arr_v), sea_is_int(v) ? sea_as_int(v) : (int64_t)sea_as_number(v));
     else if (sea_is_float_array(arr_v))
         sea_float_array_push(SEA_AS_FLOAT_ARRAY(arr_v), sea_is_number(v) ? sea_as_number(v) : (double)sea_as_int(v));
+    else if (sea_is_float32_array(arr_v))
+        sea_float32_array_push(SEA_AS_FLOAT32_ARRAY(arr_v), sea_is_number(v) ? sea_as_number(v) : (double)sea_as_int(v));
     vm_release_val(v);
 }
 
@@ -1925,6 +1937,14 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                     REG(a) = sea_int_val(_ia->data[_idx]);
                     DISPATCH();
                 }
+            } else if (_o->type == OBJ_FLOAT32_ARRAY) {
+                SeaFloat32Array *_f3 = (SeaFloat32Array*)_o;
+                if (SEA_LIKELY(_idx >= 0 && (uint64_t)_idx < _f3->len)) {
+                    /* "other" for the JIT: its inline typed path reads doubles */
+                    sea_chunk_feedback(chunk, (int)(ip - 1 - chunk->code), _obj);
+                    REG(a) = sea_number_val((double)_f3->data[_idx]);
+                    DISPATCH();
+                }
             }
         }
         SAVE_IP();
@@ -1969,6 +1989,14 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                     sea_chunk_feedback_typed(chunk, (int)(ip - 1 - chunk->code));
                     _ia->data[_idx] = sea_is_int(_val) ? sea_as_int(_val)
                                                        : (int64_t)sea_as_number(_val);
+                    DISPATCH();
+                }
+            } else if (_o->type == OBJ_FLOAT32_ARRAY && (sea_is_number(_val) || sea_is_int(_val))) {
+                SeaFloat32Array *_f3 = (SeaFloat32Array*)_o;
+                if (SEA_LIKELY(_idx >= 0 && (uint64_t)_idx < _f3->len)) {
+                    sea_chunk_feedback(chunk, (int)(ip - 1 - chunk->code), _obj);   /* "other" for the JIT */
+                    _f3->data[_idx] = (float)(sea_is_number(_val) ? sea_as_number(_val)
+                                                                  : (double)sea_as_int(_val));
                     DISPATCH();
                 }
             }
@@ -2082,6 +2110,10 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
             SeaValue v = REG(b);
             double fv = sea_is_number(v) ? sea_as_number(v) : (double)sea_as_int(v);
             sea_float_array_push(SEA_AS_FLOAT_ARRAY(arr_v), fv);
+        } else if (sea_is_float32_array(arr_v)) {
+            SeaValue v = REG(b);
+            double fv = sea_is_number(v) ? sea_as_number(v) : (double)sea_as_int(v);
+            sea_float32_array_push(SEA_AS_FLOAT32_ARRAY(arr_v), fv);
         }
         DISPATCH();
     }

@@ -196,7 +196,7 @@ print(msg)                                  -- → n is 42, twice 84
 
 `type(v)` returns one of: `nil`, `bool`, `int`, `number`, `string`,
 `array`, `table`, `map`, `struct`, `function`, `channel`, `int_array`,
-`float_array`, `bigint`, `error`.
+`float_array`, `float32_array`, `bigint`, `error`.
 
 ```sea
 print(type(1), type(1.5), type("a"), type(true), type(nil))  -- → int  number  string  bool  nil
@@ -281,6 +281,8 @@ print(string.join(keys, " "))         -- → a b c
 fast; same `[]=`, indexing and `len`; iterate them with a numeric `for`).
 `n` is a capacity: the array starts empty, and writing past the end grows it
 with zeros.
+`float32_array(n)` is the same with 32-bit floats: half the memory, values
+rounded to float when stored (`0.1` reads back as `0.10000000149012`).
 
 ---
 
@@ -520,7 +522,7 @@ value on failure.
 `type(v)`, `tostring(v)`, `tonumber(s) → n|nil`, `len(v)`,
 `error(msg)`, `is_error(v)`, `assert(v [, msg])`, `require(path)`,
 `chan([cap])`, `close(ch)`, `panic(v)`, `recover()`, `int_array([cap])`,
-`float_array([cap])`, `isnan(x)`, `isinf(x)`.
+`float_array([cap])`, `float32_array([cap])`, `isnan(x)`, `isinf(x)`.
 
 **string** (1-based positions; also as methods `s:upper()`):
 `len sub(s,i[,j]) upper lower reverse rep(s,n[,sep]) byte(s[,i]) char(...)
