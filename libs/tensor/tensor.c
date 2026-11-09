@@ -252,6 +252,43 @@ static void need(SeaVM *vm, int argc, int n, const char *fn) {
 #define D(i, off, n) P(double, i, off, n)
 #define F(i, off, n) P(float, i, off, n)
 
+/* the int8 bytes of a quantized matrix: a string holding [off, off+n) */
+static const int8_t *q8_bytes(SeaVM *vm, SeaValue v, int64_t off, int64_t n, const char *fn) {
+    if (!sea_is_string(v)) sea_vm_error_noreturn(vm, "tensor.%s: expected the bytes of quantize_q8, got %s", fn, sea_type_name(v));
+    SeaString *s = SEA_AS_STRING(v);
+    if (off < 0 || n < 0 || off + n > (int64_t)s->len)
+        sea_vm_error_noreturn(vm, "tensor.%s: range %lld+%lld outside %u bytes", fn, (long long)off, (long long)n, s->len);
+    return (const int8_t *)s->data + off;
+}
+
+/* quantize_q8(w, wo, nin, nout, scales, so) → bytes: the nin × nout matrix at w[wo..] as int8 by
+ * input row (q = round(w / s), s = max|row| / 127); the scales go to scales[so..so+nin). */
+static SeaValue t_quantize_q8(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "quantize_q8";
+    need(vm, argc, 6, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t wo = iv(args[1]), nin = iv(args[2]), nout = iv(args[3]), so = iv(args[5]);
+    if (nin < 0 || nout < 0) sea_vm_error_noreturn(vm, "tensor.%s: negative size", FN);
+    SeaString *s = sea_string_alloc((size_t)(nin * nout));
+    if (kd == 8) quantize_q8_f64(D(0, wo, nin * nout), nin, nout, (int8_t *)s->data, D(4, so, nin));
+    else         quantize_q8_f32(F(0, wo, nin * nout), nin, nout, (int8_t *)s->data, F(4, so, nin));
+    s->data[nin * nout] = 0;
+    return sea_obj_val(&s->obj);
+}
+
+/* matvec_q8(x, xo, q, qo, scales, so, nin, nout, out, oo): out[oo+j] = Σ_i x[xo+i]·scales[so+i]·q[qo + i·nout + j]
+ * (q: the bytes of quantize_q8; qo a byte offset) */
+static SeaValue t_matvec_q8(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "matvec_q8";
+    need(vm, argc, 10, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t xo = iv(args[1]), qo = iv(args[3]), so = iv(args[5]), nin = iv(args[6]), nout = iv(args[7]), oo = iv(args[9]);
+    const int8_t *q = q8_bytes(vm, args[2], qo, nin * nout, FN);
+    if (kd == 8) matvec_q8_f64(D(0, xo, nin), q, D(4, so, nin), nin, nout, D(8, oo, nout));
+    else         matvec_q8_f32(F(0, xo, nin), q, F(4, so, nin), nin, nout, F(8, oo, nout));
+    return SEA_NIL_VAL;
+}
+
 /* ---- linear algebra ---- */
 
 /* matvec(x, xo, w, nin, nout, out, oo): out[oo..] = x[xo..] @ w */
@@ -756,6 +793,8 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     (void)vm;
     SeaTable *mod = sea_mod_new();
     sea_mod_set(mod, "matvec",           t_matvec);
+    sea_mod_set(mod, "quantize_q8",      t_quantize_q8);
+    sea_mod_set(mod, "matvec_q8",        t_matvec_q8);
     sea_mod_set(mod, "matvec_back",      t_matvec_back);
     sea_mod_set(mod, "matmul",           t_matmul);
     sea_mod_set(mod, "matmul_back",      t_matmul_back);

@@ -101,6 +101,65 @@ static void K(matvec_cols_back)(const REAL *g, const REAL *x, const REAL *w, REA
     }
 }
 
+/* ---- int8 weights ----
+ *
+ * A matrix nin × nout quantized by input row: q[i·nout + j] = round(w[i·nout + j] / s[i]) with
+ * s[i] = max_j |w[i·nout + j]| / 127. Then out[j] = Σ_i (x[i]·s[i])·q[i·nout + j]: the scale
+ * leaves the sum, and the matrix takes a quarter of the memory of floats. */
+static void K(quantize_q8)(const REAL *w, int64_t nin, int64_t nout, int8_t *q, REAL *sc) {
+    for (int64_t i = 0; i < nin; i++) {
+        const REAL *row = w + i * nout;
+        double mx = 0.0;
+        for (int64_t j = 0; j < nout; j++) {
+            double a = fabs((double)row[j]);
+            if (a > mx) mx = a;
+        }
+        double s = mx / 127.0;
+        sc[i] = (REAL)s;
+        int8_t *qr = q + i * nout;
+        for (int64_t j = 0; j < nout; j++) {
+            long v = s > 0 ? lround((double)row[j] / s) : 0;
+            if (v > 127) v = 127;
+            if (v < -127) v = -127;
+            qr[j] = (int8_t)v;
+        }
+    }
+}
+
+static void K(matvec_q8_range)(const REAL *x, const int8_t *q, const REAL *sc, int64_t nin, int64_t nout,
+                               REAL *out, int64_t j0, int64_t j1) {
+    for (int64_t j = j0; j < j1; j++) out[j] = 0;
+    for (int64_t i = 0; i < nin; i++) {
+        REAL xs = x[i] * sc[i];
+        if (xs == 0) continue;
+        const int8_t *row = q + i * nout;
+        for (int64_t j = j0; j < j1; j++) out[j] += xs * (REAL)row[j];
+    }
+}
+
+typedef struct { const REAL *x; const int8_t *q; const REAL *sc; REAL *out; int64_t nin, nout; } K(q8_job);
+
+static void K(matvec_q8_part)(void *arg, int part, int nparts) {
+    K(q8_job) *j = arg;
+    int64_t blocks = (j->nout + MATVEC_BLOCK - 1) / MATVEC_BLOCK;
+    int64_t b0 = blocks * part / nparts, b1 = blocks * (part + 1) / nparts;
+    int64_t j0 = b0 * MATVEC_BLOCK, j1 = b1 * MATVEC_BLOCK < j->nout ? b1 * MATVEC_BLOCK : j->nout;
+    if (j1 > j0) K(matvec_q8_range)(j->x, j->q, j->sc, j->nin, j->nout, j->out, j0, j1);
+}
+
+/* out = x @ (q·s); split across the pool like matvec */
+static void K(matvec_q8)(const REAL *x, const int8_t *q, const REAL *sc, int64_t nin, int64_t nout, REAL *out) {
+    int nt = pool_threads();
+    if (nt <= 1 || nin * nout < GEMM_PAR_MIN) {
+        K(matvec_q8_range)(x, q, sc, nin, nout, out, 0, nout);
+        return;
+    }
+    int64_t blocks = (nout + MATVEC_BLOCK - 1) / MATVEC_BLOCK;
+    if (blocks < nt) nt = (int)blocks;
+    K(q8_job) j = {x, q, sc, out, nin, nout};
+    pool_run(K(matvec_q8_part), &j, nt);
+}
+
 /* ---- matrix products ----
  *
  * gemm: C[M×N] (+)= A[M×K] · B[K×N], row-major. Blocked for the cache: K in

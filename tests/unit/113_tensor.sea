@@ -584,3 +584,55 @@ do
     end
     tensor.threads(default_threads)
 end
+
+-- int8 weights: quantize_q8 and matvec_q8
+do
+    for _, mk in [ident, f32] do
+        local nin, nout = 70, 130
+        local w = mk(rnd(nin * nout + 5, 91))
+        local sc = mk(zeros(nin + 2))
+        local q = tensor.quantize_q8(w, 5, nin, nout, sc, 2)
+        -- each weight is within half a step of its quantized value
+        local ok = len(q) == nin * nout
+        for i = 0, nin - 1 do
+            local s = sc[2 + i]
+            for j = 0, nout - 1 do
+                local b = string.byte(q, i * nout + j + 1)
+                if b >= 128 then b -= 256 end
+                if math.abs(b * s - w[5 + i * nout + j]) > s / 2 + 1e-7 then ok = false end
+            end
+        end
+        -- matvec_q8 equals matvec on the dequantized matrix
+        local deq = mk(zeros(nin * nout))
+        for i = 0, nin - 1 do
+            for j = 0, nout - 1 do
+                local b = string.byte(q, i * nout + j + 1)
+                if b >= 128 then b -= 256 end
+                deq[i * nout + j] = b * sc[2 + i]
+            end
+        end
+        local x = mk(rnd(nin + 1, 92))
+        local o1, o2 = mk(zeros(nout)), mk(zeros(nout + 1))
+        tensor.matvec(x, 1, deq, nin, nout, o1, 0)
+        tensor.matvec_q8(x, 1, q, 0, sc, 2, nin, nout, o2, 1)
+        local close_ok = true
+        for j = 0, nout - 1 do
+            if math.abs(o1[j] - o2[1 + j]) > 1e-4 * (1 + math.abs(o1[j])) then close_ok = false end
+        end
+        -- large: 1 and 4 threads give the same bits
+        local bn, bo = 512, 2100
+        local bw = mk(rnd(bn * bo, 93))
+        local bs = mk(zeros(bn))
+        local bq = tensor.quantize_q8(bw, 0, bn, bo, bs, 0)
+        local bx = mk(rnd(bn, 94))
+        local r1, r4 = mk(zeros(bo)), mk(zeros(bo))
+        tensor.threads(1)
+        tensor.matvec_q8(bx, 0, bq, 0, bs, 0, bn, bo, r1, 0)
+        tensor.threads(4)
+        tensor.matvec_q8(bx, 0, bq, 0, bs, 0, bn, bo, r4, 0)
+        tensor.threads(default_threads)
+        print(`q8 ${type(w)}`, ok, close_ok, same(r1, r4))
+    end
+    local bad = try(function() tensor.matvec_q8(zeros(2), 0, "abc", 0, zeros(2), 0, 2, 2, zeros(2), 0) end)
+    print("q8 range", bad ~= nil and string.contains(bad, "outside 3 bytes"))
+end

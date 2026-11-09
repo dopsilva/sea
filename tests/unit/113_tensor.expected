@@ -60,3 +60,6 @@ cross_entropy	true	true	true	true
 cross_entropy range	true
 attention threads float_array	true	true	true	true	true	true
 attention threads float32_array	true	true	true	true	true	true
+q8 float_array	true	true	true
+q8 float32_array	true	true	true
+q8 range	true
