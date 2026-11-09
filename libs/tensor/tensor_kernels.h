@@ -306,6 +306,46 @@ static void K(attention_back)(const REAL *q, const REAL *k, const REAL *v, const
     }
 }
 
+/* ---- columns (embedding lookups, sampled softmax) ---- */
+
+/* dst = the columns cols[0..nc) of src (nrows × ncols): dst[i·nc + k], or
+ * transposed, one column per row: dst[k·nrows + i] */
+static void K(gather_cols)(const REAL *src, int64_t nrows, int64_t ncols, const int64_t *cols, int64_t nc,
+                           REAL *dst, int trans) {
+    (void)ncols;
+    if (trans) {
+        for (int64_t k = 0; k < nc; k++) {
+            const REAL *col = src + cols[k];
+            REAL *out = dst + k * nrows;
+            for (int64_t i = 0; i < nrows; i++) out[i] = col[i * ncols];
+        }
+    } else {
+        for (int64_t i = 0; i < nrows; i++) {
+            const REAL *row = src + i * ncols;
+            REAL *out = dst + i * nc;
+            for (int64_t k = 0; k < nc; k++) out[k] = row[cols[k]];
+        }
+    }
+}
+
+/* the reverse, accumulating (a column listed twice gets both) */
+static void K(scatter_cols)(REAL *dst, int64_t nrows, int64_t ncols, const int64_t *cols, int64_t nc,
+                            const REAL *src, int trans) {
+    if (trans) {
+        for (int64_t k = 0; k < nc; k++) {
+            REAL *col = dst + cols[k];
+            const REAL *in = src + k * nrows;
+            for (int64_t i = 0; i < nrows; i++) col[i * ncols] += in[i];
+        }
+    } else {
+        for (int64_t i = 0; i < nrows; i++) {
+            REAL *row = dst + i * ncols;
+            const REAL *in = src + i * nc;
+            for (int64_t k = 0; k < nc; k++) row[cols[k]] += in[k];
+        }
+    }
+}
+
 /* ---- vectors ---- */
 
 static void K(add)(REAL *d, const REAL *s, int64_t n) {

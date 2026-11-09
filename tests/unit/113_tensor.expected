@@ -35,3 +35,6 @@ threads float32_array 64x300x200	true	true	true
 threads float32_array 1000x300x20	true	true	true
 threads concurrent	true
 threads restored	true
+gather/scatter float_array	true	true	true	true
+gather/scatter float32_array	true	true	true	true
+gather out of range	true

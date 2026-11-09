@@ -1685,6 +1685,8 @@ argument of the wrong type, is a runtime error (a panic).
 | `softmax(p, off, n)` | in place, numerically stable |
 | `attention(q, k, v, att, y, T, C, H, B)` | causal multi-head attention over `T` positions of width `C`, `H` heads, context `B` (`T ≤ B`); `att` (`H·B·B`) keeps the probabilities for the backward |
 | `attention_back(q, k, v, att, dy, dq, dk, dv, T, C, H, B)` | accumulates into `dq`, `dk`, `dv` |
+| `gather_cols(src, nrows, ncols, cols, coff, nc, dst [, trans])` | the columns `cols[coff .. coff+nc)` (an `int_array`) of `src` (`nrows × ncols`) into `dst`: `dst[i·nc+k]`, or with `trans` one column per row, `dst[k·nrows+i]` — an embedding lookup is `gather_cols(E, d, V, ids, off, T, x, true)` |
+| `scatter_cols(dst, nrows, ncols, cols, coff, nc, src [, trans])` | the reverse, accumulating (`+=`; a column listed twice gets both) |
 | `zero(a [, off, n])` | zero a range (the whole array by default) |
 | `add(dst, doff, src, soff, n)` | `dst[doff+i] += src[soff+i]` |
 | `copy(dst, doff, src, soff, n)` | copy a range (overlap allowed) |

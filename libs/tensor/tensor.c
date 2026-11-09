@@ -440,6 +440,42 @@ static SeaValue t_attention_back(SeaVM *vm, int argc, SeaValue *args) {
     return SEA_NIL_VAL;
 }
 
+/* ---- columns ---- */
+
+/* gather_cols(src, nrows, ncols, cols, coff, nc, dst [, trans]): the columns
+ * cols[coff .. coff+nc) of src (nrows × ncols) into dst — dst[i·nc + k], or
+ * with trans one column per row, dst[k·nrows + i] (an embedding lookup:
+ * gather_cols(E, d, V, ids, off, T, x, true) puts E[:, ids[off+t]] in row t) */
+static SeaValue t_gather_cols(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "gather_cols";
+    need(vm, argc, 7, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t nrows = iv(args[1]), ncols = iv(args[2]), coff = iv(args[4]), nc = iv(args[5]);
+    int trans = argc > 7 && sea_is_truthy(args[7]);
+    if (coff < 0) sea_vm_error_noreturn(vm, "tensor.%s: negative offset", FN);
+    const int64_t *cols = ia(vm, args[3], coff + nc, FN) + coff;
+    check_cols(vm, cols, nc, ncols, FN);
+    if (kd == 8) gather_cols_f64(D(0, 0, nrows * ncols), nrows, ncols, cols, nc, D(6, 0, nrows * nc), trans);
+    else         gather_cols_f32(F(0, 0, nrows * ncols), nrows, ncols, cols, nc, F(6, 0, nrows * nc), trans);
+    return SEA_NIL_VAL;
+}
+
+/* scatter_cols(dst, nrows, ncols, cols, coff, nc, src [, trans]): the reverse
+ * of gather_cols, accumulating — dst[i·ncols + cols[coff+k]] += src[...] */
+static SeaValue t_scatter_cols(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "scatter_cols";
+    need(vm, argc, 7, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t nrows = iv(args[1]), ncols = iv(args[2]), coff = iv(args[4]), nc = iv(args[5]);
+    int trans = argc > 7 && sea_is_truthy(args[7]);
+    if (coff < 0) sea_vm_error_noreturn(vm, "tensor.%s: negative offset", FN);
+    const int64_t *cols = ia(vm, args[3], coff + nc, FN) + coff;
+    check_cols(vm, cols, nc, ncols, FN);
+    if (kd == 8) scatter_cols_f64(D(0, 0, nrows * ncols), nrows, ncols, cols, nc, D(6, 0, nrows * nc), trans);
+    else         scatter_cols_f32(F(0, 0, nrows * ncols), nrows, ncols, cols, nc, F(6, 0, nrows * nc), trans);
+    return SEA_NIL_VAL;
+}
+
 /* ---- vectors ---- */
 
 /* zero(a [, off, n]) */
@@ -585,5 +621,7 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "save",             t_save);
     sea_mod_set(mod, "load",             t_load);
     sea_mod_set(mod, "threads",          t_threads);
+    sea_mod_set(mod, "gather_cols",      t_gather_cols);
+    sea_mod_set(mod, "scatter_cols",     t_scatter_cols);
     return sea_obj_val(&mod->obj);
 }

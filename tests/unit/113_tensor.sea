@@ -328,3 +328,36 @@ do
 end
 tensor.threads(default_threads)
 print("threads restored", tensor.threads() == default_threads)
+
+-- gather_cols / scatter_cols against Sea loops (both types, both layouts, a repeated
+-- column, an offset into cols)
+do
+    local nrows, ncols = 5, 7
+    local src = rnd(nrows * ncols, 21)
+    local cl = int_array()
+    for _, c in [9, 3, 0, 6, 3] do cl[] = c end    -- cols[0] is skipped by coff = 1
+    local coff, nc = 1, 4
+    for _, mk in [ident, f32] do
+        local s = mk(src)
+        local g, gt = mk(zeros(nrows * nc)), mk(zeros(nrows * nc))
+        tensor.gather_cols(s, nrows, ncols, cl, coff, nc, g)
+        tensor.gather_cols(s, nrows, ncols, cl, coff, nc, gt, true)
+        local ok = true
+        for i = 0, nrows - 1 do
+            for k = 0, nc - 1 do
+                local v = s[i * ncols + cl[coff + k]]
+                ok = ok and g[i * nc + k] == v and gt[k * nrows + i] == v
+            end
+        end
+        local d1, d2 = mk(zeros(nrows * ncols)), mk(zeros(nrows * ncols))
+        tensor.scatter_cols(d1, nrows, ncols, cl, coff, nc, g)
+        tensor.scatter_cols(d2, nrows, ncols, cl, coff, nc, gt, true)
+        local want = mk(zeros(nrows * ncols))
+        for i = 0, nrows - 1 do
+            for k = 0, nc - 1 do want[i * ncols + cl[coff + k]] += s[i * ncols + cl[coff + k]] end
+        end
+        print(`gather/scatter ${type(s)}`, ok, same(d1, want), same(d2, want), d1[3] == 2 * s[3])
+    end
+    local oob = try(function() tensor.gather_cols(src, nrows, ncols, cl, 0, nc, zeros(nrows * nc)) end)
+    print("gather out of range", oob ~= nil and string.contains(oob, "column out of range"))
+end
