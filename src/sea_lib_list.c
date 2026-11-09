@@ -44,7 +44,7 @@ static void items_free(Items *it) {
     it->tmp = NULL;
 }
 
-/* The elements of an array, a positional table, an int_array or a float_array */
+/* The elements of an array, a positional table, an int_array, a float_array or a float32_array */
 static Items items(SeaVM *vm, const char *fn, SeaValue v) {
     Items it = {0};
     if (sea_is_array(v)) {
@@ -61,6 +61,14 @@ static Items items(SeaVM *vm, const char *fn, SeaValue v) {
                              : sea_number_val(((SeaFloatArray*)sea_as_obj(v))->data[i]);
         it.v = it.tmp;
         it.n = n;
+        return it;
+    }
+    if (sea_obj_is_type(v, OBJ_FLOAT32_ARRAY)) {
+        SeaFloat32Array *fa = (SeaFloat32Array*)sea_as_obj(v);
+        it.tmp = (SeaValue*)malloc(sizeof(SeaValue) * (fa->len ? fa->len : 1));
+        for (uint32_t i = 0; i < fa->len; i++) it.tmp[i] = sea_number_val((double)fa->data[i]);
+        it.v = it.tmp;
+        it.n = fa->len;
         return it;
     }
     if (sea_obj_is_type(v, OBJ_TABLE)) {

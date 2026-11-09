@@ -177,7 +177,7 @@ static void show(Show *S, SeaValue v, int depth, bool nested) {
     SeaObject *o = sea_as_obj(v);
     int t = o->type;
     if (t != OBJ_ARRAY && t != OBJ_TABLE && t != OBJ_MAP && t != OBJ_STRUCT &&
-        t != OBJ_INT_ARRAY && t != OBJ_FLOAT_ARRAY) {
+        t != OBJ_INT_ARRAY && t != OBJ_FLOAT_ARRAY && t != OBJ_FLOAT32_ARRAY) {
         show_plain(S, v, nested);
         return;
     }
@@ -191,7 +191,7 @@ static void show(Show *S, SeaValue v, int depth, bool nested) {
     }
     for (int i = 0; i < S->sp; i++)
         if (S->stack[i] == o) { out(S, "<cycle>"); return; }
-    bool brackets = t == OBJ_ARRAY || t == OBJ_INT_ARRAY || t == OBJ_FLOAT_ARRAY;
+    bool brackets = t == OBJ_ARRAY || t == OBJ_INT_ARRAY || t == OBJ_FLOAT_ARRAY || t == OBJ_FLOAT32_ARRAY;
     if (depth >= S->max_depth || S->sp >= SHOW_MAX_STACK) {
         out(S, t == OBJ_MAP ? "[=...]" : brackets ? "[...]" : "{...}");
         return;
@@ -203,7 +203,8 @@ static void show(Show *S, SeaValue v, int depth, bool nested) {
         uint32_t n = a->len, shown = n < SHOW_MAX_ITEMS ? n : SHOW_MAX_ITEMS;
         /* "[[" would read as a long string: [ [1], [2] ], as sea fmt writes it */
         bool pad = n > 0 && (sea_obj_is_type(a->data[0], OBJ_ARRAY) || sea_obj_is_type(a->data[0], OBJ_MAP) ||
-                             sea_obj_is_type(a->data[0], OBJ_INT_ARRAY) || sea_obj_is_type(a->data[0], OBJ_FLOAT_ARRAY));
+                             sea_obj_is_type(a->data[0], OBJ_INT_ARRAY) || sea_obj_is_type(a->data[0], OBJ_FLOAT_ARRAY) ||
+                             sea_obj_is_type(a->data[0], OBJ_FLOAT32_ARRAY));
         out(S, pad ? "[ " : "[");
         for (uint32_t i = 0; i < shown; i++) {
             if (i) out(S, ", ");
@@ -211,14 +212,16 @@ static void show(Show *S, SeaValue v, int depth, bool nested) {
         }
         show_more(S, n, shown);
         out(S, pad ? " ]" : "]");
-    } else if (t == OBJ_INT_ARRAY || t == OBJ_FLOAT_ARRAY) {
-        uint32_t n = t == OBJ_INT_ARRAY ? ((SeaIntArray*)o)->len : ((SeaFloatArray*)o)->len;
+    } else if (t == OBJ_INT_ARRAY || t == OBJ_FLOAT_ARRAY || t == OBJ_FLOAT32_ARRAY) {
+        uint32_t n = t == OBJ_INT_ARRAY ? ((SeaIntArray*)o)->len
+                   : t == OBJ_FLOAT_ARRAY ? ((SeaFloatArray*)o)->len : ((SeaFloat32Array*)o)->len;
         uint32_t shown = n < SHOW_MAX_ITEMS ? n : SHOW_MAX_ITEMS;
-        out(S, t == OBJ_INT_ARRAY ? "int_array[" : "float_array[");
+        out(S, t == OBJ_INT_ARRAY ? "int_array[" : t == OBJ_FLOAT_ARRAY ? "float_array[" : "float32_array[");
         for (uint32_t i = 0; i < shown; i++) {
             if (i) out(S, ", ");
             SeaValue e = t == OBJ_INT_ARRAY ? sea_int_val(((SeaIntArray*)o)->data[i])
-                                             : sea_number_val(((SeaFloatArray*)o)->data[i]);
+                       : t == OBJ_FLOAT_ARRAY ? sea_number_val(((SeaFloatArray*)o)->data[i])
+                       : sea_number_val((double)((SeaFloat32Array*)o)->data[i]);
             show_plain(S, e, true);
         }
         show_more(S, n, shown);
@@ -354,7 +357,8 @@ static void dump(Show *S, SeaValue v, int indent, int depth, bool nested) {
             SeaValue e = a->data[i];
             if (sea_is_obj(e) && !sea_is_string(e) && !sea_is_rope(e) &&
                 (sea_obj_is_type(e, OBJ_ARRAY) || sea_obj_is_type(e, OBJ_TABLE) || sea_obj_is_type(e, OBJ_MAP) ||
-                 sea_obj_is_type(e, OBJ_STRUCT) || sea_obj_is_type(e, OBJ_INT_ARRAY) || sea_obj_is_type(e, OBJ_FLOAT_ARRAY)))
+                 sea_obj_is_type(e, OBJ_STRUCT) || sea_obj_is_type(e, OBJ_INT_ARRAY) || sea_obj_is_type(e, OBJ_FLOAT_ARRAY) ||
+                 sea_obj_is_type(e, OBJ_FLOAT32_ARRAY)))
                 flat = false;
         }
         if (flat) {

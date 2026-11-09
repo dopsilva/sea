@@ -47,6 +47,7 @@ typedef enum {
     OBJ_INT_ARRAY = 14,  /* typed int64_t array, no per-element RC       */
     OBJ_FLOAT_ARRAY= 15, /* typed double array, no per-element RC        */
     OBJ_BIGINT    = 16,  /* arbitrary-precision integer (sea_bigint.h)    */
+    OBJ_FLOAT32_ARRAY = 17, /* typed float (32-bit) array, no per-element RC */
 } SeaObjType;
 
 struct SeaObject {
@@ -192,3 +193,4 @@ SEA_INLINE bool sea_obj_is_type(SeaValue v, SeaObjType t) {
 #define sea_is_struct(v)    sea_obj_is_type(v, OBJ_STRUCT)
 #define sea_is_int_array(v) sea_obj_is_type(v, OBJ_INT_ARRAY)
 #define sea_is_float_array(v) sea_obj_is_type(v, OBJ_FLOAT_ARRAY)
+#define sea_is_float32_array(v) sea_obj_is_type(v, OBJ_FLOAT32_ARRAY)

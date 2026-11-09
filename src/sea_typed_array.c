@@ -91,3 +91,45 @@ void sea_float_array_free(SeaFloatArray *a) {
     sea_free(a->data, sizeof(double) * a->cap);
     sea_free(a, sizeof(SeaFloatArray));
 }
+
+/* --- SeaFloat32Array --- */
+
+SeaFloat32Array *sea_float32_array_new(uint32_t cap) {
+    if (cap < 4) cap = 4;
+    SeaFloat32Array *a = SEA_ALLOC(SeaFloat32Array);
+    a->obj.type     = OBJ_FLOAT32_ARRAY;
+    a->obj.gc = 0;
+    a->obj.refcount = 1;
+    a->len  = 0;
+    a->cap  = cap;
+    a->data = SEA_ALLOC_N(float, cap);
+    return a;
+}
+
+void sea_float32_array_push(SeaFloat32Array *a, double v) {
+    if (a->len >= a->cap) {
+        uint32_t nc = a->cap * 2;
+        a->data = sea_realloc(a->data, sizeof(float) * a->cap,
+                                       sizeof(float) * nc);
+        a->cap  = nc;
+    }
+    a->data[a->len++] = (float)v;
+}
+
+double sea_float32_array_get(SeaFloat32Array *a, int64_t idx) {
+    if (idx < 0) idx += (int64_t)a->len;
+    if (idx < 0 || (uint64_t)idx >= a->len) return 0.0;
+    return (double)a->data[(uint32_t)idx];
+}
+
+void sea_float32_array_set(SeaFloat32Array *a, int64_t idx, double v) {
+    if (idx < 0) idx += (int64_t)a->len;
+    if (idx < 0 || idx > (int64_t)UINT32_MAX - 1) return;
+    while ((uint64_t)idx >= a->len) sea_float32_array_push(a, 0.0);
+    a->data[(uint32_t)idx] = (float)v;
+}
+
+void sea_float32_array_free(SeaFloat32Array *a) {
+    sea_free(a->data, sizeof(float) * a->cap);
+    sea_free(a, sizeof(SeaFloat32Array));
+}
