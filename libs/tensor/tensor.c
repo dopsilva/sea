@@ -387,6 +387,79 @@ static SeaValue t_relu_back(SeaVM *vm, int argc, SeaValue *args) {
     return SEA_NIL_VAL;
 }
 
+/* scratch memory of the calling thread (grows, never freed: one per scheduler thread) */
+static __thread void *tls_scratch = NULL;
+static __thread size_t tls_scratch_cap = 0;
+
+static void *scratch(SeaVM *vm, size_t bytes, const char *fn) {
+    if (bytes > tls_scratch_cap) {
+        size_t cap = bytes < 4096 ? 4096 : bytes + bytes / 2;
+        void *p = realloc(tls_scratch, cap);
+        if (!p) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", fn);
+        tls_scratch = p;
+        tls_scratch_cap = cap;
+    }
+    return tls_scratch;
+}
+
+/* swiglu(a, ao, b, bo, s, so, n): s = silu(a)·b, silu(a) = a·σ(a) (the gated MLP) */
+static SeaValue t_swiglu(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "swiglu";
+    need(vm, argc, 7, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t ao = iv(args[1]), bo = iv(args[3]), so = iv(args[5]), n = iv(args[6]);
+    if (kd == 8) swiglu_f64(D(0, ao, n), D(2, bo, n), D(4, so, n), n);
+    else         swiglu_f32(F(0, ao, n), F(2, bo, n), F(4, so, n), n);
+    return SEA_NIL_VAL;
+}
+
+/* swiglu_back(ds, dso, a, ao, b, bo, da, dao, db, dbo, n): da += ds·b·silu'(a), db += ds·silu(a) */
+static SeaValue t_swiglu_back(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "swiglu_back";
+    need(vm, argc, 11, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t dso = iv(args[1]), ao = iv(args[3]), bo = iv(args[5]), dao = iv(args[7]), dbo = iv(args[9]), n = iv(args[10]);
+    if (kd == 8) swiglu_back_f64(D(0, dso, n), D(2, ao, n), D(4, bo, n), D(6, dao, n), D(8, dbo, n), n);
+    else         swiglu_back_f32(F(0, dso, n), F(2, ao, n), F(4, bo, n), F(6, dao, n), F(8, dbo, n), n);
+    return SEA_NIL_VAL;
+}
+
+/* rope(x, xo, T, C, H, pos0 [, base [, inverse]]): rotary position embedding in place on T
+ * rows of C (H heads, C/H even); row t is position pos0 + t; base 10000 by default;
+ * inverse = true undoes it (the backward pass). */
+static SeaValue t_rope(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "rope";
+    need(vm, argc, 6, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t xo = iv(args[1]), T = iv(args[2]), C = iv(args[3]), H = iv(args[4]), pos0 = iv(args[5]);
+    double base = argc > 6 && !sea_is_nil(args[6]) ? dv(args[6]) : 10000.0;
+    int inverse = argc > 7 && sea_is_truthy(args[7]);
+    if (T < 0 || C < 1 || H < 1 || C % H != 0 || (C / H) % 2 != 0 || pos0 < 0)
+        sea_vm_error_noreturn(vm, "tensor.%s: bad sizes (T %lld, C %lld, H %lld)", FN, (long long)T, (long long)C, (long long)H);
+    double *freq = scratch(vm, sizeof(double) * (size_t)(C / H / 2 + 1), FN);
+    if (kd == 8) rope_f64(D(0, xo, T * C), T, C, H, pos0, base, inverse, freq);
+    else         rope_f32(F(0, xo, T * C), T, C, H, pos0, base, inverse, freq);
+    return SEA_NIL_VAL;
+}
+
+/* cross_entropy(logits, lo, targets, to, T, V [, scale]) → loss: T rows of V logits against
+ * targets[to..to+T) (an int_array; a target < 0 is skipped); returns the summed loss and
+ * replaces the logits by their gradient scale·(softmax − onehot), scale 1 by default. */
+static SeaValue t_cross_entropy(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "cross_entropy";
+    need(vm, argc, 6, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t lo = iv(args[1]), to = iv(args[3]), T = iv(args[4]), V = iv(args[5]);
+    double scale = argc > 6 && !sea_is_nil(args[6]) ? dv(args[6]) : 1.0;
+    if (to < 0) sea_vm_error_noreturn(vm, "tensor.%s: negative offset", FN);
+    const int64_t *tg = ia(vm, args[2], to + T, FN) + to;
+    for (int64_t t = 0; t < T; t++)
+        if (tg[t] >= V) sea_vm_error_noreturn(vm, "tensor.%s: target %lld outside a vocabulary of %lld", FN, (long long)tg[t], (long long)V);
+    double loss = kd == 8 ? cross_entropy_f64(D(0, lo, T * V), tg, T, V, scale)
+                          : cross_entropy_f32(F(0, lo, T * V), tg, T, V, scale);
+    return sea_number_val(loss);
+}
+
 /* softmax(p, off, n): in place, numerically stable */
 static SeaValue t_softmax(SeaVM *vm, int argc, SeaValue *args) {
     const char *FN = "softmax";
@@ -413,21 +486,6 @@ static SeaValue t_attention(SeaVM *vm, int argc, SeaValue *args) {
     if (kd == 8) attention_f64(D(0, 0, T * C), D(1, 0, T * C), D(2, 0, T * C), D(3, 0, H * B * B), D(4, 0, T * C), T, C, H, B);
     else         attention_f32(F(0, 0, T * C), F(1, 0, T * C), F(2, 0, T * C), F(3, 0, H * B * B), F(4, 0, T * C), T, C, H, B);
     return SEA_NIL_VAL;
-}
-
-/* scratch memory of the calling thread (grows, never freed: one per scheduler thread) */
-static __thread void *tls_scratch = NULL;
-static __thread size_t tls_scratch_cap = 0;
-
-static void *scratch(SeaVM *vm, size_t bytes, const char *fn) {
-    if (bytes > tls_scratch_cap) {
-        size_t cap = bytes < 4096 ? 4096 : bytes + bytes / 2;
-        void *p = realloc(tls_scratch, cap);
-        if (!p) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", fn);
-        tls_scratch = p;
-        tls_scratch_cap = cap;
-    }
-    return tls_scratch;
 }
 
 /* attention_step(q, qo, k, v, y, yo, T, C, H): the attention of one new position
@@ -705,6 +763,10 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "relu",             t_relu);
     sea_mod_set(mod, "relu_back",        t_relu_back);
     sea_mod_set(mod, "softmax",          t_softmax);
+    sea_mod_set(mod, "swiglu",           t_swiglu);
+    sea_mod_set(mod, "swiglu_back",      t_swiglu_back);
+    sea_mod_set(mod, "rope",             t_rope);
+    sea_mod_set(mod, "cross_entropy",    t_cross_entropy);
     sea_mod_set(mod, "attention",        t_attention);
     sea_mod_set(mod, "attention_back",   t_attention_back);
     sea_mod_set(mod, "attention_step",   t_attention_step);

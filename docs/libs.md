@@ -1683,6 +1683,10 @@ argument of the wrong type, is a runtime error (a panic).
 | `relu(x, xo, y, yo, n)` | `y = max(x, 0)` |
 | `relu_back(d, doff, x, xo, n)` | `d = 0` where `x ≤ 0` |
 | `softmax(p, off, n)` | in place, numerically stable |
+| `swiglu(a, ao, b, bo, s, so, n)` | the gated MLP: `s = silu(a)·b`, `silu(a) = a·σ(a)` |
+| `swiglu_back(ds, dso, a, ao, b, bo, da, dao, db, dbo, n)` | `da += ds·b·silu'(a)`, `db += ds·silu(a)` |
+| `rope(x, xo, T, C, H, pos0 [, base [, inverse]])` | rotary position embedding in place on `T` rows of `C` (`H` heads, `C/H` even): in each head the pairs `(i, i + C/2H)` turn by `pos·base^(−2i·H/C)`, `pos = pos0 + t`; `base` 10000 by default; `inverse = true` turns them back (the backward pass) |
+| `cross_entropy(logits, lo, targets, to, T, V [, scale]) → loss` | `T` rows of `V` logits against `targets[to..to+T)` (an `int_array`; a target `< 0` is skipped): returns `Σ −log softmax(row)[target]` and replaces each row by its gradient `scale·(softmax − onehot)` (a skipped row by zeros) |
 | `attention(q, k, v, att, y, T, C, H, B)` | causal multi-head attention over `T` positions of width `C`, `H` heads, context `B` (`T ≤ B`); `att` (`H·B·B`) keeps the probabilities for the backward |
 | `attention_back(q, k, v, att, dy, dq, dk, dv, T, C, H, B)` | accumulates into `dq`, `dk`, `dv` |
 | `attention_step(q, qo, k, v, y, yo, T, C, H)` | the attention of one new position (the last of `T`) against a KV cache: `q[qo..qo+C)` is its query, `k` and `v` hold the `T` rows of keys and values (row `s` at `s·C`), and `y[yo..yo+C)` gets what row `T−1` of `attention` gives — for generating text without recomputing the context (no probabilities kept, no backward) |

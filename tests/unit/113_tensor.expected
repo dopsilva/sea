@@ -53,3 +53,8 @@ matvec threads float32_array 300x5000	true
 u16	12	4	12	255	256	65535	4092
 u16 short	true
 u16 range	true
+swiglu	true	true
+rope	true	true	true
+rope pos0	true
+cross_entropy	true	true	true	true
+cross_entropy range	true

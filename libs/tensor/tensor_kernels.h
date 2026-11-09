@@ -269,6 +269,74 @@ static void K(softmax)(REAL *p, int64_t n) {
     for (int64_t i = 0; i < n; i++) p[i] = (REAL)(p[i] * inv);
 }
 
+/* SwiGLU: s = silu(a)·b, silu(a) = a·σ(a) */
+static void K(swiglu)(const REAL *a, const REAL *b, REAL *s, int64_t n) {
+    for (int64_t i = 0; i < n; i++) {
+        double x = a[i];
+        double sg = 1.0 / (1.0 + exp(-x));
+        s[i] = (REAL)(x * sg * b[i]);
+    }
+}
+
+/* its backward, accumulating: da += ds·b·silu'(a), db += ds·silu(a) */
+static void K(swiglu_back)(const REAL *ds, const REAL *a, const REAL *b, REAL *da, REAL *db, int64_t n) {
+    for (int64_t i = 0; i < n; i++) {
+        double x = a[i];
+        double sg = 1.0 / (1.0 + exp(-x));
+        double silu = x * sg;
+        double dsilu = sg * (1.0 + x * (1.0 - sg));
+        da[i] += (REAL)(ds[i] * b[i] * dsilu);
+        db[i] += (REAL)(ds[i] * silu);
+    }
+}
+
+/* Rotary position embedding, in place, on T rows of C (H heads): in each head the
+ * pairs (i, i + HS/2) turn by the angle pos·base^(−2i/HS), pos = pos0 + t;
+ * inverse turns them back (the backward pass). */
+static void K(rope)(REAL *x, int64_t T, int64_t C, int64_t H, int64_t pos0, double base, int inverse,
+                    double *freq) {
+    int64_t HS = C / H, half = HS / 2;
+    for (int64_t i = 0; i < half; i++) freq[i] = pow(base, -2.0 * (double)i / (double)HS);
+    for (int64_t t = 0; t < T; t++) {
+        double pos = (double)(pos0 + t);
+        for (int64_t i = 0; i < half; i++) {
+            double ang = pos * freq[i];
+            double c = cos(ang), s = sin(ang);
+            if (inverse) s = -s;
+            for (int64_t h = 0; h < H; h++) {
+                REAL *p = x + t * C + h * HS;
+                double x1 = p[i], x2 = p[i + half];
+                p[i] = (REAL)(x1 * c - x2 * s);
+                p[i + half] = (REAL)(x1 * s + x2 * c);
+            }
+        }
+    }
+}
+
+/* Cross-entropy of T rows of V logits against targets (a target < 0 is skipped):
+ * returns Σ −log softmax(row)[target], in double, and replaces each row by its gradient
+ * scale·(softmax − onehot) (a skipped row becomes zeros). */
+static double K(cross_entropy)(REAL *logits, const int64_t *targets, int64_t T, int64_t V, double scale) {
+    double loss = 0.0;
+    for (int64_t t = 0; t < T; t++) {
+        REAL *row = logits + t * V;
+        int64_t y = targets[t];
+        if (y < 0) {
+            for (int64_t j = 0; j < V; j++) row[j] = 0;
+            continue;
+        }
+        double mx = -1e300;
+        for (int64_t j = 0; j < V; j++) if (row[j] > mx) mx = row[j];
+        double sum = 0.0;
+        for (int64_t j = 0; j < V; j++) sum += exp((double)row[j] - mx);
+        loss += log(sum) + mx - (double)row[y];
+        double inv = 1.0 / sum;
+        for (int64_t j = 0; j < V; j++) row[j] = (REAL)(exp((double)row[j] - mx) * inv * scale);
+        row[y] -= (REAL)scale;
+    }
+    return loss;
+}
+
 /* ---- attention ---- */
 
 static void K(attention)(const REAL *q, const REAL *k, const REAL *v, REAL *att, REAL *y,

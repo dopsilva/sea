@@ -461,3 +461,100 @@ do
     local e = try(function() tensor.save_u16(p, big) end)
     print("u16 range", e ~= nil and string.contains(e, "does not fit 16 bits"))
 end
+
+-- swiglu, rope, cross_entropy against Sea references
+do
+    local function sig(x) return 1 / (1 + math.exp(-x)) end
+    local a, b = rnd(10, 71), rnd(10, 72)
+    for i = 0, 9 do a[i] = a[i] * 6 end
+    local s = zeros(12)
+    tensor.swiglu(a, 0, b, 0, s, 2, 10)
+    local ok = true
+    for i = 0, 9 do
+        if math.abs(s[2 + i] - a[i] * sig(a[i]) * b[i]) > 1e-12 then ok = false end
+    end
+    local ds = rnd(10, 73)
+    local da, db = zeros(10), zeros(10)
+    tensor.swiglu_back(ds, 0, a, 0, b, 0, da, 0, db, 0, 10)
+    local okb = true
+    for i = 0, 9 do
+        -- numerical derivatives of s = silu(a)·b
+        local h = 1e-6
+        local f = function(x) return x * sig(x) end
+        local dnum = (f(a[i] + h) - f(a[i] - h)) / (2 * h) * b[i] * ds[i]
+        if math.abs(da[i] - dnum) > 1e-7 then okb = false end
+        if math.abs(db[i] - ds[i] * f(a[i])) > 1e-12 then okb = false end
+    end
+    print("swiglu", ok, okb)
+
+    -- rope: position 0 is unchanged, the inverse undoes it, a rotation keeps each pair's norm
+    local T, C, H = 5, 16, 2
+    local x = rnd(T * C, 74)
+    local r = zeros(T * C)
+    tensor.copy(r, 0, x, 0, T * C)
+    tensor.rope(r, 0, T, C, H, 0)
+    local zero_same = true
+    for i = 0, C - 1 do
+        if r[i] ~= x[i] then zero_same = false end
+    end
+    -- row 3, head 1, pair 2: angle 3·10000^(−4/8)
+    local HS = C // H
+    local ang = 3 * math.pow(10000, -2 * 2 / HS)
+    local x1 = x[3 * C + HS + 2]
+    local x2 = x[3 * C + HS + 2 + HS // 2]
+    local want1 = x1 * math.cos(ang) - x2 * math.sin(ang)
+    local value_ok = math.abs(r[3 * C + HS + 2] - want1) < 1e-12
+    tensor.rope(r, 0, T, C, H, 0, nil, true)
+    print("rope", zero_same, value_ok, close(r, x))
+    -- pos0 on one row equals that row of a longer run
+    local one = zeros(C)
+    tensor.copy(one, 0, x, 3 * C, C)
+    tensor.rope(one, 0, 1, C, H, 3)
+    local full = zeros(T * C)
+    tensor.copy(full, 0, x, 0, T * C)
+    tensor.rope(full, 0, T, C, H, 0)
+    local same_row = true
+    for i = 0, C - 1 do
+        if math.abs(one[i] - full[3 * C + i]) > 1e-12 then same_row = false end
+    end
+    print("rope pos0", same_row)
+
+    -- cross_entropy: loss and gradient, a skipped row, float32
+    local V = 7
+    local lg = rnd(3 * V, 75)
+    for i = 0, len(lg) - 1 do lg[i] = lg[i] * 4 end
+    local tg = int_array()
+    tg[] = 2
+    tg[] = -1
+    tg[] = 6
+    local want = 0.0
+    local grads = []
+    for _, t in [0, 2] do
+        local mx = -1e300
+        for j = 0, V - 1 do mx = math.max(mx, lg[t * V + j]) end
+        local sum = 0.0
+        for j = 0, V - 1 do sum += math.exp(lg[t * V + j] - mx) end
+        want += math.log(sum) + mx - lg[t * V + tg[t]]
+        for j = 0, V - 1 do
+            local g = math.exp(lg[t * V + j] - mx) / sum * 0.5
+            if j == tg[t] then g -= 0.5 end
+            grads[] = g
+        end
+    end
+    local g32 = f32(lg)
+    local loss = tensor.cross_entropy(lg, 0, tg, 0, 3, V, 0.5)
+    local gok = true
+    for k = 0, V - 1 do
+        if math.abs(lg[k] - grads[k]) > 1e-12 then gok = false end
+        if math.abs(lg[2 * V + k] - grads[V + k]) > 1e-12 then gok = false end
+        if lg[V + k] ~= 0 then gok = false end
+    end
+    local loss32 = tensor.cross_entropy(g32, 0, tg, 0, 3, V, 0.5)
+    print("cross_entropy", math.abs(loss - want) < 1e-12, gok, math.abs(loss32 - want) < 1e-5 * want, near32(lg, g32))
+    local bad = try(function()
+        local t2 = int_array()
+        t2[] = V
+        tensor.cross_entropy(rnd(V, 1), 0, t2, 0, 1, V)
+    end)
+    print("cross_entropy range", bad ~= nil and string.contains(bad, "outside a vocabulary"))
+end
