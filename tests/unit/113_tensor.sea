@@ -371,3 +371,36 @@ do
     for i = 0, len(big) - 1 do want += big[i] * big[i] end
     print("sumsq big", math.abs(tensor.sumsq(big) - want) < 1e-9 * want, math.abs(tensor.sumsq(f32(big)) - want) < 1e-5 * want)
 end
+
+-- attention_step: one new position against a KV cache gives row T-1 of attention
+do
+    local ok64 = true
+    local ok32 = true
+    for _, T in [1, 2, 7, 33] do
+        for _, H in [1, 2, 4] do
+            local C = 8 * H
+            local q, k, v = rnd(T * C, 41 + T), rnd(T * C, 42 + H), rnd(T * C, 43)
+            for _, mk in [ident, f32] do
+                local y = mk(zeros(T * C))
+                tensor.attention(mk(q), mk(k), mk(v), mk(zeros(H * T * T)), y, T, C, H, T)
+                -- the query at an offset, the output at another
+                local qs = mk(zeros(3 + C))
+                for i = 0, C - 1 do qs[3 + i] = q[(T - 1) * C + i] end
+                local ys = mk(zeros(5 + C))
+                tensor.attention_step(qs, 3, mk(k), mk(v), ys, 5, T, C, H)
+                for i = 0, C - 1 do
+                    local want = y[(T - 1) * C + i]
+                    local got = ys[5 + i]
+                    if mk == ident then
+                        if math.abs(want - got) > 1e-12 then ok64 = false end
+                    else
+                        if math.abs(want - got) > 1e-5 * (1 + math.abs(want)) then ok32 = false end
+                    end
+                end
+            end
+        end
+    end
+    print("attention_step", ok64, ok32)
+    local bad = try(function() tensor.attention_step(zeros(8), 0, zeros(8), zeros(8), zeros(8), 0, 2, 8, 1) end)
+    print("attention_step range", bad ~= nil and string.contains(bad, "tensor.attention_step"))
+end

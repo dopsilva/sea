@@ -40,3 +40,5 @@ gather/scatter float32_array	true	true	true	true
 gather out of range	true
 sumsq	55	29	55	25
 sumsq big	true	true
+attention_step	true	true
+attention_step range	true

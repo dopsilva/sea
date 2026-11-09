@@ -306,6 +306,37 @@ static void K(attention_back)(const REAL *q, const REAL *k, const REAL *v, const
     }
 }
 
+/* The attention of the last of T positions (its query q) against the keys and
+ * values of all T (a KV cache): the same operations as row T-1 of attention,
+ * without keeping the probabilities. p: scratch of T elements. */
+static void K(attention_step)(const REAL *q, const REAL *k, const REAL *v, REAL *y,
+                              int64_t T, int64_t C, int64_t H, REAL *p) {
+    int64_t HS = C / H;
+    double scale = 1.0 / sqrt((double)HS);
+    for (int64_t h = 0; h < H; h++) {
+        int64_t ho = h * HS;
+        const REAL *qt = q + ho;
+        double mx = -1e300;
+        for (int64_t s = 0; s < T; s++) {
+            const REAL *ks = k + s * C + ho;
+            double dot = 0.0;
+            for (int64_t d = 0; d < HS; d++) dot += (double)qt[d] * ks[d];
+            dot *= scale;
+            p[s] = (REAL)dot;
+            if (dot > mx) mx = dot;
+        }
+        double sum = 0.0;
+        for (int64_t s = 0; s < T; s++) { double e = exp(p[s] - mx); p[s] = (REAL)e; sum += e; }
+        REAL *yt = y + ho;
+        for (int64_t d = 0; d < HS; d++) yt[d] = 0;
+        for (int64_t s = 0; s < T; s++) {
+            REAL pr = (REAL)(p[s] / sum);
+            const REAL *vs = v + s * C + ho;
+            for (int64_t d = 0; d < HS; d++) yt[d] += pr * vs[d];
+        }
+    }
+}
+
 /* ---- columns (embedding lookups, sampled softmax) ---- */
 
 /* dst = the columns cols[0..nc) of src (nrows × ncols): dst[i·nc + k], or

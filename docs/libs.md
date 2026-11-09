@@ -1685,6 +1685,7 @@ argument of the wrong type, is a runtime error (a panic).
 | `softmax(p, off, n)` | in place, numerically stable |
 | `attention(q, k, v, att, y, T, C, H, B)` | causal multi-head attention over `T` positions of width `C`, `H` heads, context `B` (`T ≤ B`); `att` (`H·B·B`) keeps the probabilities for the backward |
 | `attention_back(q, k, v, att, dy, dq, dk, dv, T, C, H, B)` | accumulates into `dq`, `dk`, `dv` |
+| `attention_step(q, qo, k, v, y, yo, T, C, H)` | the attention of one new position (the last of `T`) against a KV cache: `q[qo..qo+C)` is its query, `k` and `v` hold the `T` rows of keys and values (row `s` at `s·C`), and `y[yo..yo+C)` gets what row `T−1` of `attention` gives — for generating text without recomputing the context (no probabilities kept, no backward) |
 | `gather_cols(src, nrows, ncols, cols, coff, nc, dst [, trans])` | the columns `cols[coff .. coff+nc)` (an `int_array`) of `src` (`nrows × ncols`) into `dst`: `dst[i·nc+k]`, or with `trans` one column per row, `dst[k·nrows+i]` — an embedding lookup is `gather_cols(E, d, V, ids, off, T, x, true)` |
 | `scatter_cols(dst, nrows, ncols, cols, coff, nc, src [, trans])` | the reverse, accumulating (`+=`; a column listed twice gets both) |
 | `zero(a [, off, n])` | zero a range (the whole array by default) |

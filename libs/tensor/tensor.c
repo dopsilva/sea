@@ -420,6 +420,38 @@ static SeaValue t_attention(SeaVM *vm, int argc, SeaValue *args) {
     return SEA_NIL_VAL;
 }
 
+/* scratch memory of the calling thread (grows, never freed: one per scheduler thread) */
+static __thread void *tls_scratch = NULL;
+static __thread size_t tls_scratch_cap = 0;
+
+static void *scratch(SeaVM *vm, size_t bytes, const char *fn) {
+    if (bytes > tls_scratch_cap) {
+        size_t cap = bytes < 4096 ? 4096 : bytes + bytes / 2;
+        void *p = realloc(tls_scratch, cap);
+        if (!p) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", fn);
+        tls_scratch = p;
+        tls_scratch_cap = cap;
+    }
+    return tls_scratch;
+}
+
+/* attention_step(q, qo, k, v, y, yo, T, C, H): the attention of one new position
+ * (the last, T-1) against the T rows of keys k and values v (a KV cache):
+ * y[yo..yo+C) = what row T-1 of attention gives, for inference (no backward). */
+static SeaValue t_attention_step(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "attention_step";
+    need(vm, argc, 9, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t qo = iv(args[1]), yo = iv(args[5]), T = iv(args[6]), C = iv(args[7]), H = iv(args[8]);
+    if (T < 1 || C < 1 || H < 1 || C % H != 0)
+        sea_vm_error_noreturn(vm, "tensor.%s: bad sizes (T %lld, C %lld, H %lld)", FN, (long long)T, (long long)C,
+                              (long long)H);
+    void *p = scratch(vm, (size_t)T * (size_t)kd, FN);
+    if (kd == 8) attention_step_f64(D(0, qo, C), D(2, 0, T * C), D(3, 0, T * C), D(4, yo, C), T, C, H, (double *)p);
+    else         attention_step_f32(F(0, qo, C), F(2, 0, T * C), F(3, 0, T * C), F(4, yo, C), T, C, H, (float *)p);
+    return SEA_NIL_VAL;
+}
+
 /* attention_back(q, k, v, att, dy, dq, dk, dv, T, C, H, B): accumulates into
  * dq, dk, dv the gradients of the last attention (the caller zeroes them). */
 static SeaValue t_attention_back(SeaVM *vm, int argc, SeaValue *args) {
@@ -625,6 +657,7 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "softmax",          t_softmax);
     sea_mod_set(mod, "attention",        t_attention);
     sea_mod_set(mod, "attention_back",   t_attention_back);
+    sea_mod_set(mod, "attention_step",   t_attention_step);
     sea_mod_set(mod, "zero",             t_zero);
     sea_mod_set(mod, "add",              t_add);
     sea_mod_set(mod, "copy",             t_copy);
