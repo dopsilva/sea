@@ -404,3 +404,23 @@ do
     local bad = try(function() tensor.attention_step(zeros(8), 0, zeros(8), zeros(8), zeros(8), 0, 2, 8, 1) end)
     print("attention_step range", bad ~= nil and string.contains(bad, "tensor.attention_step"))
 end
+
+-- matmul_back reads x and w transposed in place: with 4 threads the gradients are the same, bit
+-- for bit, as with 1, whether the products split by columns (128x512x2048) or by rows (2048x600x24)
+do
+    local function back(mk, T, nin, nout, nthreads)
+        tensor.threads(nthreads)
+        local x, w, g = mk(rnd(T * nin, 51)), mk(rnd(nin * nout, 52)), mk(rnd(T * nout, 53))
+        local dw, dx = mk(zeros(nin * nout)), mk(zeros(T * nin))
+        tensor.matmul_back(g, 0, x, 0, w, dw, T, nin, nout, dx, 0)
+        return [dw, dx]
+    end
+    for _, mk in [ident, f32] do
+        for _, sz in [ [128, 512, 2048], [2048, 600, 24] ] do
+            local one = back(mk, sz[0], sz[1], sz[2], 1)
+            local many = back(mk, sz[0], sz[1], sz[2], 4)
+            print(`matmul_back threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`, same(one[0], many[0]), same(one[1], many[1]))
+        end
+    end
+    tensor.threads(default_threads)
+end

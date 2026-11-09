@@ -36,7 +36,24 @@
 #include <unistd.h>
 
 #define GEMM_KB 256
+/* The matrix-product tile: GEMM_MR rows × two vectors of VEC_BYTES, held in
+ * registers. It must fit the vector registers of the target: 16 accumulators of
+ * 64 bytes in the 32 registers of AVX-512; 12 of 32 bytes in the 16 of AVX/AVX2;
+ * 12 of 16 bytes in the 16 of SSE (32 on NEON). A tile that does not fit spills
+ * its accumulators to memory and runs several times slower. */
+#if defined(__AVX512F__)
+#define VEC_BYTES 64
 #define GEMM_MR 8
+#elif defined(__AVX__)
+#define VEC_BYTES 32
+#define GEMM_MR 6
+#else
+#define VEC_BYTES 16
+#define GEMM_MR 6
+#endif
+#define GEMM_PLAIN 0   /* A and B as they are */
+#define GEMM_TA 1      /* A read transposed: element (m, k) at a[k*lda + m] */
+#define GEMM_TB 2      /* B read transposed: element (k, n) at b[n*ldb + k] */
 #define GEMM_PAR_MIN (1 << 20)   /* multiply-adds below which a product stays on one thread */
 
 /* ---- thread pool for the matrix products ----
@@ -165,7 +182,7 @@ static void pool_run(pool_fn fn, void *arg, int n) {
 
 #define REAL double
 #define SFX _f64
-#define LANES 8
+#define LANES (VEC_BYTES / 8)
 #include "tensor_kernels.h"
 #undef REAL
 #undef SFX
@@ -173,7 +190,7 @@ static void pool_run(pool_fn fn, void *arg, int n) {
 
 #define REAL float
 #define SFX _f32
-#define LANES 16
+#define LANES (VEC_BYTES / 4)
 #include "tensor_kernels.h"
 #undef REAL
 #undef SFX
@@ -277,38 +294,15 @@ static SeaValue t_matmul_back(SeaVM *vm, int argc, SeaValue *args) {
     int kd = kind_of(vm, args[0], FN);
     int64_t doo = iv(args[1]), xo = iv(args[3]), T = iv(args[6]), nin = iv(args[7]), nout = iv(args[8]), dxo = iv(args[10]);
     bool want_dw = !sea_is_nil(args[5]), want_dx = !sea_is_nil(args[9]);
+    /* dw[nin×nout] += xᵀ·g reads x transposed in place; dx[T×nin] += g·wᵀ reads w transposed */
     if (kd == 8) {
         const double *g = D(0, doo, T * nout);
-        if (want_dw) {
-            double *dw = D(5, 0, nin * nout);
-            double *xt = transpose_f64(D(2, xo, T * nin), T, nin);
-            if (!xt) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", FN);
-            gemm_f64(xt, g, dw, nin, T, nout, 1);
-            free(xt);
-        }
-        if (want_dx) {
-            double *dx = D(9, dxo, T * nin);
-            double *wt = transpose_f64(D(4, 0, nin * nout), nin, nout);
-            if (!wt) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", FN);
-            gemm_f64(g, wt, dx, T, nout, nin, 1);
-            free(wt);
-        }
+        if (want_dw) gemm_x_f64(D(2, xo, T * nin), nin, g, nout, D(5, 0, nin * nout), nin, T, nout, 1, GEMM_TA);
+        if (want_dx) gemm_x_f64(g, nout, D(4, 0, nin * nout), nout, D(9, dxo, T * nin), T, nout, nin, 1, GEMM_TB);
     } else {
         const float *g = F(0, doo, T * nout);
-        if (want_dw) {
-            float *dw = F(5, 0, nin * nout);
-            float *xt = transpose_f32(F(2, xo, T * nin), T, nin);
-            if (!xt) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", FN);
-            gemm_f32(xt, g, dw, nin, T, nout, 1);
-            free(xt);
-        }
-        if (want_dx) {
-            float *dx = F(9, dxo, T * nin);
-            float *wt = transpose_f32(F(4, 0, nin * nout), nin, nout);
-            if (!wt) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", FN);
-            gemm_f32(g, wt, dx, T, nout, nin, 1);
-            free(wt);
-        }
+        if (want_dw) gemm_x_f32(F(2, xo, T * nin), nin, g, nout, F(5, 0, nin * nout), nin, T, nout, 1, GEMM_TA);
+        if (want_dx) gemm_x_f32(g, nout, F(4, 0, nin * nout), nout, F(9, dxo, T * nin), T, nout, nin, 1, GEMM_TB);
     }
     return SEA_NIL_VAL;
 }

@@ -1677,7 +1677,7 @@ argument of the wrong type, is a runtime error (a panic).
 | `matvec_cols(x, xo, w, nin, nout, cols, ncols, out, oo)` | only the outputs listed in `cols` (an `int_array`): `out[oo+k] = Σ_i x[xo+i]·w[i·nout+cols[k]]` |
 | `matvec_cols_back(dout, doo, x, xo, w, dw, nin, nout, cols, ncols, dx, dxo)` | its backward |
 | `matmul(x, xo, w, T, nin, nout, out, oo)` | `matvec` for `T` rows at once (`x` and `out` hold `T` rows of `nin` and `nout`): `out[oo+t·nout+j] = Σ_i x[xo+t·nin+i]·w[i·nout+j]`. Blocked for the cache: several times faster than `T` calls of `matvec` |
-| `matmul_back(dout, doo, x, xo, w, dw, T, nin, nout, dx, dxo)` | its backward: `dw += xᵀ·dout`, `dx += dout·wᵀ`; `dw` or `dx` may be `nil` to skip it |
+| `matmul_back(dout, doo, x, xo, w, dw, T, nin, nout, dx, dxo)` | its backward: `dw += xᵀ·dout`, `dx += dout·wᵀ`; `dw` or `dx` may be `nil` to skip it. `x` and `w` are read transposed in place (nothing is allocated) |
 | `rmsnorm(x, xo, y, yo, n) → r` | `y = x·r` with `r = 1/√(mean(x²) + 1e-5)` |
 | `rmsnorm_back(dy, dyo, x, xo, r, n, dx, dxo)` | `dx += r·dy − x·r³·(dy·x)/n` |
 | `relu(x, xo, y, yo, n)` | `y = max(x, 0)` |
@@ -1714,7 +1714,9 @@ Calls from several goroutines on different arrays run in parallel.
 Products of at least a million multiply-adds are also split across a pool of
 threads (`tensor.threads`); while one call uses the pool, calls from other
 goroutines run on their own thread, so the CPUs are not oversubscribed. The
-split gives the same results, bit for bit, as one thread. Test:
+split gives the same results, bit for bit, as one thread. The products' register tile follows the
+instruction set the library is compiled for (`-march=native`): 8×2 vectors of 64 bytes with
+AVX-512, 6×2 of 32 bytes with AVX/AVX2, 6×2 of 16 bytes otherwise. Test:
 `tests/unit/113_tensor.sea`.
 
 ---

@@ -7,8 +7,8 @@
  * tensor_kernels.h — the numeric loops of tensor.c, written once for an
  * element type. tensor.c includes this file twice:
  *
- *   #define REAL double  + SFX _f64 + LANES 8    (float_array)
- *   #define REAL float   + SFX _f32 + LANES 16   (float32_array)
+ *   #define REAL double  + SFX _f64 + LANES VEC_BYTES/8   (float_array)
+ *   #define REAL float   + SFX _f32 + LANES VEC_BYTES/4   (float32_array)
  *
  * K(name) gives the suffixed name (matmul_f64, matmul_f32). Reductions (sums
  * of squares, softmax sums, dot products of the attention) accumulate in
@@ -19,8 +19,8 @@
 #define CAT_(a, b) CAT2_(a, b)
 #define K(name) CAT_(name, SFX)
 
-/* one 64-byte vector: an AVX-512 register (split into narrower registers elsewhere) */
-typedef REAL K(vec) __attribute__((vector_size(64)));
+/* one vector register (VEC_BYTES: 64 with AVX-512, 32 with AVX, 16 otherwise) */
+typedef REAL K(vec) __attribute__((vector_size(VEC_BYTES)));
 
 static inline K(vec) K(vload)(const REAL *p) { K(vec) v; memcpy(&v, p, sizeof v); return v; }
 static inline void K(vstore)(REAL *p, K(vec) v) { memcpy(p, &v, sizeof v); }
@@ -78,20 +78,29 @@ static void K(matvec_cols_back)(const REAL *g, const REAL *x, const REAL *w, REA
  *
  * gemm: C[M×N] (+)= A[M×K] · B[K×N], row-major. Blocked for the cache: K in
  * blocks of GEMM_KB, then panels of NR = 2·LANES columns of B (GEMM_KB×NR
- * elements, 32 KB for doubles and for floats, stay in L1), then GEMM_MR rows
- * of A at a time; the GEMM_MR×NR tile of C lives in 16 vector registers. */
+ * elements, at most 32 KB, stay in L1), then GEMM_MR rows of A at a time; the
+ * GEMM_MR×NR tile of C lives in vector registers (see VEC_BYTES in tensor.c).
+ *
+ * The backward products read their operands transposed in place, nothing is
+ * allocated: with GEMM_TA, element (m, k) of A is a[k·lda + m] (dW = Xᵀ·G: a
+ * tile reads GEMM_MR consecutive elements of a row of X); with GEMM_TB, element
+ * (k, n) of B is b[n·ldb + k] (dX = G·Wᵀ), and each GEMM_KB×NR panel of B is
+ * first copied into a buffer of the calling thread, laid out as a plain panel. */
 
 #define K_NR (2 * LANES)
 
-static void K(gemm_tile)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb,
-                         REAL *c, int64_t ldc, int64_t kb, int64_t mr, int64_t nr) {
+static __thread REAL K(panel)[GEMM_KB * K_NR] __attribute__((aligned(64)));
+
+static inline __attribute__((always_inline)) void K(tile_g)(const REAL *a, int64_t lda, const int ta,
+                                                            const REAL *b, int64_t ldb, REAL *c, int64_t ldc,
+                                                            int64_t kb, int64_t mr, int64_t nr) {
     if (mr == GEMM_MR && nr == K_NR) {
         K(vec) c0[GEMM_MR], c1[GEMM_MR];
         for (int m = 0; m < GEMM_MR; m++) { c0[m] = K(vload)(c + m * ldc); c1[m] = K(vload)(c + m * ldc + LANES); }
         for (int64_t k = 0; k < kb; k++) {
             K(vec) b0 = K(vload)(b + k * ldb), b1 = K(vload)(b + k * ldb + LANES);
             for (int m = 0; m < GEMM_MR; m++) {
-                REAL x = a[m * lda + k];
+                REAL x = ta ? a[k * lda + m] : a[m * lda + k];
                 c0[m] += x * b0;
                 c1[m] += x * b1;
             }
@@ -101,27 +110,53 @@ static void K(gemm_tile)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb,
     }
     for (int64_t m = 0; m < mr; m++) {
         REAL *cr = c + m * ldc;
-        const REAL *ar = a + m * lda;
         for (int64_t k = 0; k < kb; k++) {
-            REAL x = ar[k];
+            REAL x = ta ? a[k * lda + m] : a[m * lda + k];
             const REAL *br = b + k * ldb;
             for (int64_t j = 0; j < nr; j++) cr[j] += x * br[j];
         }
     }
 }
 
-/* C (+)= A·B with leading dimensions (A rows of lda, B rows of ldb, C rows of ldc) */
+static void K(tile_n)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, REAL *c, int64_t ldc,
+                      int64_t kb, int64_t mr, int64_t nr) {
+    K(tile_g)(a, lda, 0, b, ldb, c, ldc, kb, mr, nr);
+}
+
+static void K(tile_t)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, REAL *c, int64_t ldc,
+                      int64_t kb, int64_t mr, int64_t nr) {
+    K(tile_g)(a, lda, 1, b, ldb, c, ldc, kb, mr, nr);
+}
+
+/* C (+)= A·B with C rows of ldc; A and B as the mode says (see above) */
 static void K(gemm_ld)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, REAL *c, int64_t ldc,
-                       int64_t M, int64_t Kd, int64_t N, int accumulate) {
+                       int64_t M, int64_t Kd, int64_t N, int accumulate, int mode) {
     if (!accumulate)
         for (int64_t m = 0; m < M; m++) memset(c + m * ldc, 0, (size_t)N * sizeof(REAL));
+    REAL *panel = K(panel);
     for (int64_t k0 = 0; k0 < Kd; k0 += GEMM_KB) {
         int64_t kb = Kd - k0 < GEMM_KB ? Kd - k0 : GEMM_KB;
         for (int64_t j0 = 0; j0 < N; j0 += K_NR) {
             int64_t nr = N - j0 < K_NR ? N - j0 : K_NR;
+            const REAL *bp;
+            int64_t bld;
+            if (mode == GEMM_TB) {
+                for (int64_t jj = 0; jj < nr; jj++) {
+                    const REAL *src = b + (j0 + jj) * ldb + k0;
+                    for (int64_t kk = 0; kk < kb; kk++) panel[kk * K_NR + jj] = src[kk];
+                }
+                bp = panel;
+                bld = K_NR;
+            } else {
+                bp = b + k0 * ldb + j0;
+                bld = ldb;
+            }
             for (int64_t m0 = 0; m0 < M; m0 += GEMM_MR) {
                 int64_t mr = M - m0 < GEMM_MR ? M - m0 : GEMM_MR;
-                K(gemm_tile)(a + m0 * lda + k0, lda, b + k0 * ldb + j0, ldb, c + m0 * ldc + j0, ldc, kb, mr, nr);
+                if (mode == GEMM_TA)
+                    K(tile_t)(a + k0 * lda + m0, lda, bp, bld, c + m0 * ldc + j0, ldc, kb, mr, nr);
+                else
+                    K(tile_n)(a + m0 * lda + k0, lda, bp, bld, c + m0 * ldc + j0, ldc, kb, mr, nr);
             }
         }
     }
@@ -131,8 +166,8 @@ static void K(gemm_ld)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, R
 typedef struct {
     const REAL *a, *b;
     REAL *c;
-    int64_t M, Kd, N;
-    int accumulate, by_cols;
+    int64_t lda, ldb, M, Kd, N;
+    int accumulate, by_cols, mode;
 } K(gemm_job);
 
 static void K(gemm_part)(void *arg, int part, int nparts) {
@@ -141,23 +176,26 @@ static void K(gemm_part)(void *arg, int part, int nparts) {
         int64_t panels = (j->N + K_NR - 1) / K_NR;
         int64_t p0 = panels * part / nparts, p1 = panels * (part + 1) / nparts;
         int64_t c0 = p0 * K_NR, c1 = p1 * K_NR < j->N ? p1 * K_NR : j->N;
-        if (c1 > c0) K(gemm_ld)(j->a, j->Kd, j->b + c0, j->N, j->c + c0, j->N, j->M, j->Kd, c1 - c0, j->accumulate);
+        const REAL *b = j->mode == GEMM_TB ? j->b + c0 * j->ldb : j->b + c0;
+        if (c1 > c0) K(gemm_ld)(j->a, j->lda, b, j->ldb, j->c + c0, j->N, j->M, j->Kd, c1 - c0, j->accumulate, j->mode);
     } else {
         int64_t blocks = (j->M + GEMM_MR - 1) / GEMM_MR;
         int64_t b0 = blocks * part / nparts, b1 = blocks * (part + 1) / nparts;
         int64_t r0 = b0 * GEMM_MR, r1 = b1 * GEMM_MR < j->M ? b1 * GEMM_MR : j->M;
-        if (r1 > r0) K(gemm_ld)(j->a + r0 * j->Kd, j->Kd, j->b, j->N, j->c + r0 * j->N, j->N, r1 - r0, j->Kd, j->N, j->accumulate);
+        const REAL *a = j->mode == GEMM_TA ? j->a + r0 : j->a + r0 * j->lda;
+        if (r1 > r0) K(gemm_ld)(a, j->lda, j->b, j->ldb, j->c + r0 * j->N, j->N, r1 - r0, j->Kd, j->N, j->accumulate, j->mode);
     }
 }
 
-/* C[M×N] (+)= A[M×K]·B[K×N], split across the thread pool when it is large enough */
-static void K(gemm)(const REAL *a, const REAL *b, REAL *c, int64_t M, int64_t Kd, int64_t N, int accumulate) {
+/* C[M×N] (+)= A·B (A and B as the mode says), split across the thread pool when large enough */
+static void K(gemm_x)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, REAL *c,
+                      int64_t M, int64_t Kd, int64_t N, int accumulate, int mode) {
     int nt = pool_threads();
     if (nt <= 1 || M * N * Kd < GEMM_PAR_MIN) {
-        K(gemm_ld)(a, Kd, b, N, c, N, M, Kd, N, accumulate);
+        K(gemm_ld)(a, lda, b, ldb, c, N, M, Kd, N, accumulate, mode);
         return;
     }
-    K(gemm_job) j = {a, b, c, M, Kd, N, accumulate, 0};
+    K(gemm_job) j = {a, b, c, lda, ldb, M, Kd, N, accumulate, 0, mode};
     int64_t panels = (N + K_NR - 1) / K_NR, blocks = (M + GEMM_MR - 1) / GEMM_MR;
     j.by_cols = panels >= blocks;   /* split the longer side: more, evener parts */
     int64_t parts = j.by_cols ? panels : blocks;
@@ -165,38 +203,9 @@ static void K(gemm)(const REAL *a, const REAL *b, REAL *c, int64_t M, int64_t Kd
     pool_run(K(gemm_part), &j, nt);
 }
 
-/* t[c×r] = transpose of m[r×c], rows [i0, i1) of m */
-static void K(transpose_rows)(const REAL *m, REAL *t, int64_t r, int64_t c, int64_t i0, int64_t i1) {
-    for (int64_t b0 = i0; b0 < i1; b0 += 32)
-        for (int64_t j0 = 0; j0 < c; j0 += 32)
-            for (int64_t i = b0; i < i1 && i < b0 + 32; i++)
-                for (int64_t j = j0; j < c && j < j0 + 32; j++) t[j * r + i] = m[i * c + j];
-}
-
-typedef struct { const REAL *m; REAL *t; int64_t r, c; } K(transpose_job);
-
-static void K(transpose_part)(void *arg, int part, int nparts) {
-    K(transpose_job) *j = arg;
-    int64_t blocks = (j->r + 31) / 32;
-    int64_t i0 = blocks * part / nparts * 32, i1 = blocks * (part + 1) / nparts * 32;
-    if (i1 > j->r) i1 = j->r;
-    if (i1 > i0) K(transpose_rows)(j->m, j->t, j->r, j->c, i0, i1);
-}
-
-/* t[c×r] = transpose of m[r×c] (on the thread pool when large); NULL when out of memory */
-static REAL *K(transpose)(const REAL *m, int64_t r, int64_t c) {
-    REAL *t = malloc((size_t)(r * c) * sizeof(REAL) + 1);
-    if (!t) return NULL;
-    int nt = pool_threads();
-    int64_t blocks = (r + 31) / 32;
-    if (nt > blocks) nt = (int)blocks;
-    if (nt <= 1 || r * c < (1 << 16)) {
-        K(transpose_rows)(m, t, r, c, 0, r);
-    } else {
-        K(transpose_job) j = {m, t, r, c};
-        pool_run(K(transpose_part), &j, nt);
-    }
-    return t;
+/* C[M×N] (+)= A[M×K]·B[K×N] */
+static void K(gemm)(const REAL *a, const REAL *b, REAL *c, int64_t M, int64_t Kd, int64_t N, int accumulate) {
+    K(gemm_x)(a, Kd, b, N, c, M, Kd, N, accumulate, GEMM_PLAIN);
 }
 
 /* ---- normalization and activations ---- */

@@ -42,3 +42,7 @@ sumsq	55	29	55	25
 sumsq big	true	true
 attention_step	true	true
 attention_step range	true
+matmul_back threads float_array 128x512x2048	true	true
+matmul_back threads float_array 2048x600x24	true	true
+matmul_back threads float32_array 128x512x2048	true	true
+matmul_back threads float32_array 2048x600x24	true	true
