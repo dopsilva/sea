@@ -277,3 +277,54 @@ print("f32 save/load", tensor.save(p32, f32(fa("1.5 -2.25 3"))), (function()
 end)())
 local mix = try(function() tensor.add(zeros(2), 0, z32(2), 0, 2) end)
 print("f32 mixed", mix ~= nil and string.contains(mix, "mixes float_array and float32_array"))
+
+-- threads: products above the threshold split across the pool (by columns or by rows of
+-- the result); each element is computed the same way, so the results are identical
+local function same(a, b)
+    if len(a) ~= len(b) then return false end
+    for i = 0, len(a) - 1 do
+        if a[i] ~= b[i] then return false end
+    end
+    return true
+end
+local function product(mk, T, nin, nout, nthreads)
+    tensor.threads(nthreads)
+    local x, w, g = mk(rnd(T * nin, 11)), mk(rnd(nin * nout, 12)), mk(rnd(T * nout, 13))
+    local o, dw, dx = mk(zeros(T * nout)), mk(zeros(nin * nout)), mk(zeros(T * nin))
+    tensor.matmul(x, 0, w, T, nin, nout, o, 0)
+    tensor.matmul_back(g, 0, x, 0, w, dw, T, nin, nout, dx, 0)
+    return [o, dw, dx]
+end
+local function ident(a) return a end
+local default_threads = tensor.threads()
+print("threads", default_threads >= 1)
+for _, mk in [ident, f32] do
+    for _, sz in [ [64, 300, 200], [1000, 300, 20] ] do
+        local one = product(mk, sz[0], sz[1], sz[2], 1)
+        local many = product(mk, sz[0], sz[1], sz[2], 4)
+        print(`threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`, same(one[0], many[0]), same(one[1], many[1]), same(one[2], many[2]))
+    end
+end
+-- 8 goroutines at once: one gets the pool, the others run on their own threads
+do
+    local want = product(ident, 64, 300, 200, 1)
+    tensor.threads(4)
+    local results = chan(8)
+    for _ = 1, 8 do
+        go function()
+            local ok = true
+            for _ = 1, 5 do
+                local x, w = rnd(64 * 300, 11), rnd(300 * 200, 12)
+                local o = zeros(64 * 200)
+                tensor.matmul(x, 0, w, 64, 300, 200, o, 0)
+                ok = ok and same(o, want[0])
+            end
+            results <- ok
+        end()
+    end
+    local all = true
+    for _ = 1, 8 do all = all and <-results end
+    print("threads concurrent", all)
+end
+tensor.threads(default_threads)
+print("threads restored", tensor.threads() == default_threads)

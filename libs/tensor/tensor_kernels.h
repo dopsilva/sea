@@ -110,28 +110,92 @@ static void K(gemm_tile)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb,
     }
 }
 
-static void K(gemm)(const REAL *a, const REAL *b, REAL *c, int64_t M, int64_t Kd, int64_t N, int accumulate) {
-    if (!accumulate) memset(c, 0, (size_t)(M * N) * sizeof(REAL));
+/* C (+)= A·B with leading dimensions (A rows of lda, B rows of ldb, C rows of ldc) */
+static void K(gemm_ld)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, REAL *c, int64_t ldc,
+                       int64_t M, int64_t Kd, int64_t N, int accumulate) {
+    if (!accumulate)
+        for (int64_t m = 0; m < M; m++) memset(c + m * ldc, 0, (size_t)N * sizeof(REAL));
     for (int64_t k0 = 0; k0 < Kd; k0 += GEMM_KB) {
         int64_t kb = Kd - k0 < GEMM_KB ? Kd - k0 : GEMM_KB;
         for (int64_t j0 = 0; j0 < N; j0 += K_NR) {
             int64_t nr = N - j0 < K_NR ? N - j0 : K_NR;
             for (int64_t m0 = 0; m0 < M; m0 += GEMM_MR) {
                 int64_t mr = M - m0 < GEMM_MR ? M - m0 : GEMM_MR;
-                K(gemm_tile)(a + m0 * Kd + k0, Kd, b + k0 * N + j0, N, c + m0 * N + j0, N, kb, mr, nr);
+                K(gemm_tile)(a + m0 * lda + k0, lda, b + k0 * ldb + j0, ldb, c + m0 * ldc + j0, ldc, kb, mr, nr);
             }
         }
     }
 }
 
-/* t[c×r] = transpose of m[r×c]; NULL when out of memory */
+/* one thread's share of a gemm: a band of columns (whole tile panels) or of rows of C */
+typedef struct {
+    const REAL *a, *b;
+    REAL *c;
+    int64_t M, Kd, N;
+    int accumulate, by_cols;
+} K(gemm_job);
+
+static void K(gemm_part)(void *arg, int part, int nparts) {
+    K(gemm_job) *j = arg;
+    if (j->by_cols) {
+        int64_t panels = (j->N + K_NR - 1) / K_NR;
+        int64_t p0 = panels * part / nparts, p1 = panels * (part + 1) / nparts;
+        int64_t c0 = p0 * K_NR, c1 = p1 * K_NR < j->N ? p1 * K_NR : j->N;
+        if (c1 > c0) K(gemm_ld)(j->a, j->Kd, j->b + c0, j->N, j->c + c0, j->N, j->M, j->Kd, c1 - c0, j->accumulate);
+    } else {
+        int64_t blocks = (j->M + GEMM_MR - 1) / GEMM_MR;
+        int64_t b0 = blocks * part / nparts, b1 = blocks * (part + 1) / nparts;
+        int64_t r0 = b0 * GEMM_MR, r1 = b1 * GEMM_MR < j->M ? b1 * GEMM_MR : j->M;
+        if (r1 > r0) K(gemm_ld)(j->a + r0 * j->Kd, j->Kd, j->b, j->N, j->c + r0 * j->N, j->N, r1 - r0, j->Kd, j->N, j->accumulate);
+    }
+}
+
+/* C[M×N] (+)= A[M×K]·B[K×N], split across the thread pool when it is large enough */
+static void K(gemm)(const REAL *a, const REAL *b, REAL *c, int64_t M, int64_t Kd, int64_t N, int accumulate) {
+    int nt = pool_threads();
+    if (nt <= 1 || M * N * Kd < GEMM_PAR_MIN) {
+        K(gemm_ld)(a, Kd, b, N, c, N, M, Kd, N, accumulate);
+        return;
+    }
+    K(gemm_job) j = {a, b, c, M, Kd, N, accumulate, 0};
+    int64_t panels = (N + K_NR - 1) / K_NR, blocks = (M + GEMM_MR - 1) / GEMM_MR;
+    j.by_cols = panels >= blocks;   /* split the longer side: more, evener parts */
+    int64_t parts = j.by_cols ? panels : blocks;
+    if (parts < nt) nt = (int)parts;
+    pool_run(K(gemm_part), &j, nt);
+}
+
+/* t[c×r] = transpose of m[r×c], rows [i0, i1) of m */
+static void K(transpose_rows)(const REAL *m, REAL *t, int64_t r, int64_t c, int64_t i0, int64_t i1) {
+    for (int64_t b0 = i0; b0 < i1; b0 += 32)
+        for (int64_t j0 = 0; j0 < c; j0 += 32)
+            for (int64_t i = b0; i < i1 && i < b0 + 32; i++)
+                for (int64_t j = j0; j < c && j < j0 + 32; j++) t[j * r + i] = m[i * c + j];
+}
+
+typedef struct { const REAL *m; REAL *t; int64_t r, c; } K(transpose_job);
+
+static void K(transpose_part)(void *arg, int part, int nparts) {
+    K(transpose_job) *j = arg;
+    int64_t blocks = (j->r + 31) / 32;
+    int64_t i0 = blocks * part / nparts * 32, i1 = blocks * (part + 1) / nparts * 32;
+    if (i1 > j->r) i1 = j->r;
+    if (i1 > i0) K(transpose_rows)(j->m, j->t, j->r, j->c, i0, i1);
+}
+
+/* t[c×r] = transpose of m[r×c] (on the thread pool when large); NULL when out of memory */
 static REAL *K(transpose)(const REAL *m, int64_t r, int64_t c) {
     REAL *t = malloc((size_t)(r * c) * sizeof(REAL) + 1);
     if (!t) return NULL;
-    for (int64_t i0 = 0; i0 < r; i0 += 32)
-        for (int64_t j0 = 0; j0 < c; j0 += 32)
-            for (int64_t i = i0; i < r && i < i0 + 32; i++)
-                for (int64_t j = j0; j < c && j < j0 + 32; j++) t[j * r + i] = m[i * c + j];
+    int nt = pool_threads();
+    int64_t blocks = (r + 31) / 32;
+    if (nt > blocks) nt = (int)blocks;
+    if (nt <= 1 || r * c < (1 << 16)) {
+        K(transpose_rows)(m, t, r, c, 0, r);
+    } else {
+        K(transpose_job) j = {m, t, r, c};
+        pool_run(K(transpose_part), &j, nt);
+    }
     return t;
 }
 
