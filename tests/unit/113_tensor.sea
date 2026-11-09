@@ -361,3 +361,13 @@ do
     local oob = try(function() tensor.gather_cols(src, nrows, ncols, cl, 0, nc, zeros(nrows * nc)) end)
     print("gather out of range", oob ~= nil and string.contains(oob, "column out of range"))
 end
+
+-- sumsq: Σ a², in double for both types
+do
+    local v = fa("1 2 3 4 5")
+    print("sumsq", tensor.sumsq(v), tensor.sumsq(v, 1, 3), tensor.sumsq(f32(v)), tensor.sumsq(f32(v), 4))
+    local big = rnd(100003, 31)
+    local want = 0.0
+    for i = 0, len(big) - 1 do want += big[i] * big[i] end
+    print("sumsq big", math.abs(tensor.sumsq(big) - want) < 1e-9 * want, math.abs(tensor.sumsq(f32(big)) - want) < 1e-5 * want)
+end

@@ -352,6 +352,21 @@ static void K(add)(REAL *d, const REAL *s, int64_t n) {
     for (int64_t i = 0; i < n; i++) d[i] += s[i];
 }
 
+/* Σ a[i]², accumulated in double (four partial sums, so it vectorizes) */
+static double K(sumsq)(const REAL *a, int64_t n) {
+    double s0 = 0.0, s1 = 0.0, s2 = 0.0, s3 = 0.0;
+    int64_t i = 0;
+    for (; i + 4 <= n; i += 4) {
+        double x0 = a[i], x1 = a[i + 1], x2 = a[i + 2], x3 = a[i + 3];
+        s0 += x0 * x0;
+        s1 += x1 * x1;
+        s2 += x2 * x2;
+        s3 += x3 * x3;
+    }
+    for (; i < n; i++) s0 += (double)a[i] * a[i];
+    return (s0 + s1) + (s2 + s3);
+}
+
 static void K(scale)(REAL *a, int64_t n, double k) {
     REAL kk = (REAL)k;
     for (int64_t i = 0; i < n; i++) a[i] *= kk;

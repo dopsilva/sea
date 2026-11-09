@@ -512,6 +512,18 @@ static SeaValue t_copy(SeaVM *vm, int argc, SeaValue *args) {
     return SEA_NIL_VAL;
 }
 
+/* sumsq(a [, off, n]) → Σ a[i]² (in double; the whole array by default):
+ * the squared norm, for gradient clipping */
+static SeaValue t_sumsq(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "sumsq";
+    need(vm, argc, 1, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t len = len_of(args[0]);
+    int64_t off = argc > 1 ? iv(args[1]) : 0, n = argc > 2 ? iv(args[2]) : len - off;
+    double r = kd == 8 ? sumsq_f64(D(0, off, n), n) : sumsq_f32(F(0, off, n), n);
+    return sea_number_val(r);
+}
+
 /* scale(a, off, n, k): a[off+i] *= k */
 static SeaValue t_scale(SeaVM *vm, int argc, SeaValue *args) {
     const char *FN = "scale";
@@ -617,6 +629,7 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "add",              t_add);
     sea_mod_set(mod, "copy",             t_copy);
     sea_mod_set(mod, "scale",            t_scale);
+    sea_mod_set(mod, "sumsq",            t_sumsq);
     sea_mod_set(mod, "adam",             t_adam);
     sea_mod_set(mod, "save",             t_save);
     sea_mod_set(mod, "load",             t_load);

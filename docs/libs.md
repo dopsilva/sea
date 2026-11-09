@@ -1691,6 +1691,7 @@ argument of the wrong type, is a runtime error (a panic).
 | `add(dst, doff, src, soff, n)` | `dst[doff+i] += src[soff+i]` |
 | `copy(dst, doff, src, soff, n)` | copy a range (overlap allowed) |
 | `scale(a, off, n, k)` | `a[off+i] *= k` |
+| `sumsq(a [, off, n]) → number` | `Σ a[off+i]²`, accumulated in double (the whole array by default): the squared norm, for gradient clipping |
 | `adam(w, g, m, v, n, lr, beta1, beta2, c1, c2, eps)` | one Adam step; `c1 = 1 − beta1^t`, `c2 = 1 − beta2^t` |
 | `save(path, a [, append]) → bytes` | write the array as raw elements, doubles or floats (native byte order); an error value on failure |
 | `load(path, a, offset) → next offset` | fill the whole array from the file at a byte offset; an error value if the file is short |
