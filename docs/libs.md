@@ -1702,7 +1702,7 @@ argument of the wrong type, is a runtime error (a panic).
 | `load(path, a, offset) → next offset` | fill the whole array from the file at a byte offset; an error value if the file is short |
 | `save_u16(path, a [, n [, append]]) → bytes` | the first `n` elements (all by default) of an `int_array` as unsigned 16-bit little-endian values — token ids; a value outside 0..65535 is a runtime error |
 | `load_u16(path, a, offset, n) → next offset` | `n` 16-bit values read at a byte offset into `a[0..n)` (an `int_array` with at least `n` elements); an error value if the file is short |
-| `threads([n]) → n` | how many threads `matvec`, `matmul` and `matmul_back` use (default: one per CPU, or `SEA_TENSOR_THREADS`); with `n`, sets it (`1`: only the calling thread) |
+| `threads([n]) → n` | how many threads the pooled kernels (`matvec`, `matmul`, `matmul_back`, `attention`, `attention_back`, `cross_entropy`, `swiglu`) use (default: one per CPU, or `SEA_TENSOR_THREADS`); with `n`, sets it (`1`: only the calling thread) |
 
 ```sea
 local tensor = require("tensor")
@@ -1718,7 +1718,8 @@ tensor.matvec(x, 0, w, 2, 3, out, 0)      -- out = 9, 12, 15
 
 Calls from several goroutines on different arrays run in parallel.
 Products of at least a million multiply-adds (`matvec` included: one row against a large
-matrix, as when generating a token) are also split across a pool of
+matrix, as when generating a token), `attention` and `attention_back` (by heads), `cross_entropy`
+(by rows) and `swiglu`/`swiglu_back` (by elements) are also split across a pool of
 threads (`tensor.threads`); while one call uses the pool, calls from other
 goroutines run on their own thread, so the CPUs are not oversubscribed. The
 split gives the same results, bit for bit, as one thread. The products' register tile follows the

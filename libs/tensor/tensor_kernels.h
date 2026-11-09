@@ -270,7 +270,7 @@ static void K(softmax)(REAL *p, int64_t n) {
 }
 
 /* SwiGLU: s = silu(a)·b, silu(a) = a·σ(a) */
-static void K(swiglu)(const REAL *a, const REAL *b, REAL *s, int64_t n) {
+static void K(swiglu_seq)(const REAL *a, const REAL *b, REAL *s, int64_t n) {
     for (int64_t i = 0; i < n; i++) {
         double x = a[i];
         double sg = 1.0 / (1.0 + exp(-x));
@@ -279,7 +279,7 @@ static void K(swiglu)(const REAL *a, const REAL *b, REAL *s, int64_t n) {
 }
 
 /* its backward, accumulating: da += ds·b·silu'(a), db += ds·silu(a) */
-static void K(swiglu_back)(const REAL *ds, const REAL *a, const REAL *b, REAL *da, REAL *db, int64_t n) {
+static void K(swiglu_back_seq)(const REAL *ds, const REAL *a, const REAL *b, REAL *da, REAL *db, int64_t n) {
     for (int64_t i = 0; i < n; i++) {
         double x = a[i];
         double sg = 1.0 / (1.0 + exp(-x));
@@ -288,6 +288,42 @@ static void K(swiglu_back)(const REAL *ds, const REAL *a, const REAL *b, REAL *d
         da[i] += (REAL)(ds[i] * b[i] * dsilu);
         db[i] += (REAL)(ds[i] * silu);
     }
+}
+
+/* Both split their elements across the pool when there are many (element by element: the
+ * result does not depend on the number of threads). */
+typedef struct { const REAL *ds, *a, *b; REAL *s, *da, *db; int64_t n; } K(glu_job);
+
+static void K(swiglu_part)(void *arg, int part, int nparts) {
+    K(glu_job) *j = arg;
+    int64_t i0 = j->n * part / nparts, i1 = j->n * (part + 1) / nparts;
+    if (i1 > i0) K(swiglu_seq)(j->a + i0, j->b + i0, j->s + i0, i1 - i0);
+}
+
+static void K(swiglu_back_part)(void *arg, int part, int nparts) {
+    K(glu_job) *j = arg;
+    int64_t i0 = j->n * part / nparts, i1 = j->n * (part + 1) / nparts;
+    if (i1 > i0) K(swiglu_back_seq)(j->ds + i0, j->a + i0, j->b + i0, j->da + i0, j->db + i0, i1 - i0);
+}
+
+static void K(swiglu)(const REAL *a, const REAL *b, REAL *s, int64_t n) {
+    int nt = pool_threads();
+    if (nt <= 1 || n < ELEM_PAR_MIN) {
+        K(swiglu_seq)(a, b, s, n);
+        return;
+    }
+    K(glu_job) j = {NULL, a, b, s, NULL, NULL, n};
+    pool_run(K(swiglu_part), &j, nt);
+}
+
+static void K(swiglu_back)(const REAL *ds, const REAL *a, const REAL *b, REAL *da, REAL *db, int64_t n) {
+    int nt = pool_threads();
+    if (nt <= 1 || n < ELEM_PAR_MIN) {
+        K(swiglu_back_seq)(ds, a, b, da, db, n);
+        return;
+    }
+    K(glu_job) j = {ds, a, b, NULL, da, db, n};
+    pool_run(K(swiglu_back_part), &j, nt);
 }
 
 /* Rotary position embedding, in place, on T rows of C (H heads): in each head the
@@ -316,34 +352,64 @@ static void K(rope)(REAL *x, int64_t T, int64_t C, int64_t H, int64_t pos0, doub
 /* Cross-entropy of T rows of V logits against targets (a target < 0 is skipped):
  * returns Σ −log softmax(row)[target], in double, and replaces each row by its gradient
  * scale·(softmax − onehot) (a skipped row becomes zeros). */
-static double K(cross_entropy)(REAL *logits, const int64_t *targets, int64_t T, int64_t V, double scale) {
-    double loss = 0.0;
-    for (int64_t t = 0; t < T; t++) {
+static void K(cross_entropy_rows)(REAL *logits, const int64_t *targets, int64_t V, double scale,
+                                   double *losses, int64_t t0, int64_t t1) {
+    for (int64_t t = t0; t < t1; t++) {
         REAL *row = logits + t * V;
         int64_t y = targets[t];
         if (y < 0) {
             for (int64_t j = 0; j < V; j++) row[j] = 0;
+            losses[t] = 0.0;
             continue;
         }
         double mx = -1e300;
         for (int64_t j = 0; j < V; j++) if (row[j] > mx) mx = row[j];
+        double target = (double)row[y];
         double sum = 0.0;
-        for (int64_t j = 0; j < V; j++) sum += exp((double)row[j] - mx);
-        loss += log(sum) + mx - (double)row[y];
-        double inv = 1.0 / sum;
-        for (int64_t j = 0; j < V; j++) row[j] = (REAL)(exp((double)row[j] - mx) * inv * scale);
+        for (int64_t j = 0; j < V; j++) {
+            double e = exp((double)row[j] - mx);
+            row[j] = (REAL)e;
+            sum += e;
+        }
+        losses[t] = log(sum) + mx - target;
+        double k = scale / sum;
+        for (int64_t j = 0; j < V; j++) row[j] = (REAL)(row[j] * k);
         row[y] -= (REAL)scale;
     }
+}
+
+typedef struct { REAL *logits; const int64_t *targets; int64_t T, V; double scale; double *losses; } K(ce_job);
+
+static void K(cross_entropy_part)(void *arg, int part, int nparts) {
+    K(ce_job) *j = arg;
+    int64_t t0 = j->T * part / nparts, t1 = j->T * (part + 1) / nparts;
+    if (t1 > t0) K(cross_entropy_rows)(j->logits, j->targets, j->V, j->scale, j->losses, t0, t1);
+}
+
+/* losses: scratch of T doubles */
+static double K(cross_entropy)(REAL *logits, const int64_t *targets, int64_t T, int64_t V, double scale,
+                               double *losses) {
+    int nt = pool_threads();
+    if (nt > T) nt = (int)T;
+    if (nt <= 1 || T * V < GEMM_PAR_MIN) {
+        K(cross_entropy_rows)(logits, targets, V, scale, losses, 0, T);
+    } else {
+        K(ce_job) j = {logits, targets, T, V, scale, losses};
+        pool_run(K(cross_entropy_part), &j, nt);
+    }
+    double loss = 0.0;
+    for (int64_t t = 0; t < T; t++) loss += losses[t];
     return loss;
 }
 
 /* ---- attention ---- */
 
-static void K(attention)(const REAL *q, const REAL *k, const REAL *v, REAL *att, REAL *y,
-                         int64_t T, int64_t C, int64_t H, int64_t B) {
+/* the heads [h0, h1) of attention */
+static void K(attention_heads)(const REAL *q, const REAL *k, const REAL *v, REAL *att, REAL *y,
+                               int64_t T, int64_t C, int64_t H, int64_t B, int64_t h0, int64_t h1) {
     int64_t HS = C / H;
     double scale = 1.0 / sqrt((double)HS);
-    for (int64_t h = 0; h < H; h++) {
+    for (int64_t h = h0; h < h1; h++) {
         int64_t ho = h * HS;
         for (int64_t t = 0; t < T; t++) {
             REAL *a = att + (h * B + t) * B;
@@ -372,12 +438,13 @@ static void K(attention)(const REAL *q, const REAL *k, const REAL *v, REAL *att,
 }
 
 /* dp: scratch of T doubles */
-static void K(attention_back)(const REAL *q, const REAL *k, const REAL *v, const REAL *att,
-                              const REAL *dy, REAL *dq, REAL *dk, REAL *dvv,
-                              int64_t T, int64_t C, int64_t H, int64_t B, double *dp) {
+/* the heads [h0, h1) of attention_back */
+static void K(attention_back_heads)(const REAL *q, const REAL *k, const REAL *v, const REAL *att,
+                                    const REAL *dy, REAL *dq, REAL *dk, REAL *dvv,
+                                    int64_t T, int64_t C, int64_t H, int64_t B, double *dp, int64_t h0, int64_t h1) {
     int64_t HS = C / H;
     double scale = 1.0 / sqrt((double)HS);
-    for (int64_t h = 0; h < H; h++) {
+    for (int64_t h = h0; h < h1; h++) {
         int64_t ho = h * HS;
         for (int64_t t = 0; t < T; t++) {
             const REAL *a = att + (h * B + t) * B;
@@ -408,6 +475,61 @@ static void K(attention_back)(const REAL *q, const REAL *k, const REAL *v, const
             }
         }
     }
+}
+
+/* Attention splits its heads across the thread pool: each head reads and writes only its
+ * own columns, so the result does not depend on the number of threads. */
+typedef struct {
+    const REAL *q, *k, *v, *att, *dy;
+    REAL *attw, *y, *dq, *dk, *dvv;
+    int64_t T, C, H, B;
+} K(att_job);
+
+static int K(att_threads)(int64_t T, int64_t C, int64_t H) {
+    int nt = pool_threads();
+    if (nt > H) nt = (int)H;
+    if (T * T * C < ATT_PAR_MIN) nt = 1;
+    return nt;
+}
+
+static void K(attention_part)(void *arg, int part, int nparts) {
+    K(att_job) *j = arg;
+    int64_t h0 = j->H * part / nparts, h1 = j->H * (part + 1) / nparts;
+    if (h1 > h0) K(attention_heads)(j->q, j->k, j->v, j->attw, j->y, j->T, j->C, j->H, j->B, h0, h1);
+}
+
+static void K(attention)(const REAL *q, const REAL *k, const REAL *v, REAL *att, REAL *y,
+                         int64_t T, int64_t C, int64_t H, int64_t B) {
+    int nt = K(att_threads)(T, C, H);
+    if (nt <= 1) {
+        K(attention_heads)(q, k, v, att, y, T, C, H, B, 0, H);
+        return;
+    }
+    K(att_job) j = {q, k, v, NULL, NULL, att, y, NULL, NULL, NULL, T, C, H, B};
+    pool_run(K(attention_part), &j, nt);
+}
+
+static void K(attention_back_part)(void *arg, int part, int nparts) {
+    K(att_job) *j = arg;
+    int64_t h0 = j->H * part / nparts, h1 = j->H * (part + 1) / nparts;
+    if (h1 <= h0) return;
+    double *dp = malloc(sizeof(double) * (size_t)(j->T > 0 ? j->T : 1));
+    if (!dp) abort();
+    K(attention_back_heads)(j->q, j->k, j->v, j->att, j->dy, j->dq, j->dk, j->dvv, j->T, j->C, j->H, j->B, dp, h0, h1);
+    free(dp);
+}
+
+/* dp: scratch of T doubles (for the single-thread path) */
+static void K(attention_back)(const REAL *q, const REAL *k, const REAL *v, const REAL *att,
+                              const REAL *dy, REAL *dq, REAL *dk, REAL *dvv,
+                              int64_t T, int64_t C, int64_t H, int64_t B, double *dp) {
+    int nt = K(att_threads)(T, C, H);
+    if (nt <= 1) {
+        K(attention_back_heads)(q, k, v, att, dy, dq, dk, dvv, T, C, H, B, dp, 0, H);
+        return;
+    }
+    K(att_job) j = {q, k, v, att, dy, NULL, NULL, dq, dk, dvv, T, C, H, B};
+    pool_run(K(attention_back_part), &j, nt);
 }
 
 /* The attention of the last of T positions (its query q) against the keys and

@@ -558,3 +558,29 @@ do
     end)
     print("cross_entropy range", bad ~= nil and string.contains(bad, "outside a vocabulary"))
 end
+
+-- attention (by heads) and cross_entropy (by rows) on the pool: the same bits as 1 thread
+do
+    for _, mk in [ident, f32] do
+        local T, C, H = 96, 64, 4
+        local q, k, v, dy = mk(rnd(T * C, 81)), mk(rnd(T * C, 82)), mk(rnd(T * C, 83)), mk(rnd(T * C, 84))
+        local function run(nt)
+            tensor.threads(nt)
+            local att, y = mk(zeros(H * T * T)), mk(zeros(T * C))
+            tensor.attention(q, k, v, att, y, T, C, H, T)
+            local dq, dk, dv = mk(zeros(T * C)), mk(zeros(T * C)), mk(zeros(T * C))
+            tensor.attention_back(q, k, v, att, dy, dq, dk, dv, T, C, H, T)
+            local lg = mk(rnd(T * 300, 85))
+            local tg = int_array()
+            for i = 0, T - 1 do tg[] = (i * 7) % 300 - (i % 11 == 0 and 400 or 0) end
+            for i = 0, T - 1 do if tg[i] < 0 then tg[i] = -1 end end
+            local loss = tensor.cross_entropy(lg, 0, tg, 0, T, 300, 0.25)
+            return [y, dq, dk, dv, lg, loss]
+        end
+        local one = run(1)
+        local four = run(4)
+        print(`attention threads ${type(one[0])}`, same(one[0], four[0]), same(one[1], four[1]), same(one[2], four[2]),
+            same(one[3], four[3]), same(one[4], four[4]), one[5] == four[5])
+    end
+    tensor.threads(default_threads)
+end

@@ -55,7 +55,9 @@
 #define GEMM_TA 1      /* A read transposed: element (m, k) at a[k*lda + m] */
 #define GEMM_TB 2      /* B read transposed: element (k, n) at b[n*ldb + k] */
 #define MATVEC_BLOCK 64        /* matvec splits its outputs in blocks of this many columns */
-#define GEMM_PAR_MIN (1 << 20)   /* multiply-adds below which a product stays on one thread */
+#define GEMM_PAR_MIN (1 << 20)
+#define ELEM_PAR_MIN (1 << 16)    /* elements below which swiglu stays on one thread */
+#define ATT_PAR_MIN (1 << 18)     /* T·T·C below which attention stays on one thread */   /* multiply-adds below which a product stays on one thread */
 
 /* ---- thread pool for the matrix products ----
  *
@@ -455,8 +457,9 @@ static SeaValue t_cross_entropy(SeaVM *vm, int argc, SeaValue *args) {
     const int64_t *tg = ia(vm, args[2], to + T, FN) + to;
     for (int64_t t = 0; t < T; t++)
         if (tg[t] >= V) sea_vm_error_noreturn(vm, "tensor.%s: target %lld outside a vocabulary of %lld", FN, (long long)tg[t], (long long)V);
-    double loss = kd == 8 ? cross_entropy_f64(D(0, lo, T * V), tg, T, V, scale)
-                          : cross_entropy_f32(F(0, lo, T * V), tg, T, V, scale);
+    double *losses = scratch(vm, sizeof(double) * (size_t)(T > 0 ? T : 1), FN);
+    double loss = kd == 8 ? cross_entropy_f64(D(0, lo, T * V), tg, T, V, scale, losses)
+                          : cross_entropy_f32(F(0, lo, T * V), tg, T, V, scale, losses);
     return sea_number_val(loss);
 }
 
