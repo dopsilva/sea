@@ -311,6 +311,37 @@ static void K(rmsnorm_back)(const REAL *dy, const REAL *x, double r, int64_t n, 
     for (int64_t i = 0; i < n; i++) dx[i] += (REAL)(r * dy[i] - x[i] * k);
 }
 
+/* RMSNorm of T rows of n (r: one double per row), split by rows across the pool */
+typedef struct { const REAL *x, *dy; REAL *y, *dx; double *r; int64_t T, n; } K(rms_job);
+
+static void K(rmsnorm_rows_part)(void *arg, int part, int nparts) {
+    K(rms_job) *j = arg;
+    int64_t t0 = j->T * part / nparts, t1 = j->T * (part + 1) / nparts;
+    for (int64_t t = t0; t < t1; t++) j->r[t] = K(rmsnorm)(j->x + t * j->n, j->y + t * j->n, j->n);
+}
+
+static void K(rmsnorm_back_rows_part)(void *arg, int part, int nparts) {
+    K(rms_job) *j = arg;
+    int64_t t0 = j->T * part / nparts, t1 = j->T * (part + 1) / nparts;
+    for (int64_t t = t0; t < t1; t++) K(rmsnorm_back)(j->dy + t * j->n, j->x + t * j->n, j->r[t], j->n, j->dx + t * j->n);
+}
+
+static void K(rmsnorm_rows)(const REAL *x, REAL *y, double *r, int64_t T, int64_t n) {
+    K(rms_job) j = {x, NULL, y, NULL, r, T, n};
+    int nt = pool_threads();
+    if (nt > T) nt = (int)T;
+    if (nt <= 1 || T * n < ELEM_PAR_MIN) K(rmsnorm_rows_part)(&j, 0, 1);
+    else pool_run(K(rmsnorm_rows_part), &j, nt);
+}
+
+static void K(rmsnorm_back_rows)(const REAL *dy, const REAL *x, double *r, int64_t T, int64_t n, REAL *dx) {
+    K(rms_job) j = {x, dy, NULL, dx, r, T, n};
+    int nt = pool_threads();
+    if (nt > T) nt = (int)T;
+    if (nt <= 1 || T * n < ELEM_PAR_MIN) K(rmsnorm_back_rows_part)(&j, 0, 1);
+    else pool_run(K(rmsnorm_back_rows_part), &j, nt);
+}
+
 static void K(relu)(const REAL *x, REAL *y, int64_t n) {
     for (int64_t i = 0; i < n; i++) y[i] = x[i] > 0 ? x[i] : 0;
 }
@@ -463,77 +494,69 @@ static double K(cross_entropy)(REAL *logits, const int64_t *targets, int64_t T, 
 
 /* ---- attention ---- */
 
-/* the heads [h0, h1) of attention */
+/* Attention by head as matrix products (the blocked gemm, operands read transposed in
+ * place): S = Q_h·K_hᵀ, row softmax (causal, in double), Y_h = P·V_h. The scores S are kept in
+ * att[(h·B + t)·B + s] (only s ≤ t is meaningful: the probabilities, for the backward pass). */
 static void K(attention_heads)(const REAL *q, const REAL *k, const REAL *v, REAL *att, REAL *y,
                                int64_t T, int64_t C, int64_t H, int64_t B, int64_t h0, int64_t h1) {
     int64_t HS = C / H;
     double scale = 1.0 / sqrt((double)HS);
     for (int64_t h = h0; h < h1; h++) {
         int64_t ho = h * HS;
+        REAL *S = att + h * B * B;
+        K(gemm_ld)(q + ho, C, k + ho, C, S, B, T, HS, T, 0, GEMM_TB);
         for (int64_t t = 0; t < T; t++) {
-            REAL *a = att + (h * B + t) * B;
-            const REAL *qt = q + t * C + ho;
+            REAL *row = S + t * B;
             double mx = -1e300;
             for (int64_t s = 0; s <= t; s++) {
-                const REAL *ks = k + s * C + ho;
-                double dot = 0.0;
-                for (int64_t d = 0; d < HS; d++) dot += (double)qt[d] * ks[d];
-                dot *= scale;
-                a[s] = (REAL)dot;
-                if (dot > mx) mx = dot;
+                double d = (double)row[s] * scale;
+                if (d > mx) mx = d;
             }
             double sum = 0.0;
-            for (int64_t s = 0; s <= t; s++) { double e = exp(a[s] - mx); a[s] = (REAL)e; sum += e; }
-            REAL *yt = y + t * C + ho;
-            for (int64_t d = 0; d < HS; d++) yt[d] = 0;
             for (int64_t s = 0; s <= t; s++) {
-                REAL pr = (REAL)(a[s] / sum);
-                a[s] = pr;
-                const REAL *vs = v + s * C + ho;
-                for (int64_t d = 0; d < HS; d++) yt[d] += pr * vs[d];
+                double e = exp((double)row[s] * scale - mx);
+                row[s] = (REAL)e;
+                sum += e;
             }
+            double inv = 1.0 / sum;
+            for (int64_t s = 0; s <= t; s++) row[s] = (REAL)(row[s] * inv);
+            for (int64_t s = t + 1; s < T; s++) row[s] = 0;
         }
+        K(gemm_ld)(S, B, v + ho, C, y + ho, C, T, T, HS, 0, GEMM_PLAIN);
     }
 }
 
-/* dp: scratch of T doubles */
-/* the heads [h0, h1) of attention_back */
+/* the heads [h0, h1) of attention_back, as matrix products: dV_h += Pᵀ·dY_h, dP = dY_h·V_hᵀ,
+ * dS = P∘(dP − rowsum(P∘dP))·scale, dQ_h += dS·K_h, dK_h += dSᵀ·Q_h. dp: unused (kept for the
+ * signature); the T×T scratch is allocated here. */
 static void K(attention_back_heads)(const REAL *q, const REAL *k, const REAL *v, const REAL *att,
                                     const REAL *dy, REAL *dq, REAL *dk, REAL *dvv,
                                     int64_t T, int64_t C, int64_t H, int64_t B, double *dp, int64_t h0, int64_t h1) {
+    (void)dp;
     int64_t HS = C / H;
     double scale = 1.0 / sqrt((double)HS);
+    REAL *dS = malloc(sizeof(REAL) * (size_t)(T * T > 0 ? T * T : 1));
+    if (!dS) abort();
     for (int64_t h = h0; h < h1; h++) {
         int64_t ho = h * HS;
+        const REAL *P = att + h * B * B;
+        /* dV_h (T×HS) += Pᵀ (T×T) · dY_h */
+        K(gemm_ld)(P, B, dy + ho, C, dvv + ho, C, T, T, HS, 1, GEMM_TA);
+        /* dP (T×T) = dY_h · V_hᵀ */
+        K(gemm_ld)(dy + ho, C, v + ho, C, dS, T, T, HS, T, 0, GEMM_TB);
         for (int64_t t = 0; t < T; t++) {
-            const REAL *a = att + (h * B + t) * B;
-            const REAL *dyt = dy + t * C + ho;
+            const REAL *pr = P + t * B;
+            REAL *row = dS + t * T;
             double pdp = 0.0;
-            for (int64_t s = 0; s <= t; s++) {
-                const REAL *vs = v + s * C + ho;
-                REAL *dvs = dvv + s * C + ho;
-                double d = 0.0;
-                REAL pr = a[s];
-                for (int64_t e = 0; e < HS; e++) {
-                    d += (double)dyt[e] * vs[e];
-                    dvs[e] += pr * dyt[e];
-                }
-                dp[s] = d;
-                pdp += pr * d;
-            }
-            const REAL *qt = q + t * C + ho;
-            REAL *dqt = dq + t * C + ho;
-            for (int64_t s = 0; s <= t; s++) {
-                REAL ds = (REAL)(a[s] * (dp[s] - pdp) * scale);
-                const REAL *ks = k + s * C + ho;
-                REAL *dks = dk + s * C + ho;
-                for (int64_t e = 0; e < HS; e++) {
-                    dqt[e] += ds * ks[e];
-                    dks[e] += ds * qt[e];
-                }
-            }
+            for (int64_t s = 0; s <= t; s++) pdp += (double)pr[s] * row[s];
+            for (int64_t s = 0; s <= t; s++) row[s] = (REAL)(pr[s] * ((double)row[s] - pdp) * scale);
+            for (int64_t s = t + 1; s < T; s++) row[s] = 0;
         }
+        /* dQ_h += dS · K_h;  dK_h += dSᵀ · Q_h */
+        K(gemm_ld)(dS, T, k + ho, C, dq + ho, C, T, T, HS, 1, GEMM_PLAIN);
+        K(gemm_ld)(dS, T, q + ho, C, dk + ho, C, T, T, HS, 1, GEMM_TA);
     }
+    free(dS);
 }
 
 /* Attention splits its heads across the thread pool: each head reads and writes only its

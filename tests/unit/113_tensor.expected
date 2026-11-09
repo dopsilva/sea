@@ -63,3 +63,5 @@ attention threads float32_array	true	true	true	true	true	true
 q8 float_array	true	true	true
 q8 float32_array	true	true	true
 q8 range	true
+rmsnorm_rows float_array	true	true
+rmsnorm_rows float32_array	true	true

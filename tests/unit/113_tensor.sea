@@ -636,3 +636,29 @@ do
     local bad = try(function() tensor.matvec_q8(zeros(2), 0, "abc", 0, zeros(2), 0, 2, 2, zeros(2), 0) end)
     print("q8 range", bad ~= nil and string.contains(bad, "outside 3 bytes"))
 end
+
+-- rmsnorm_rows / rmsnorm_back_rows: the same as a call per row, with 1 or 4 threads
+do
+    for _, mk in [ident, f32] do
+        local T, n = 300, 320
+        local x, dy = mk(rnd(T * n + 3, 101)), mk(rnd(T * n, 102))
+        local y1, y2 = mk(zeros(T * n)), mk(zeros(T * n + 1))
+        local r1 = float_array()
+        for t = 0, T - 1 do r1[] = tensor.rmsnorm(x, 3 + t * n, y1, t * n, n) end
+        local r2 = zeros(T + 2)
+        tensor.threads(4)
+        tensor.rmsnorm_rows(x, 3, y2, 1, T, n, r2, 2)
+        local ok = true
+        for t = 0, T - 1 do
+            if r1[t] ~= r2[2 + t] then ok = false end
+        end
+        for i = 0, T * n - 1 do
+            if y1[i] ~= y2[1 + i] then ok = false end
+        end
+        local d1, d2 = mk(rnd(T * n, 103)), mk(rnd(T * n, 103))
+        for t = 0, T - 1 do tensor.rmsnorm_back(dy, t * n, x, 3 + t * n, r1[t], n, d1, t * n) end
+        tensor.rmsnorm_back_rows(dy, 0, x, 3, r2, 2, T, n, d2, 0)
+        tensor.threads(default_threads)
+        print(`rmsnorm_rows ${type(x)}`, ok, same(d1, d2))
+    end
+end

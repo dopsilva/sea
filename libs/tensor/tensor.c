@@ -404,6 +404,40 @@ static SeaValue t_rmsnorm_back(SeaVM *vm, int argc, SeaValue *args) {
     return SEA_NIL_VAL;
 }
 
+/* the doubles r[ro..ro+T) of a float_array */
+static double *rows_r(SeaVM *vm, SeaValue v, int64_t ro, int64_t T, const char *fn) {
+    if (!sea_is_float_array(v)) sea_vm_error_noreturn(vm, "tensor.%s: r must be a float_array, got %s", fn, sea_type_name(v));
+    SeaFloatArray *a = SEA_AS_FLOAT_ARRAY(v);
+    if (ro < 0 || T < 0 || ro + T > (int64_t)a->len)
+        sea_vm_error_noreturn(vm, "tensor.%s: range %lld+%lld outside a float_array of %u", fn, (long long)ro, (long long)T, a->len);
+    return a->data + ro;
+}
+
+/* rmsnorm_rows(x, xo, y, yo, T, n, r, ro): rmsnorm of T rows of n; row t's factor goes to
+ * r[ro+t] (r: a float_array of doubles, whatever the type of x) */
+static SeaValue t_rmsnorm_rows(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "rmsnorm_rows";
+    need(vm, argc, 8, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t xo = iv(args[1]), yo = iv(args[3]), T = iv(args[4]), n = iv(args[5]), ro = iv(args[7]);
+    double *r = rows_r(vm, args[6], ro, T, FN);
+    if (kd == 8) rmsnorm_rows_f64(D(0, xo, T * n), D(2, yo, T * n), r, T, n);
+    else         rmsnorm_rows_f32(F(0, xo, T * n), F(2, yo, T * n), r, T, n);
+    return SEA_NIL_VAL;
+}
+
+/* rmsnorm_back_rows(dy, dyo, x, xo, r, ro, T, n, dx, dxo): rmsnorm_back for T rows, accumulating into dx */
+static SeaValue t_rmsnorm_back_rows(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "rmsnorm_back_rows";
+    need(vm, argc, 10, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t dyo = iv(args[1]), xo = iv(args[3]), ro = iv(args[5]), T = iv(args[6]), n = iv(args[7]), dxo = iv(args[9]);
+    double *r = rows_r(vm, args[4], ro, T, FN);
+    if (kd == 8) rmsnorm_back_rows_f64(D(0, dyo, T * n), D(2, xo, T * n), r, T, n, D(8, dxo, T * n));
+    else         rmsnorm_back_rows_f32(F(0, dyo, T * n), F(2, xo, T * n), r, T, n, F(8, dxo, T * n));
+    return SEA_NIL_VAL;
+}
+
 /* relu(x, xo, y, yo, n): y = max(x, 0) */
 static SeaValue t_relu(SeaVM *vm, int argc, SeaValue *args) {
     const char *FN = "relu";
@@ -802,6 +836,8 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "matvec_cols_back", t_matvec_cols_back);
     sea_mod_set(mod, "rmsnorm",          t_rmsnorm);
     sea_mod_set(mod, "rmsnorm_back",     t_rmsnorm_back);
+    sea_mod_set(mod, "rmsnorm_rows",     t_rmsnorm_rows);
+    sea_mod_set(mod, "rmsnorm_back_rows", t_rmsnorm_back_rows);
     sea_mod_set(mod, "relu",             t_relu);
     sea_mod_set(mod, "relu_back",        t_relu_back);
     sea_mod_set(mod, "softmax",          t_softmax);
