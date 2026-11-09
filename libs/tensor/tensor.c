@@ -615,6 +615,61 @@ static SeaValue t_load(SeaVM *vm, int argc, SeaValue *args) {
     return sea_int_val(off + (int64_t)(r * (size_t)kd));
 }
 
+/* save_u16(path, a [, n [, append]]) → bytes: the first n elements (all by default) of an
+ * int_array as unsigned 16-bit little-endian values (token ids); a value outside
+ * 0..65535 is a runtime error; an error value when the file cannot be written. */
+static SeaValue t_save_u16(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "save_u16";
+    need(vm, argc, 2, FN);
+    if (!sea_is_string(args[0])) return sea_make_error_str(vm, "tensor.save_u16: expected a path");
+    if (!sea_is_int_array(args[1])) sea_vm_error_noreturn(vm, "tensor.%s: expected an int_array, got %s", FN, sea_type_name(args[1]));
+    SeaIntArray *ia_ = SEA_AS_INT_ARRAY(args[1]);
+    int64_t n = argc > 2 && !sea_is_nil(args[2]) ? iv(args[2]) : (int64_t)ia_->len;
+    if (n < 0 || n > (int64_t)ia_->len) sea_vm_error_noreturn(vm, "tensor.%s: %lld elements of an int_array of %u", FN, (long long)n, ia_->len);
+    unsigned char *buf = malloc((size_t)n * 2 + 1);
+    if (!buf) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", FN);
+    for (int64_t i = 0; i < n; i++) {
+        int64_t v = ia_->data[i];
+        if (v < 0 || v > 65535) {
+            free(buf);
+            sea_vm_error_noreturn(vm, "tensor.%s: value %lld at %lld does not fit 16 bits", FN, (long long)v, (long long)i);
+        }
+        buf[2 * i] = (unsigned char)(v & 255);
+        buf[2 * i + 1] = (unsigned char)(v >> 8);
+    }
+    FILE *f = fopen(SEA_AS_STRING(args[0])->data, argc > 3 && sea_is_truthy(args[3]) ? "ab" : "wb");
+    if (!f) { free(buf); return sea_make_error_str(vm, "tensor.save_u16: cannot open the file"); }
+    size_t w = fwrite(buf, 1, (size_t)n * 2, f);
+    int err = fclose(f);
+    free(buf);
+    if (w != (size_t)n * 2 || err != 0) return sea_make_error_str(vm, "tensor.save_u16: write failed");
+    return sea_int_val(n * 2);
+}
+
+/* load_u16(path, a, offset, n) → next offset: n unsigned 16-bit little-endian values read at
+ * byte offset into a[0..n) (an int_array with at least n elements); an error value when the
+ * file cannot be read or is short. */
+static SeaValue t_load_u16(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "load_u16";
+    need(vm, argc, 4, FN);
+    if (!sea_is_string(args[0])) return sea_make_error_str(vm, "tensor.load_u16: expected a path");
+    if (!sea_is_int_array(args[1])) sea_vm_error_noreturn(vm, "tensor.%s: expected an int_array, got %s", FN, sea_type_name(args[1]));
+    SeaIntArray *ia_ = SEA_AS_INT_ARRAY(args[1]);
+    int64_t off = iv(args[2]), n = iv(args[3]);
+    if (off < 0 || n < 0 || n > (int64_t)ia_->len) sea_vm_error_noreturn(vm, "tensor.%s: %lld values into an int_array of %u", FN, (long long)n, ia_->len);
+    unsigned char *buf = malloc((size_t)n * 2 + 1);
+    if (!buf) sea_vm_error_noreturn(vm, "tensor.%s: out of memory", FN);
+    FILE *f = fopen(SEA_AS_STRING(args[0])->data, "rb");
+    if (!f) { free(buf); return sea_make_error_str(vm, "tensor.load_u16: cannot open the file"); }
+    if (fseek(f, (long)off, SEEK_SET) != 0) { fclose(f); free(buf); return sea_make_error_str(vm, "tensor.load_u16: bad offset"); }
+    size_t r = fread(buf, 1, (size_t)n * 2, f);
+    fclose(f);
+    if (r != (size_t)n * 2) { free(buf); return sea_make_error_str(vm, "tensor.load_u16: file too short"); }
+    for (int64_t i = 0; i < n; i++) ia_->data[i] = (int64_t)buf[2 * i] | ((int64_t)buf[2 * i + 1] << 8);
+    free(buf);
+    return sea_int_val(off + n * 2);
+}
+
 /* threads([n]) → n: how many threads the matrix products use (default: one
  * per CPU, or SEA_TENSOR_THREADS); with n, sets it (1 = only the caller). */
 static SeaValue t_threads(SeaVM *vm, int argc, SeaValue *args) {
@@ -661,6 +716,8 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "adam",             t_adam);
     sea_mod_set(mod, "save",             t_save);
     sea_mod_set(mod, "load",             t_load);
+    sea_mod_set(mod, "save_u16",         t_save_u16);
+    sea_mod_set(mod, "load_u16",         t_load_u16);
     sea_mod_set(mod, "threads",          t_threads);
     sea_mod_set(mod, "gather_cols",      t_gather_cols);
     sea_mod_set(mod, "scatter_cols",     t_scatter_cols);

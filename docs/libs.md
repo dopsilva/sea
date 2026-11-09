@@ -1696,6 +1696,8 @@ argument of the wrong type, is a runtime error (a panic).
 | `adam(w, g, m, v, n, lr, beta1, beta2, c1, c2, eps)` | one Adam step; `c1 = 1 − beta1^t`, `c2 = 1 − beta2^t` |
 | `save(path, a [, append]) → bytes` | write the array as raw elements, doubles or floats (native byte order); an error value on failure |
 | `load(path, a, offset) → next offset` | fill the whole array from the file at a byte offset; an error value if the file is short |
+| `save_u16(path, a [, n [, append]]) → bytes` | the first `n` elements (all by default) of an `int_array` as unsigned 16-bit little-endian values — token ids; a value outside 0..65535 is a runtime error |
+| `load_u16(path, a, offset, n) → next offset` | `n` 16-bit values read at a byte offset into `a[0..n)` (an `int_array` with at least `n` elements); an error value if the file is short |
 | `threads([n]) → n` | how many threads `matvec`, `matmul` and `matmul_back` use (default: one per CPU, or `SEA_TENSOR_THREADS`); with `n`, sets it (`1`: only the calling thread) |
 
 ```sea

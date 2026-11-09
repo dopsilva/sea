@@ -443,3 +443,21 @@ do
     end
     tensor.threads(default_threads)
 end
+
+-- save_u16 / load_u16: token ids as 16-bit values
+do
+    local p = fs.tempdir("tensor") .. "/ids.bin"
+    local ids = int_array()
+    for _, v in [0, 1, 255, 256, 65535, 4092] do ids[] = v end
+    local w1 = tensor.save_u16(p, ids)
+    local w2 = tensor.save_u16(p, ids, 2, true)
+    local back = int_array()
+    for i = 1, 4 do back[] = -1 end
+    local off = tensor.load_u16(p, back, 4, 4)
+    print("u16", w1, w2, off, back[0], back[1], back[2], back[3])
+    print("u16 short", is_error(tensor.load_u16(p, back, 14, 4)))
+    local big = int_array()
+    big[] = 70000
+    local e = try(function() tensor.save_u16(p, big) end)
+    print("u16 range", e ~= nil and string.contains(e, "does not fit 16 bits"))
+end

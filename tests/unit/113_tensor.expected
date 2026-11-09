@@ -50,3 +50,6 @@ matvec threads float_array 512x2048	true
 matvec threads float_array 300x5000	true
 matvec threads float32_array 512x2048	true
 matvec threads float32_array 300x5000	true
+u16	12	4	12	255	256	65535	4092
+u16 short	true
+u16 range	true
