@@ -46,3 +46,7 @@ matmul_back threads float_array 128x512x2048	true	true
 matmul_back threads float_array 2048x600x24	true	true
 matmul_back threads float32_array 128x512x2048	true	true
 matmul_back threads float32_array 2048x600x24	true	true
+matvec threads float_array 512x2048	true
+matvec threads float_array 300x5000	true
+matvec threads float32_array 512x2048	true
+matvec threads float32_array 300x5000	true

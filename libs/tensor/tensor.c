@@ -54,6 +54,7 @@
 #define GEMM_PLAIN 0   /* A and B as they are */
 #define GEMM_TA 1      /* A read transposed: element (m, k) at a[k*lda + m] */
 #define GEMM_TB 2      /* B read transposed: element (k, n) at b[n*ldb + k] */
+#define MATVEC_BLOCK 64        /* matvec splits its outputs in blocks of this many columns */
 #define GEMM_PAR_MIN (1 << 20)   /* multiply-adds below which a product stays on one thread */
 
 /* ---- thread pool for the matrix products ----

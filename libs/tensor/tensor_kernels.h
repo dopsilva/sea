@@ -27,14 +27,41 @@ static inline void K(vstore)(REAL *p, K(vec) v) { memcpy(p, &v, sizeof v); }
 
 /* ---- matrix-vector ---- */
 
-static void K(matvec)(const REAL *x, const REAL *w, int64_t nin, int64_t nout, REAL *out) {
-    for (int64_t j = 0; j < nout; j++) out[j] = 0;
+/* the outputs [j0, j1) of matvec */
+static void K(matvec_range)(const REAL *x, const REAL *w, int64_t nin, int64_t nout, REAL *out,
+                            int64_t j0, int64_t j1) {
+    for (int64_t j = j0; j < j1; j++) out[j] = 0;
     for (int64_t i = 0; i < nin; i++) {
         REAL xi = x[i];
         if (xi == 0) continue;
         const REAL *row = w + i * nout;
-        for (int64_t j = 0; j < nout; j++) out[j] += xi * row[j];
+        for (int64_t j = j0; j < j1; j++) out[j] += xi * row[j];
     }
+}
+
+typedef struct { const REAL *x, *w; REAL *out; int64_t nin, nout; } K(matvec_job);
+
+/* one thread's band of outputs, in whole blocks of MATVEC_BLOCK columns */
+static void K(matvec_part)(void *arg, int part, int nparts) {
+    K(matvec_job) *j = arg;
+    int64_t blocks = (j->nout + MATVEC_BLOCK - 1) / MATVEC_BLOCK;
+    int64_t b0 = blocks * part / nparts, b1 = blocks * (part + 1) / nparts;
+    int64_t j0 = b0 * MATVEC_BLOCK, j1 = b1 * MATVEC_BLOCK < j->nout ? b1 * MATVEC_BLOCK : j->nout;
+    if (j1 > j0) K(matvec_range)(j->x, j->w, j->nin, j->nout, j->out, j0, j1);
+}
+
+/* out = x @ w; large products split their outputs across the thread pool (each output is
+ * computed by the same operations, so the result does not depend on the number of threads) */
+static void K(matvec)(const REAL *x, const REAL *w, int64_t nin, int64_t nout, REAL *out) {
+    int nt = pool_threads();
+    if (nt <= 1 || nin * nout < GEMM_PAR_MIN) {
+        K(matvec_range)(x, w, nin, nout, out, 0, nout);
+        return;
+    }
+    int64_t blocks = (nout + MATVEC_BLOCK - 1) / MATVEC_BLOCK;
+    if (blocks < nt) nt = (int)blocks;
+    K(matvec_job) j = {x, w, out, nin, nout};
+    pool_run(K(matvec_part), &j, nt);
 }
 
 static void K(matvec_back)(const REAL *g, const REAL *x, const REAL *w, REAL *dw,

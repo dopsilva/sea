@@ -424,3 +424,22 @@ do
     end
     tensor.threads(default_threads)
 end
+
+-- matvec splits its outputs across the pool when nin·nout ≥ 2^20: the same bits as 1 thread
+do
+    for _, mk in [ident, f32] do
+        for _, sz in [ [512, 2048], [300, 5000] ] do
+            local nin = sz[0]
+            local nout = sz[1]
+            local x, w = mk(rnd(nin + 3, 61)), mk(rnd(nin * nout, 62))
+            x[5] = 0.0
+            local o1, o4 = mk(zeros(nout + 2)), mk(zeros(nout + 2))
+            tensor.threads(1)
+            tensor.matvec(x, 3, w, nin, nout, o1, 2)
+            tensor.threads(4)
+            tensor.matvec(x, 3, w, nin, nout, o4, 2)
+            print(`matvec threads ${type(o1)} ${nin}x${nout}`, same(o1, o4))
+        end
+    end
+    tensor.threads(default_threads)
+end

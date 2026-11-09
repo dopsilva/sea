@@ -1696,7 +1696,7 @@ argument of the wrong type, is a runtime error (a panic).
 | `adam(w, g, m, v, n, lr, beta1, beta2, c1, c2, eps)` | one Adam step; `c1 = 1 − beta1^t`, `c2 = 1 − beta2^t` |
 | `save(path, a [, append]) → bytes` | write the array as raw elements, doubles or floats (native byte order); an error value on failure |
 | `load(path, a, offset) → next offset` | fill the whole array from the file at a byte offset; an error value if the file is short |
-| `threads([n]) → n` | how many threads `matmul` and `matmul_back` use (default: one per CPU, or `SEA_TENSOR_THREADS`); with `n`, sets it (`1`: only the calling thread) |
+| `threads([n]) → n` | how many threads `matvec`, `matmul` and `matmul_back` use (default: one per CPU, or `SEA_TENSOR_THREADS`); with `n`, sets it (`1`: only the calling thread) |
 
 ```sea
 local tensor = require("tensor")
@@ -1711,7 +1711,8 @@ tensor.matvec(x, 0, w, 2, 3, out, 0)      -- out = 9, 12, 15
 ```
 
 Calls from several goroutines on different arrays run in parallel.
-Products of at least a million multiply-adds are also split across a pool of
+Products of at least a million multiply-adds (`matvec` included: one row against a large
+matrix, as when generating a token) are also split across a pool of
 threads (`tensor.threads`); while one call uses the pool, calls from other
 goroutines run on their own thread, so the CPUs are not oversubscribed. The
 split gives the same results, bit for bit, as one thread. The products' register tile follows the
