@@ -27,6 +27,9 @@ else wget -q -O "$TMP/$ZIP" "$URL"; fi
 echo "$SHA  $TMP/$ZIP" | sha256sum -c --quiet - || { echo "fetch.sh: checksum mismatch" >&2; exit 1; }
 
 mkdir -p vendor
-unzip -o -q "$TMP/$ZIP" libduckdb.so duckdb.h -d vendor
+if command -v unzip >/dev/null; then unzip -o -q "$TMP/$ZIP" libduckdb.so duckdb.h -d vendor
+elif command -v python3 >/dev/null; then
+    python3 -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2], ["libduckdb.so", "duckdb.h"])' "$TMP/$ZIP" vendor
+else echo "fetch.sh: needs unzip or python3 to extract $ZIP" >&2; exit 1; fi
 echo "$VERSION" > vendor/VERSION
 echo "DuckDB $VERSION in $(pwd)/vendor"
