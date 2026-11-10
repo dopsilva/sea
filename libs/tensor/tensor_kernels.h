@@ -222,6 +222,10 @@ static void K(gemm_ld)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, R
     REAL *panel = K(panel);
     for (int64_t k0 = 0; k0 < Kd; k0 += GEMM_KB) {
         int64_t kb = Kd - k0 < GEMM_KB ? Kd - k0 : GEMM_KB;
+        /* rows of A in blocks of GEMM_MC (GEMM_MC × GEMM_KB stays in L2 while every panel of B
+         * goes by); each element of C still sums its k blocks in the same order */
+        for (int64_t i0 = 0; i0 < M; i0 += GEMM_MC) {
+        int64_t i1 = M - i0 < GEMM_MC ? M : i0 + GEMM_MC;
         for (int64_t j0 = 0; j0 < N; j0 += K_NR) {
             int64_t nr = N - j0 < K_NR ? N - j0 : K_NR;
             const REAL *bp;
@@ -233,17 +237,28 @@ static void K(gemm_ld)(const REAL *a, int64_t lda, const REAL *b, int64_t ldb, R
                 }
                 bp = panel;
                 bld = K_NR;
+            } else if (ldb > K_NR && M > GEMM_MR) {
+                /* a plain panel is copied too: rows of B a power of two apart (ldb 8192) fall in
+                 * the same cache sets and evict each other while the tiles read them */
+                for (int64_t kk = 0; kk < kb; kk++) {
+                    const REAL *src = b + (k0 + kk) * ldb + j0;
+                    REAL *dst = panel + kk * K_NR;
+                    for (int64_t jj = 0; jj < nr; jj++) dst[jj] = src[jj];
+                }
+                bp = panel;
+                bld = K_NR;
             } else {
                 bp = b + k0 * ldb + j0;
                 bld = ldb;
             }
-            for (int64_t m0 = 0; m0 < M; m0 += GEMM_MR) {
-                int64_t mr = M - m0 < GEMM_MR ? M - m0 : GEMM_MR;
+            for (int64_t m0 = i0; m0 < i1; m0 += GEMM_MR) {
+                int64_t mr = i1 - m0 < GEMM_MR ? i1 - m0 : GEMM_MR;
                 if (mode == GEMM_TA)
                     K(tile_t)(a + k0 * lda + m0, lda, bp, bld, c + m0 * ldc + j0, ldc, kb, mr, nr);
                 else
                     K(tile_n)(a + m0 * lda + k0, lda, bp, bld, c + m0 * ldc + j0, ldc, kb, mr, nr);
             }
+        }
         }
     }
 }
@@ -504,7 +519,11 @@ static void K(attention_heads)(const REAL *q, const REAL *k, const REAL *v, REAL
     for (int64_t h = h0; h < h1; h++) {
         int64_t ho = h * HS;
         REAL *S = att + h * B * B;
-        K(gemm_ld)(q + ho, C, k + ho, C, S, B, T, HS, T, 0, GEMM_TB);
+        /* causal: rows [r0, r1) only need the columns [0, r1) */
+        for (int64_t r0 = 0; r0 < T; r0 += ATT_RB) {
+            int64_t r1 = r0 + ATT_RB < T ? r0 + ATT_RB : T;
+            K(gemm_ld)(q + r0 * C + ho, C, k + ho, C, S + r0 * B, B, r1 - r0, HS, r1, 0, GEMM_TB);
+        }
         for (int64_t t = 0; t < T; t++) {
             REAL *row = S + t * B;
             double mx = -1e300;
@@ -522,7 +541,10 @@ static void K(attention_heads)(const REAL *q, const REAL *k, const REAL *v, REAL
             for (int64_t s = 0; s <= t; s++) row[s] = (REAL)(row[s] * inv);
             for (int64_t s = t + 1; s < T; s++) row[s] = 0;
         }
-        K(gemm_ld)(S, B, v + ho, C, y + ho, C, T, T, HS, 0, GEMM_PLAIN);
+        for (int64_t r0 = 0; r0 < T; r0 += ATT_RB) {
+            int64_t r1 = r0 + ATT_RB < T ? r0 + ATT_RB : T;
+            K(gemm_ld)(S + r0 * B, B, v + ho, C, y + r0 * C + ho, C, r1 - r0, r1, HS, 0, GEMM_PLAIN);
+        }
     }
 }
 
@@ -540,10 +562,16 @@ static void K(attention_back_heads)(const REAL *q, const REAL *k, const REAL *v,
     for (int64_t h = h0; h < h1; h++) {
         int64_t ho = h * HS;
         const REAL *P = att + h * B * B;
-        /* dV_h (T×HS) += Pᵀ (T×T) · dY_h */
-        K(gemm_ld)(P, B, dy + ho, C, dvv + ho, C, T, T, HS, 1, GEMM_TA);
-        /* dP (T×T) = dY_h · V_hᵀ */
-        K(gemm_ld)(dy + ho, C, v + ho, C, dS, T, T, HS, T, 0, GEMM_TB);
+        /* dV_h (T×HS) += Pᵀ (T×T) · dY_h: rows s of dV take the rows t ≥ s of P */
+        for (int64_t r0 = 0; r0 < T; r0 += ATT_RB) {
+            int64_t r1 = r0 + ATT_RB < T ? r0 + ATT_RB : T;
+            K(gemm_ld)(P + r0 * B + r0, B, dy + r0 * C + ho, C, dvv + r0 * C + ho, C, r1 - r0, T - r0, HS, 1, GEMM_TA);
+        }
+        /* dP (T×T) = dY_h · V_hᵀ, rows [r0, r1) up to column r1 */
+        for (int64_t r0 = 0; r0 < T; r0 += ATT_RB) {
+            int64_t r1 = r0 + ATT_RB < T ? r0 + ATT_RB : T;
+            K(gemm_ld)(dy + r0 * C + ho, C, v + ho, C, dS + r0 * T, T, r1 - r0, HS, r1, 0, GEMM_TB);
+        }
         for (int64_t t = 0; t < T; t++) {
             const REAL *pr = P + t * B;
             REAL *row = dS + t * T;
@@ -553,8 +581,13 @@ static void K(attention_back_heads)(const REAL *q, const REAL *k, const REAL *v,
             for (int64_t s = t + 1; s < T; s++) row[s] = 0;
         }
         /* dQ_h += dS · K_h;  dK_h += dSᵀ · Q_h */
-        K(gemm_ld)(dS, T, k + ho, C, dq + ho, C, T, T, HS, 1, GEMM_PLAIN);
-        K(gemm_ld)(dS, T, q + ho, C, dk + ho, C, T, T, HS, 1, GEMM_TA);
+        for (int64_t r0 = 0; r0 < T; r0 += ATT_RB) {
+            int64_t r1 = r0 + ATT_RB < T ? r0 + ATT_RB : T;
+            /* dQ rows [r0, r1) use dS columns [0, r1) */
+            K(gemm_ld)(dS + r0 * T, T, k + ho, C, dq + r0 * C + ho, C, r1 - r0, r1, HS, 1, GEMM_PLAIN);
+            /* dK rows [r0, r1) use dS rows t ≥ r0 (dSᵀ) */
+            K(gemm_ld)(dS + r0 * T + r0, T, q + r0 * C + ho, C, dk + r0 * C + ho, C, r1 - r0, T - r0, HS, 1, GEMM_TA);
+        }
     }
     free(dS);
 }

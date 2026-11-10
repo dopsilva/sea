@@ -55,9 +55,11 @@
 #define GEMM_TA 1      /* A read transposed: element (m, k) at a[k*lda + m] */
 #define GEMM_TB 2      /* B read transposed: element (k, n) at b[n*ldb + k] */
 #define MATVEC_BLOCK 64        /* matvec splits its outputs in blocks of this many columns */
+#define GEMM_MC 96                 /* rows of A per block (a multiple of 6 and 8, so the tiles do not change) */
 #define GEMM_PAR_MIN (1 << 20)
 #define ELEM_PAR_MIN (1 << 16)    /* elements below which swiglu stays on one thread */
-#define ATT_PAR_MIN (1 << 18)     /* T·T·C below which attention stays on one thread */   /* multiply-adds below which a product stays on one thread */
+#define ATT_PAR_MIN (1 << 18)
+#define ATT_RB 64                 /* attention rows per block (the causal triangle is skipped by blocks) */     /* T·T·C below which attention stays on one thread */   /* multiply-adds below which a product stays on one thread */
 
 /* ---- thread pool for the matrix products ----
  *
