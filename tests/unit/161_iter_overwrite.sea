@@ -1,0 +1,28 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- Overwriting the keys of a table or map while iterating over it visits each key
+-- once: an overwrite never grows the container (growing moved the entries, and the
+-- cursor saw one of them twice)
+
+for _, n in [3, 6, 12, 24, 48] do
+    local t = {}
+    local m = [=]
+    for i = 1, n do
+        t["k" .. tostring(i)] = 1
+        m["k" .. tostring(i)] = 1
+    end
+    local tv = 0
+    for k, v in t do
+        tv += 1
+        t[k] = v + 1
+    end
+    local mv = 0
+    for k, v in m do
+        mv += 1
+        m[k] = v + 1
+    end
+    local sum = 0
+    for _, v in t do sum += v end
+    print(n, tv, mv, sum)
+end

@@ -168,12 +168,14 @@ static void table_set(SeaTable *t, SeaValue key, SeaValue val, bool retain_val) 
     if (SEA_UNLIKELY(sea_is_rope(key))) key = sea_rope_key(key);
     sea_store_barrier(&t->obj, key);
     sea_store_barrier(&t->obj, val);
-    // Grow if load factor > 75%
-    if (t->count + 1 > t->cap * 3 / 4) {
+    SeaTableEntry *e = t->cap ? find_entry(t->entries, t->cap, key) : NULL;
+    bool is_new = e == NULL || is_empty(e->key) || is_tombstone(e->key);
+    // Grow if load factor > 75%, only for a new key: overwriting one must not
+    // move the entries (a for-in over the table would see one twice)
+    if (is_new && t->count + 1 > t->cap * 3 / 4) {
         table_resize(t, t->cap * 2);
+        e = find_entry(t->entries, t->cap, key);
     }
-    SeaTableEntry *e = find_entry(t->entries, t->cap, key);
-    bool is_new = is_empty(e->key) || is_tombstone(e->key);
 
     SeaValue old = SEA_NIL_VAL;
     if (is_new) {

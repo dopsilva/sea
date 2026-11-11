@@ -664,3 +664,16 @@ próprio valor e a desligava, e o `RETURN` do módulo já não gravava nada.
 Agora `sea_vm_call` desliga a marca enquanto o callback roda e a restaura
 depois (mesma ideia do bug de módulos de 2026-05). Teste:
 `tests/unit/153_module_callback`.
+
+## `for-in` via uma chave duas vezes ao sobrescrever **(2026-11)**
+
+Atualizar o valor de uma chave que já existia durante um `for-in` sobre a mesma
+tabela (`for k, v in t do t[k] = v + 1 end`) fazia o laço passar duas vezes por
+uma chave, quando a tabela estava no limite de carga (6 chaves em 8 posições,
+por exemplo). `table_set` (e `sea_map_set`) cresciam o vetor **antes** de
+procurar a chave: a sobrescrita de uma chave existente rehasheava tudo, as
+entradas mudavam de posição e o cursor do laço, que é a posição no vetor, via de
+novo uma delas. Achado no cálculo do Simples Nacional do Promptus, numa
+redistribuição de percentuais que somava mais de 100%. Agora a chave é procurada
+primeiro e só uma chave nova faz crescer (como já fazia a tabela sincronizada).
+Teste: `tests/unit/161_iter_overwrite`.

@@ -260,12 +260,15 @@ void sea_map_set(SeaMap *m, SeaValue key, SeaValue val) {
     if (SEA_UNLIKELY(sea_is_rope(key))) key = sea_rope_key(key);
     sea_store_barrier(&m->obj, key);
     sea_store_barrier(&m->obj, val);
-    if (m->count + 1 > m->cap * 3 / 4)
-        smap_resize(m, m->cap * 2);
-
     uint64_t hash = hash64(key);
-    bool found;
-    uint32_t idx = smap_probe(m, key, hash, &found);
+    bool found = false;
+    uint32_t idx = m->cap ? smap_probe(m, key, hash, &found) : 0;
+    /* Grow only for a new key: overwriting one must not move the slots (a
+     * for-in over the map would see one twice) */
+    if (!found && m->count + 1 > m->cap * 3 / 4) {
+        smap_resize(m, m->cap * 2);
+        idx = smap_probe(m, key, hash, &found);
+    }
 
     SeaValue old = SEA_NIL_VAL;
     if (found) {
