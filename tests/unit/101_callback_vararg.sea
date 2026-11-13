@@ -1,0 +1,16 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- A vararg function called back from a native (sea_vm_call) used to free memory
+-- that was not on the heap and crashed.
+local list = require("list")
+
+local r = list.map([1, 2, 3], function(...)
+    return 5
+end)
+print(r[0], r[2])
+
+local r2 = list.map([1, 2, 3], function(x, ...)
+    return x * 10
+end)
+print(r2[0], r2[1], r2[2])

@@ -3813,7 +3813,8 @@ SeaValue sea_vm_call(SeaVM *vm, SeaValue fn_val, SeaValue *args, int argc) {
         frame->base[i] = SEA_NIL_VAL;
     }
     if (nva > 0) {
-        frame->varargs = &fbase[chunk->max_stack];
+        /* on the heap, like every other call: release_varargs frees it */
+        frame->varargs = SEA_ALLOC_N(SeaValue, (size_t)nva);
         frame->vararg_count = nva;
         for (int i = 0; i < nva; i++) {
             frame->varargs[i] = args[chunk->arity + i];
