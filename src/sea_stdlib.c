@@ -152,6 +152,7 @@ static SeaValue fn_is_error(SeaVM *vm, int argc, SeaValue *args) {
 // assert(v, msg?)
 static SeaValue fn_assert(SeaVM *vm, int argc, SeaValue *args) {
     if (argc < 1 || !sea_is_truthy(args[0])) {
+        if (vm->sandboxed) sea_vm_error_noreturn(vm, "assertion failed");   /* a panic, not an exit */
         const char *msg = "assertion failed";
         if (argc > 1) {
             SeaString *s = sea_vm_tostring(vm, args[1]);
@@ -693,7 +694,24 @@ void sea_lib_core_register(SeaVM *vm) {
     sea_vm_register_native(vm, "float32_array", fn_float32_array);
 }
 
+void sea_lib_core_register_safe(SeaVM *vm) {
+    sea_vm_register_native(vm, "type",     fn_type);
+    sea_vm_register_native(vm, "tostring", fn_tostring);
+    sea_vm_register_native(vm, "tonumber", fn_tonumber);
+    sea_vm_register_native(vm, "error",    fn_error);
+    sea_vm_register_native(vm, "is_error", fn_is_error);
+    sea_vm_register_native(vm, "assert",   fn_assert);
+    sea_vm_register_native(vm, "len",      fn_len);
+    sea_vm_register_native(vm, "panic",    fn_panic);
+    sea_vm_register_native(vm, "recover",  fn_recover);
+    sea_vm_register_native(vm, "load",     fn_load);
+    sea_vm_register_native(vm, "int_array",   fn_int_array);
+    sea_vm_register_native(vm, "float_array", fn_float_array);
+    sea_vm_register_native(vm, "float32_array", fn_float32_array);
+}
+
 void sea_stdlib_register(SeaVM *vm) {
+    sea_lib_sandbox_register(vm);
     sea_lib_core_register(vm);
     sea_lib_math_register(vm);
     sea_lib_string_register(vm);

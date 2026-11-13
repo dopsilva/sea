@@ -162,7 +162,20 @@ struct SeaVM {
     uint32_t    gc_nroots, gc_cap, gc_threshold;
     bool        gc_running;
     uint64_t    gc_collections, gc_freed, gc_traversed, gc_buffered;
+
+    /* Sandbox (sea_lib_sandbox.c). A sandboxed VM runs untrusted code: no
+     * goroutines or channels, and an instruction budget. The budget is spent
+     * at loop back-edges and Sea function calls (the only ways to run
+     * forever); when it runs out the VM raises a panic that recover() cannot
+     * stop (`killed`), so a script cannot catch it and carry on. Ordinary VMs
+     * have `sandboxed` false and the checks cost one predictable branch. */
+    bool        sandboxed;
+    bool        killed;        /* budget exhausted: the panic in flight is final */
+    int64_t     budget;        /* steps left (sandboxed VMs only) */
 };
+
+/* Raise the budget panic of a sandboxed VM (does not return). */
+void sea_vm_budget_exceeded(SeaVM *vm) SEA_NORETURN;
 
 /* Convenience accessors — keep existing code working with minimal churn */
 #define vm_globals(vm)  ((vm)->shared->globals)

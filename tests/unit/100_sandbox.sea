@@ -1,0 +1,112 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- sandbox: untrusted code in a VM of its own (src/sea_lib_sandbox.c)
+
+local sb = sandbox.new({budget = 100000, output_limit = 64})
+
+print(sb:load([[
+function soma(a, b)
+  return a + b
+end
+function laco()
+  while true do
+  end
+end
+function laco_for()
+  for i = 1, 1000000000 do
+  end
+end
+function recursao(n)
+  return recursao(n + 1) + 1
+end
+function cauda(n)
+  return cauda(n + 1)
+end
+function teimoso()
+  defer recover()
+  while true do
+  end
+end
+function tenta_io()
+  return io.open("/etc/passwd")
+end
+function tenta_require()
+  return require("fs")
+end
+function tenta_os()
+  return os.exec("id")
+end
+function tenta_net()
+  return net.connect("127.0.0.1", 80)
+end
+function tenta_go()
+  go soma(1, 2)
+end
+function tenta_chan()
+  return chan(1)
+end
+function tenta_assert()
+  assert(false, "x")
+end
+function falha()
+  panic("meu panic")
+end
+function eco(v)
+  return v
+end
+function fala()
+  print("ola", 42)
+  print("uma linha bem longa para passar do limite de saida do teste, mais e mais texto")
+end
+function usa_host(x)
+  return host("dobro", x) + host("dobro", 1)
+end
+function pede_host_ruim()
+  return host("nao_existe")
+end
+counter = 0
+function conta()
+  counter += 1
+  return counter
+end
+]], "s.sea"))
+
+print("soma", sb:call("soma", 2, 3))
+for _, n in ["laco", "laco_for", "recursao", "cauda", "teimoso"] do
+    local r = sb:call(n, 1)
+    print(n, is_error(r), r)
+end
+print("de novo", sb:call("soma", 4, 5))
+for _, n in ["tenta_io", "tenta_require", "tenta_os", "tenta_net", "tenta_go", "tenta_chan", "tenta_assert", "falha"] do
+    local r = sb:call(n)
+    print(n, is_error(r))
+end
+print("api ausente", type(sb:call("soma", 1, 1)))
+
+-- valores atravessam por copia
+local original = {a = 1, lista = [1, 2, [3]], nome = "x", ok = true, n = 1.5, nada = nil}
+local volta = sb:call("eco", original)
+volta.a = 99
+print(original.a, volta.a, volta.lista[2], volta.lista[2][0], volta.nome, volta.ok, volta.n)
+print("funcao nao atravessa", is_error(sb:call("eco", function() end)))
+print("erro volta como erro", is_error(sb:call("eco", error("falhou"))))
+
+-- host
+sb:expose("dobro", function(x) return x * 2 end)
+print("host", sb:call("usa_host", 20))
+print("host ausente", is_error(sb:call("pede_host_ruim")))
+
+-- estado persiste entre chamadas; set cria dados
+print(sb:call("conta"), sb:call("conta"))
+sb:set("counter", 100)
+print(sb:call("conta"))
+
+-- saida limitada
+sb:call("fala")
+print(len(sb:output()) <= 64)
+print(sb:output() == "")
+
+-- erro de compilacao
+print("sintaxe", is_error(sb:load("function (", "ruim.sea")))
+sb:close()

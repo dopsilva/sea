@@ -2395,3 +2395,42 @@ are not evaluated. Written strings are inline (no shared-strings table);
 
 The Sea parser is a built-in module now: `require("sea/parser")`, with no
 build step. See [reference.md](reference.md#module-seaparser).
+
+---
+
+## `sandbox`
+
+Run untrusted Sea code in a VM of its own, inside the host program (built in; no `require`).
+
+```sea
+local sb = sandbox.new({budget = 1000000, output_limit = 16384})
+sb:load(source, "mod.sea")      -- run a chunk: true, or an error value
+sb:expose("dobro", function(x) return x * 2 end)
+sb:call("name", a, b)           -- call a global function: its result, or an error value
+sb:set("name", value)           -- a global data value in the script's VM
+sb:output()                     -- what the script printed since last time (capped), and clear it
+sb:close()
+```
+
+What the script has: `print` (collected, not written), `type`, `tostring`, `tonumber`,
+`error`, `is_error`, `assert`, `len`, `panic`, `recover`, `load`, `int_array`,
+`float_array`, `math`, `string`, `sort`, `utf8`, `list`, and `host(name, ...)` for the
+functions the host exposed with `sb:expose`. Nothing else exists in its VM: no `require`,
+`io`, `os`, `fs`, `net`, `process`, `time`, `sync`, `hash`, `re`, `bigint`; no goroutines
+or channels (`go` and `chan` are errors). `load` compiles into the same restricted VM.
+
+**Budget.** Every `load` / `call` starts with `budget` steps; a step is one loop
+iteration (`while`, `for`, `for-in`) or one Sea function call. When the budget runs out the call
+stops with `error(instruction budget exceeded)`. The script cannot catch it: `recover()` returns
+nil for that panic. The sandbox is usable again afterwards (its globals are kept). A
+call stack overflow, a failed `assert` and an unhandled `?` error are panics in a sandbox
+(in a normal VM they end the process).
+
+**Values** cross by copy: nil, booleans, numbers, strings, arrays, tables, maps, structs
+(as tables) and errors; at most 32 levels deep and 100000 values. A function, channel or
+typed array cannot cross (an error value comes back).
+
+Limits of this version: there is no memory cap (one native call such as `string.rep` can
+still allocate a lot, and the budget does not count the inside of a native function), a
+sandbox's chunks are freed only at process exit (as for `load`), and a panic in a host function exposed with
+`expose` goes on to the host.

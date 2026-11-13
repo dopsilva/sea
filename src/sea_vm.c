@@ -194,8 +194,14 @@ void sea_vm_panic_exit(SeaVM *vm) {
     exit(1);
 }
 
+void sea_vm_budget_exceeded(SeaVM *vm) {
+    vm->killed = true;
+    sea_vm_error_noreturn(vm, "instruction budget exceeded");
+}
+
 SeaValue sea_vm_recover(SeaVM *vm) {
     if (!vm->panicking) return SEA_NIL_VAL;
+    if (vm->killed) return SEA_NIL_VAL;   /* the budget panic cannot be recovered */
     SeaValue v = vm->panic_val;      /* owned: moves to the caller */
     vm->panicking = false;
     vm->panic_val = SEA_NIL_VAL;
@@ -1223,6 +1229,12 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
 #define JIT_BACKEDGE() ((void)0)
 #endif
 
+/* Sandbox budget: one step per loop back-edge and per Sea call. A normal VM
+ * pays one branch on a flag that is never set. */
+#define BUDGET_STEP() do { \
+    if (SEA_UNLIKELY(vm->sandboxed) && SEA_UNLIKELY(--vm->budget < 0)) { SAVE_IP(); sea_vm_budget_exceeded(vm); } \
+} while (0)
+
 /* Cycle-collector safe point (sea_gc.h): between instructions, where no C
  * code holds borrowed pointers. Placed at allocations and returns. */
 #define GC_SAFEPOINT() do { \
@@ -1876,7 +1888,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         uint32_t i = ip[-1];
         int sbx = SEA_INSTR_sBx(i);
         ip += sbx;
-        if (sbx < 0) JIT_BACKEDGE();
+        if (sbx < 0) { BUDGET_STEP(); JIT_BACKEDGE(); }
         DISPATCH();
     }
     lbl_JMP_TRUE: {
@@ -2219,6 +2231,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         uint32_t i = ip[-1];
         int a = SEA_INSTR_A(i), b = SEA_INSTR_B(i), c = SEA_INSTR_C(i);
         SAVE_IP();
+        BUDGET_STEP();
         // R[a] = fn, R[a+1..a+c] = args
         // Returns B values starting at R[a]
         SeaValue fn_val = REG(a);
@@ -2322,6 +2335,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
 
                 /* Slow path: vararg, arity mismatch, or stack overflow */
                 if (vm->frame_count >= SEA_MAX_CALL_DEPTH) {
+                    if (vm->sandboxed) sea_vm_error_noreturn(vm, "call stack overflow");   /* a panic, not an exit */
                     sea_vm_print_traceback(vm);
                     fprintf(stderr, "sea runtime error: call stack overflow\n");
                     exit(1);
@@ -2370,6 +2384,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         /* Self-recursive call: use frame->closure directly, skip upvalue lookup.
          * Same layout as CALL: A=result_reg, B=nret, C=nargs; args at R[A+1..A+C]. */
         SAVE_IP();  /* caller->ip must point past this instruction so RETURN can read it back */
+        BUDGET_STEP();
         uint32_t i = ip[-1];
         int a = SEA_INSTR_A(i), b = SEA_INSTR_B(i), c = SEA_INSTR_C(i);
         SeaClosure *cl = frame->closure;
@@ -2622,13 +2637,13 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                 int64_t idx   = sea_as_int(idx_v) + step;
                 SeaValue new_idx = sea_int_val(idx);
                 REG(a) = new_idx;
-                if (idx <= sea_as_int(limit_v)) { REG(a+3) = new_idx; ip += sbx; JIT_BACKEDGE(); }
+                if (idx <= sea_as_int(limit_v)) { REG(a+3) = new_idx; ip += sbx; BUDGET_STEP(); JIT_BACKEDGE(); }
             } else {
                 int64_t idx   = sea_as_int(idx_v) + step;
                 int64_t limit = sea_as_int(limit_v);
                 SeaValue new_idx = sea_int_val(idx);
                 REG(a) = new_idx;
-                if (idx >= limit) { REG(a+3) = new_idx; ip += sbx; JIT_BACKEDGE(); }
+                if (idx >= limit) { REG(a+3) = new_idx; ip += sbx; BUDGET_STEP(); JIT_BACKEDGE(); }
             }
         } else {
             SAVE_IP();
@@ -2637,7 +2652,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
             double step  = to_number(vm, step_v);
             REG(a) = sea_number_val(idx);
             bool cont = (step > 0) ? (idx <= limit) : (idx >= limit);
-            if (cont) { REG(a+3) = REG(a); ip += sbx; }
+            if (cont) { REG(a+3) = REG(a); ip += sbx; BUDGET_STEP(); }
         }
         DISPATCH();
     }
@@ -2650,7 +2665,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         int64_t idx = sea_as_int(REG(a)) + 1;  /* decoded: see FOR_LOOP */
         SeaValue new_idx = sea_int_val(idx);
         REG(a) = new_idx;
-        if (idx <= sea_as_int(REG(a+1))) { REG(a+3) = new_idx; ip += sbx; JIT_BACKEDGE(); }
+        if (idx <= sea_as_int(REG(a+1))) { REG(a+3) = new_idx; ip += sbx; BUDGET_STEP(); JIT_BACKEDGE(); }
         DISPATCH();
     }
     lbl_FOR_LOOP_INT: {
@@ -2663,12 +2678,12 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
             int64_t idx = sea_as_int(REG(a)) + step;  /* decoded: see FOR_LOOP */
             SeaValue new_idx = sea_int_val(idx);
             REG(a) = new_idx;
-            if (idx <= sea_as_int(REG(a+1))) { REG(a+3) = new_idx; ip += sbx; JIT_BACKEDGE(); }
+            if (idx <= sea_as_int(REG(a+1))) { REG(a+3) = new_idx; ip += sbx; BUDGET_STEP(); JIT_BACKEDGE(); }
         } else {
             int64_t idx = sea_as_int(REG(a)) + step;
             SeaValue new_idx = sea_int_val(idx);
             REG(a) = new_idx;
-            if (idx >= sea_as_int(REG(a+1))) { REG(a+3) = new_idx; ip += sbx; JIT_BACKEDGE(); }
+            if (idx >= sea_as_int(REG(a+1))) { REG(a+3) = new_idx; ip += sbx; BUDGET_STEP(); JIT_BACKEDGE(); }
         }
         DISPATCH();
     }
@@ -2694,6 +2709,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
     // ---- Channels ----
 
     lbl_NEW_CHAN: {
+        if (SEA_UNLIKELY(vm->sandboxed)) { SAVE_IP(); sea_vm_error_noreturn(vm, "channels are not available in a sandbox"); }
         uint32_t i = ip[-1];
         int a = SEA_INSTR_A(i), b = SEA_INSTR_B(i);
         uint32_t cap = sea_is_int(REG(b)) ? (uint32_t)sea_as_int(REG(b)) : 0;
@@ -2785,6 +2801,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
     // ---- Goroutines ----
 
     lbl_GO: {
+        if (SEA_UNLIKELY(vm->sandboxed)) { SAVE_IP(); sea_vm_error_noreturn(vm, "goroutines are not available in a sandbox"); }
         uint32_t i = ip[-1];
         int a = SEA_INSTR_A(i), b = SEA_INSTR_B(i), c = SEA_INSTR_C(i);
         // Spawn goroutine: fn=REG(a), args=REG(b)..REG(b+c-1)
@@ -2918,6 +2935,13 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
              * bytecode caller is left (main chunk, goroutine, callback). */
             if (vm->frame_count - 1 <= base_frame) {
                 SAVE_IP();
+                if (vm->sandboxed) {
+                    SeaString *ms = sea_vm_tostring(vm, ((SeaError*)sea_as_obj(REG(a)))->message);
+                    char buf[300];
+                    snprintf(buf, sizeof buf, "unhandled error: %.250s", ms->data);
+                    sea_obj_release(&ms->obj);
+                    sea_vm_error_noreturn(vm, "%s", buf);
+                }
                 sea_vm_print_traceback(vm);
                 SeaString *s = sea_vm_tostring(vm, ((SeaError*)sea_as_obj(REG(a)))->message);
                 fprintf(stderr, "sea runtime error: unhandled error: %s\n", s->data);
@@ -3072,6 +3096,10 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         uint32_t i = ip[-1];
         int a = SEA_INSTR_A(i), b = SEA_INSTR_B(i);
         if (!sea_is_truthy(REG(a))) {
+            if (vm->sandboxed) {
+                SAVE_IP();
+                sea_vm_error_noreturn(vm, "assertion failed");
+            }
             sea_vm_print_traceback(vm);
             if (b > 0 && !sea_is_nil(REG(b))) {
                 SeaString *msg = sea_vm_tostring(vm, REG(b));

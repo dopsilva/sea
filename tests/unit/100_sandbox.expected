@@ -1,0 +1,27 @@
+true
+soma	5
+laco	true	error(instruction budget exceeded)
+laco_for	true	error(s.sea:9: instruction budget exceeded)
+recursao	true	error(s.sea:13: call stack overflow)
+cauda	true	error(s.sea:16: call stack overflow)
+teimoso	true	error(s.sea:19: instruction budget exceeded)
+de novo	9
+tenta_io	true
+tenta_require	true
+tenta_os	true
+tenta_net	true
+tenta_go	true
+tenta_chan	true
+tenta_assert	true
+falha	true
+api ausente	int
+1	99	[3]	3	x	true	1.5
+funcao nao atravessa	true
+erro volta como erro	true
+host	42
+host ausente	true
+1	2
+101
+true
+true
+sintaxe	true

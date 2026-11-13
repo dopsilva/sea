@@ -17,6 +17,10 @@ void sea_stdlib_register(SeaVM *vm);
 
 // Individual library registrars
 void sea_lib_core_register(SeaVM *vm);
+/* The core functions a sandboxed script may have: no print (the sandbox has its
+ * own), require, chan, close. See sea_lib_sandbox.c. */
+void sea_lib_core_register_safe(SeaVM *vm);
+void sea_lib_sandbox_register(SeaVM *vm);
 void sea_lib_math_register(SeaVM *vm);
 void sea_lib_string_register(SeaVM *vm);
 void sea_lib_io_register(SeaVM *vm);
