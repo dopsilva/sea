@@ -24,6 +24,7 @@
 --   require      require() of a module that cannot be found
 --   dupkey       a key written twice in a table literal
 --   selfassign   x = x
+--   longstring   [[a, b], [c, d]]: `[[` opens a long string, not a nested array
 --
 -- A line ending with the comment `-- check:ignore` gets no diagnostics; with
 -- `-- check:ignore code1 code2` only those codes are skipped there.
@@ -34,7 +35,7 @@ local M = {}
 
 M.CODES = {
     "syntax", "undefined", "unused", "redeclared", "shadow", "unreachable", "args", "format", "require",
-    "dupkey", "selfassign",
+    "dupkey", "selfassign", "longstring",
 }
 
 local ERRORS = {}
@@ -54,7 +55,52 @@ HINTS.ipairs = "iterate with `for i, v in arr do` (0-based)"
 HINTS.unpack = "there is no unpack; index the array"
 HINTS.null = "nil is Sea's null"
 HINTS.None = "nil is Sea's null"
+HINTS.pcall = "there is no pcall; use `defer function() recover() end`"
+HINTS.xpcall = "there is no xpcall; use `defer function() recover() end`"
+HINTS.setmetatable = "there are no metatables; use tables or struct literals with function fields"
+HINTS.min = "use math.min"
+HINTS.max = "use math.max"
+HINTS.abs = "use math.abs"
+HINTS.format = "use string.format"
+HINTS.sprintf = "use string.format"
+HINTS.join = "use string.join(list, sep)"
+HINTS.split = "use string.split(s, sep)"
+HINTS.trim = "use string.trim(s)"
+HINTS.sum = "use list.sum"
+HINTS.range = "use list.range"
+HINTS.sleep = "use time.sleep(n * time.Second)"
+HINTS.exit = "use os.exit(code)"
+HINTS.int = "use tonumber(x)"
+HINTS.float = "use tonumber(x)"
+HINTS.str = "use tostring(x)"
 HINTS.self = "self exists only in functions declared with `:` (function T:m())"
+
+-- what to use instead of a library function other languages have (the same
+-- table the runtime consults, in src/sea_vm.c, for "attempt to call a nil value")
+local LIB_HINTS = {}
+LIB_HINTS["string.gsub"] = "use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl)"
+LIB_HINTS["string.gmatch"] = "use re.all(pattern, s) or string.split"
+LIB_HINTS["string.match"] = "use re.match(pattern, s)"
+LIB_HINTS["string.startswith"] = "use string.starts_with"
+LIB_HINTS["string.endswith"] = "use string.ends_with"
+LIB_HINTS["string.strip"] = "use string.trim"
+LIB_HINTS["string.lstrip"] = "use string.trim"
+LIB_HINTS["string.rstrip"] = "use string.trim"
+LIB_HINTS["string.lines"] = "use string.splitlines"
+LIB_HINTS["list.sort"] = "use sort.sort(list)"
+LIB_HINTS["list.insert"] = "append with list[] = v"
+LIB_HINTS["list.push"] = "append with list[] = v"
+LIB_HINTS["list.append"] = "append with list[] = v"
+LIB_HINTS["list.pop"] = "remove with del list[i]"
+LIB_HINTS["list.remove"] = "remove with del list[i]"
+LIB_HINTS["list.reverse"] = "use list.reversed(list) or sort.reverse"
+LIB_HINTS["list.join"] = "use string.join(list, sep)"
+LIB_HINTS["os.clock"] = "use time.clock()"
+LIB_HINTS["os.date"] = "use time.now() and its methods (see time)"
+LIB_HINTS["os.sleep"] = "use time.sleep(n * time.Second)"
+LIB_HINTS["math.sign"] = "no math.sign: compare with 0"
+LIB_HINTS["math.clamp"] = "use math.max(lo, math.min(hi, x))"
+LIB_HINTS["math.inf"] = "use math.huge"
 
 local builtin_globals = nil
 local module_cache = {}
@@ -342,6 +388,18 @@ function M.source(src, opts)
         out[] = d
     end
 
+    -- `[[a, b], [c, d]]` is a long string, not a nested array (it runs, silently, as text)
+    for i = 0, len(lines) - 1 do
+        local ln = lines[i]
+        local c = re.match("\\[\\[[^\\]\\n]*\\]\\s*,\\s*\\[", ln)
+        if c ~= nil then
+            local pos = {}
+            pos.line = i + 1
+            pos.col = c.start
+            report("longstring", pos, "`[[` opens a long string, not a nested array: write [ [a, b], [c, d] ] (with a space)")
+        end
+    end
+
     local globals = collect_globals(ast, {})
     if opts.globals ~= nil then
         for g, _ in opts.globals do globals[g] = true end
@@ -520,7 +578,12 @@ function M.source(src, opts)
                         end
                     end
                     local msg = n.object.name .. " has no '" .. n.field .. "'"
-                    if best ~= nil and best_d <= (len(n.field) >= 6 and 2 or 1) then msg = msg .. " (did you mean '" .. best .. "'?)" end
+                    local lib_hint = LIB_HINTS[n.object.name .. "." .. n.field]
+                    if lib_hint ~= nil then
+                        msg = msg .. " (" .. lib_hint .. ")"
+                    elseif best ~= nil and best_d <= (len(n.field) >= 6 and 2 or 1) then
+                        msg = msg .. " (did you mean '" .. best .. "'?)"
+                    end
                     report("undefined", n, msg)
                 end
             else

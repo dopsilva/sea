@@ -57,6 +57,7 @@ local cli = flags.new("sea check", {
         "  unreachable  warning  code after return, break, continue or panic",
         "  dupkey       warning  a key written twice in a table literal",
         "  selfassign   warning  x = x",
+        "  longstring   warning  [[a, b], [c, d]]: `[[` opens a long string, not a nested array",
         "",
         "A line ending with `-- check:ignore [codes]` is not checked.",
     }, "\n"),

@@ -1,0 +1,21 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- sea check: names from other languages get a pointer to what Sea has, and
+-- `[[a, b], [c, d]]` (a long string) is reported.
+
+local check = require("sea/check")
+
+local src = string.join({
+    "local t = [3, 1]",
+    "table.sort(t)",
+    "print(string.gsub('a', 'a', 'b'))",
+    "local x = [[1, 2], [3, 4]]",
+    "print(x, pcall)",
+    "local ok = [ [1, 2], [3, 4] ]",
+    "print(ok)",
+}, "\n")
+
+for _, d in check.source(src, {name = "t.sea"}) do
+    print(d.line .. ":" .. d.col .. " [" .. d.code .. "] " .. d.message)
+end
