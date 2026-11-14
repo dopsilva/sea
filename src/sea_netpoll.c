@@ -41,6 +41,7 @@ static bool            g_ok;
 
 static SeaGoroutine  **g_fd_waiter;     /* fd -> goroutine waiting on it */
 static uint32_t       *g_fd_gen;        /* fd -> close generation */
+static uint8_t        *g_fd_shut;       /* fd -> shut down by sea_netpoll_shutdown */
 static int             g_fd_cap;
 
 static SeaGoroutine  **g_heap;          /* deadline min-heap */
@@ -70,7 +71,16 @@ static void fd_reserve(int fd) {          /* g_mu held */
                                       sizeof(*g_fd_gen) * (size_t)nc);
     memset(g_fd_waiter + g_fd_cap, 0, sizeof(*g_fd_waiter) * (size_t)(nc - g_fd_cap));
     memset(g_fd_gen + g_fd_cap, 0, sizeof(*g_fd_gen) * (size_t)(nc - g_fd_cap));
+    g_fd_shut = (uint8_t*)sea_realloc(g_fd_shut, (size_t)g_fd_cap, (size_t)nc);
+    memset(g_fd_shut + g_fd_cap, 0, (size_t)(nc - g_fd_cap));
     g_fd_cap = nc;
+}
+
+static bool fd_is_shut(int fd) {
+    pthread_mutex_lock(&g_mu);
+    bool r = fd >= 0 && fd < g_fd_cap && g_fd_shut[fd];
+    pthread_mutex_unlock(&g_mu);
+    return r;
 }
 
 static uint32_t fd_gen(int fd) {
@@ -199,6 +209,10 @@ static bool poll_register(SeaGoroutine *g, int fd, int events, int64_t deadline)
     pthread_mutex_lock(&g_mu);
     if (fd >= 0) {
         fd_reserve(fd);
+        if (g_fd_shut[fd]) {               /* shut down: the caller reports it */
+            pthread_mutex_unlock(&g_mu);
+            return false;
+        }
         if (g_fd_waiter[fd] && g_fd_waiter[fd] != g) {   /* another waiter */
             pthread_mutex_unlock(&g_mu);
             return false;
@@ -232,6 +246,7 @@ void sea_netpoll_close(int fd) {
     pthread_mutex_lock(&g_mu);
     if (fd < g_fd_cap) {
         g_fd_gen[fd]++;
+        g_fd_shut[fd] = 0;
         SeaGoroutine *g = g_fd_waiter[fd];
         if (g && g->io_waiting) {
             g->vm->io_call.closed = true;  /* parked: nobody else touches it */
@@ -240,6 +255,22 @@ void sea_netpoll_close(int fd) {
     }
     pthread_mutex_unlock(&g_mu);
     close(fd);
+    wake_all(&wl);
+}
+
+void sea_netpoll_shutdown(int fd) {
+    if (fd < 0) return;
+    WakeList wl = {0};
+    pthread_mutex_lock(&g_mu);
+    fd_reserve(fd);
+    g_fd_shut[fd] = 1;
+    g_fd_gen[fd]++;                        /* a thread blocked in poll notices too */
+    SeaGoroutine *g = g_fd_waiter[fd];
+    if (g && g->io_waiting) {
+        g->vm->io_call.closed = true;
+        complete(g, &wl);
+    }
+    pthread_mutex_unlock(&g_mu);
     wake_all(&wl);
 }
 
@@ -264,6 +295,7 @@ int sea_io_wait(SeaVM *vm, int fd, int events) {
     SeaIoCall *io = &vm->io_call;
     int64_t dl = io->deadline;
     if (io->closed) return SEA_IO_CLOSED;
+    if (fd >= 0 && fd_is_shut(fd)) return SEA_IO_CLOSED;
     if (dl && sea_now_ms() >= dl) return SEA_IO_TIMEOUT;
 
     /* In a goroutine whose frame can be resumed: park. */
@@ -275,6 +307,7 @@ int sea_io_wait(SeaVM *vm, int fd, int events) {
      * (fd generation bump) is noticed. */
     uint32_t gen = fd >= 0 ? fd_gen(fd) : 0;
     for (;;) {
+        if (fd >= 0 && fd_is_shut(fd)) return SEA_IO_CLOSED;
         int slice = 200;
         if (dl) {
             int64_t rem = dl - sea_now_ms();

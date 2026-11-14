@@ -476,7 +476,8 @@ static SeaValue net_close(SeaVM *vm, int argc, SeaValue *args) {
 static SeaValue net_shutdown(SeaVM *vm, int argc, SeaValue *args) {
     (void)vm;
     int fd;
-    if (arg_fd(argc, args, &fd)) shutdown(fd, SHUT_RDWR);
+    if (arg_fd(argc, args, &fd) && shutdown(fd, SHUT_RDWR) != 0 && errno == ENOTCONN)
+        sea_netpoll_shutdown(fd);      /* a listening socket off Linux: shutdown() did nothing */
     return SEA_NIL_VAL;
 }
 

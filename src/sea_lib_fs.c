@@ -650,9 +650,17 @@ static SeaValue fs_touch(SeaVM *vm, int argc, SeaValue *args) {
     return r;
 }
 
+/* $TMPDIR without trailing slashes (macOS sets it to ".../T/"): the temporary
+ * names built from it must not contain "//" */
 static const char *tmp_root(void) {
+    static __thread char buf[PATH_MAX];
     const char *t = getenv("TMPDIR");
-    return t && *t ? t : "/tmp";
+    if (!t || !*t) return "/tmp";
+    size_t n = strlen(t);
+    if (n >= sizeof buf) return "/tmp";
+    memcpy(buf, t, n + 1);
+    while (n > 1 && buf[n - 1] == '/') buf[--n] = '\0';
+    return buf;
 }
 
 static SeaValue temp_impl(SeaVM *vm, const char *fn, int argc, SeaValue *args, bool dir) {

@@ -66,3 +66,9 @@ int        sea_io_wait(SeaVM *vm, int fd, int events);
 /* Close fd through the poller: a goroutine waiting on it wakes up (its
  * native sees io->closed). Use instead of close() for pollable fds. */
 void       sea_netpoll_close(int fd);
+
+/* shutdown(2) that also reaches the netpoller: after it every wait on fd, now
+ * or later, ends with SEA_IO_CLOSED until the fd is closed. A listening socket
+ * needs it where shutdown() on one is an error (ENOTCONN: macOS, the BSDs) and
+ * wakes nobody. */
+void       sea_netpoll_shutdown(int fd);

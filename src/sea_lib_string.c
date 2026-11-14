@@ -13,6 +13,8 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include "sea_compat.h"
+#define memmem sea_memmem
 
 /* Convention (docs/memory.md): natives borrow their arguments and return an
  * owned value — a new object with rc=1, or sea_val_ref() of an argument. */

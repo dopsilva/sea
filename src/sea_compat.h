@@ -51,6 +51,14 @@
 #  define SEA_ST_CTIM(st) ((st).st_ctim)
 #endif
 
+/* memmem that, like glibc's, finds an empty needle at the start of the haystack
+ * (macOS's returns NULL for it). */
+#include <string.h>
+static inline void *sea_memmem(const void *h, size_t hl, const void *n, size_t nl) {
+    if (nl == 0) return (void *)h;
+    return memmem(h, hl, n, nl);
+}
+
 /* pipe with both ends close-on-exec. 0 or -1 (errno). */
 int  sea_pipe_cloexec(int p[2]);
 

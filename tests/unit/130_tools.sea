@@ -5,7 +5,7 @@
 local SEA = "./bin/sea"
 local stream = require("sea/stream")
 
-local dir = fs.tempdir("seatools-")
+local dir = fs.realpath(fs.tempdir("seatools-"))   -- resolved: on macOS /var is a link to /private/var
 local function run(args, stdin)
     local cmd = []
     cmd[] = SEA
@@ -285,7 +285,7 @@ fs.write(repos .. "/pad/init.sea", "local M = {}\nfunction M.left(s, n) return s
 sh(repos .. "/pad", "git init -q && git add -A && " .. commit .. " v1 && git tag v1.0.0")
 fs.write(repos .. "/strutil/strutil.sea", "local pad = require(\"pad\")\nlocal M = {}\nM.VERSION = \"1\"\nfunction M.shout(s) return pad.left(string.upper(s), 6) end\nreturn M\n")
 fs.write(repos .. "/strutil/sea.toml", "[package]\nname = \"strutil\"\n\n[dependencies]\npad = { git = \"" .. repos .. "/pad\", tag = \"v1.0.0\" }\n")
-sh(repos .. "/strutil", "git init -q && git add -A && " .. commit .. " v1 && git tag v1.0.0 && sed -i 's/VERSION = \"1\"/VERSION = \"2\"/' strutil.sea && " .. commit ..
+sh(repos .. "/strutil", "git init -q && git add -A && " .. commit .. " v1 && git tag v1.0.0 && sed -i.bak 's/VERSION = \"1\"/VERSION = \"2\"/' strutil.sea && rm -f strutil.sea.bak && " .. commit ..
     " v2 -a && git tag v2.0.0")
 fs.write(dir .. "/proj/main.sea", "local strutil = require(\"strutil\")\nprint(\"[\" .. strutil.shout(\"hi\") .. \"]\", strutil.VERSION)\n")
 local function hide(s) return string.replace(re.gsub("[0-9a-f]{12}", s, "C"), repos, "REPOS") end
