@@ -26,6 +26,7 @@
 #endif
 #if defined(__APPLE__)
 #  include <mach-o/dyld.h>
+#  include <sys/random.h>      /* getentropy */
 #endif
 
 /* ---- descriptors ---------------------------------------------------------- */

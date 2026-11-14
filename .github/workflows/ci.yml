@@ -19,5 +19,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: make noreadline
+      - name: Native libraries
+        # the tests load them; one that does not build is reported, not fatal
+        run: |
+          for l in console compress http ssl jwt websocket xml yaml toml ndarray tensor sqlite; do
+            make -C libs/$l || echo "::warning::libs/$l did not build"
+          done
       - name: Unit tests
         run: make test
