@@ -1,0 +1,10 @@
+if a > 0 and (b == 1 or b == 2 or
+        b == 3) then
+    run()
+end
+while x < 10 and
+        y < 20 do
+    x = x + 1
+end
+
+true

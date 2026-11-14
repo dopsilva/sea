@@ -1,0 +1,22 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- sea fmt: a condition broken over several lines goes one level deeper than the
+-- body, so the continuation cannot be mistaken for the first statement.
+
+local parser = require("sea/parser")
+
+local src = string.join({
+    "if a > 0 and (b == 1 or b == 2 or",
+    "              b == 3) then",
+    "    run()",
+    "end",
+    "while x < 10 and",
+    "      y < 20 do",
+    "    x = x + 1",
+    "end",
+}, "\n") .. "\n"
+
+local out = parser.format(src)
+print(out)
+print(parser.format(out) == out)

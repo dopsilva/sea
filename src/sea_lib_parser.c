@@ -1943,7 +1943,9 @@ static bool print_compound(Printer *P, Obj *s, int limit, bool inl) {
         Obj *n = s;
         outs(P, "if ");
         for (;;) {
+            P->depth++;     /* a broken condition goes one level deeper than the body */
             print_expr(P, tget(n, "cond"));
+            P->depth--;
             outs(P, " then");
             Obj *els = as_node(tget(n, "else_body"));
             int then_limit = !els ? limit
@@ -1962,7 +1964,9 @@ static bool print_compound(Printer *P, Obj *s, int limit, bool inl) {
         }
     } else if (strcmp(type, "while") == 0) {
         outs(P, "while ");
+        P->depth++;
         print_expr(P, tget(s, "cond"));
+        P->depth--;
         outs(P, " do");
         block_part(P, s, as_node(tget(s, "body")), P->stmt_col, limit, inl);
     } else if (strcmp(type, "for_num") == 0) {
