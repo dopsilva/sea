@@ -89,6 +89,9 @@ typedef struct SeaScheduler {
 
     pthread_mutex_t cond_mu;
     pthread_cond_t  work_avail;   /* signalled when new work is pushed     */
+    pthread_cond_t  drained;      /* goroutine_count reached 0 (sea_sched_drain waits here: it must
+                                   * not share work_avail, or a signal meant for a worker can wake
+                                   * the drainer instead and be lost) */
 
     _Atomic int  active;          /* 1 while workers are running, 0 = idle */
     _Atomic bool shutdown;        /* true → workers should exit            */

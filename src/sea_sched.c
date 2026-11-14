@@ -144,6 +144,7 @@ SeaScheduler *sea_sched_new(int worker_count) {
     goropool_init(&s->goro_pool);
     pthread_mutex_init(&s->cond_mu,    NULL);
     pthread_cond_init (&s->work_avail, NULL);
+    pthread_cond_init (&s->drained,    NULL);
     atomic_store(&s->active, 0);
     atomic_store(&s->shutdown, false);
     atomic_store(&s->goroutine_count, 0);
@@ -164,6 +165,7 @@ void sea_sched_free(SeaScheduler *s) {
     goropool_destroy(&s->goro_pool);
     pthread_mutex_destroy(&s->cond_mu);
     pthread_cond_destroy(&s->work_avail);
+    pthread_cond_destroy(&s->drained);
     for (int i = 0; i < s->worker_count; i++) {
         sea_runq_destroy(&s->workers[i].local_q);
     }
@@ -295,7 +297,7 @@ static void* worker_thread(void *arg) {
         int prev = atomic_fetch_sub(&s->goroutine_count, 1);
         if (prev == 1) {
             pthread_mutex_lock(&s->cond_mu);
-            pthread_cond_broadcast(&s->work_avail);
+            pthread_cond_broadcast(&s->drained);
             pthread_mutex_unlock(&s->cond_mu);
         }
 
@@ -364,7 +366,7 @@ void sea_sched_drain(SeaScheduler *s) {
     /* Block until all goroutines have completed */
     pthread_mutex_lock(&s->cond_mu);
     while (atomic_load(&s->goroutine_count) > 0) {
-        pthread_cond_wait(&s->work_avail, &s->cond_mu);
+        pthread_cond_wait(&s->drained, &s->cond_mu);
     }
     pthread_mutex_unlock(&s->cond_mu);
 }
