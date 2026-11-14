@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
 #include <fcntl.h>
 #include "sea_compat.h"
 #include <pthread.h>
@@ -270,6 +271,12 @@ static bool fill_random(unsigned char *buf, size_t n) {
     return got == n;
 }
 
+/* os.time() → whole seconds since the epoch (the same as time.now():unix()) */
+static SeaValue os_time(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm; (void)argc; (void)args;
+    return sea_int_val((int64_t)time(NULL));
+}
+
 /* os.executable() → the absolute path of the running executable (nil if unknown) */
 static SeaValue os_executable(SeaVM *vm, int argc, SeaValue *args) {
     (void)vm; (void)argc; (void)args;
@@ -341,6 +348,7 @@ void sea_lib_os_register(SeaVM *vm) {
     mod_set(vm, mod, "filesize", os_filesize);
     mod_set(vm, mod, "glob",     os_glob);
     mod_set(vm, mod, "executable", os_executable);
+    mod_set(vm, mod, "time",     os_time);
     mod_set(vm, mod, "urandom",  os_urandom);
     mod_set(vm, mod, "token",    os_token);
     mod_set(vm, mod, "uuid",     os_uuid);

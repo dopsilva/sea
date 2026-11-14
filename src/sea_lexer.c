@@ -572,7 +572,7 @@ static SeaToken scan_token(SeaLexer *l) {
         case '^':
             if (match_char(l, '=')) return op_assign(l, BINOP_POW);
             return make_token(l, TK_CARET);
-        case '#': return error_token(l, "unexpected character '#'");
+        case '#': return error_token(l, "unexpected character '#': Sea has no length operator, use len(x)");
         case '&': return make_token(l, TK_AMP);
         case '|': return make_token(l, TK_PIPE);
         case '~':
@@ -611,7 +611,7 @@ static SeaToken scan_token(SeaLexer *l) {
             return make_token(l, TK_ASSIGN);
         case '!':
             if (match_char(l, '=')) return make_token(l, TK_NEQ);
-            return error_token(l, "unexpected character '!'");
+            return error_token(l, "unexpected character '!': negation is `not x` (`!=` is not-equal)");
         case '.':
             if (match_char(l, '.')) {
                 if (match_char(l, '.')) return make_token(l, TK_DOTDOTDOT);

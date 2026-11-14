@@ -1,0 +1,38 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- Errors name the failing value and say what Sea has instead of what other
+-- languages have (table.sort, pcall, #x, ternary, ...). Messages are checked
+-- without the "load:N:" position.
+
+local function run_src(src)
+    local f = load(src)
+    if is_error(f) then return "parse: " .. f.message end
+    local out = "no error"
+    local function run()
+        defer function()
+            local e = recover()
+            if e ~= nil then out = tostring(e) end
+        end
+        f()
+    end
+    run()
+    return out
+end
+
+local cases = [
+    "table.sort(1)",
+    "pcall(print, 1)",
+    "local s = string.gsub('a', 'a', 'b')",
+    "local x = os.clock()",
+    "local o = {}\no.a.b = 1",
+    "local x = nope_function()",
+    "local t = [1]\nlocal n = #t",
+    "local x = 1 ? 2 : 3",
+    "local default = 1",
+    "local x = 1\nif !x then end",
+    "print(math.atan2(1, 1) > 0.78, os.time() > 1700000000)",
+]
+for _, src in cases do
+    print(run_src(src))
+end

@@ -42,6 +42,7 @@ static bool is_name_tok(SeaToken t) {
 static SeaToken advance(SeaParser *p) {
     SeaToken t = sea_lexer_next(&p->lexer);
     p->last_line = t.line;
+    p->last_tk = (int)t.type;
     return t;
 }
 
@@ -90,6 +91,16 @@ static void parser_error(SeaParser *p, const char *fmt, ...) {
     va_start(args, fmt);
     parser_error_va(p, t.line, t.col, fmt, args);
     va_end(args);
+}
+
+/* "expected a name": when the token is a reserved word, say so (a bare
+ * "expected variable name" for `local default = 1` sends the reader hunting). */
+static void parser_name_error(SeaParser *p, const char *what) {
+    SeaToken t = cur(p);
+    if (t.type != TK_ERROR && t.type != TK_IDENT && is_name_tok(t))
+        parser_error(p, "%s: '%.*s' is a reserved word, pick another name", what, t.len, t.start);
+    else
+        parser_error(p, "%s", what);
 }
 
 static bool expect(SeaParser *p, SeaTK tk) {
@@ -869,7 +880,7 @@ static SeaNode* parse_local(SeaParser *p) {
         while (!check(p, TK_RPAREN) && !check(p, TK_EOF) && !p->had_error) {
             SeaToken nt = cur(p);
             if (nt.type != TK_IDENT) {
-                parser_error(p, "expected variable name");
+                parser_name_error(p, "expected variable name");
                 break;
             }
             advance(p);
@@ -899,7 +910,7 @@ static SeaNode* parse_local(SeaParser *p) {
     do {
         SeaToken nt = cur(p);
         if (nt.type != TK_IDENT) {
-            parser_error(p, "expected variable name");
+            parser_name_error(p, "expected variable name");
             break;
         }
         advance(p);
@@ -1136,7 +1147,7 @@ static SeaNode* parse_for(SeaParser *p) {
 
     SeaToken var_tok = cur(p);
     if (var_tok.type != TK_IDENT) {
-        parser_error(p, "expected variable name in for");
+        parser_name_error(p, "expected variable name in for");
         return NULL;
     }
     advance(p);
@@ -1175,7 +1186,7 @@ static SeaNode* parse_for(SeaParser *p) {
     while (match(p, TK_COMMA)) {
         SeaToken vt = cur(p);
         if (vt.type != TK_IDENT) {
-            parser_error(p, "expected variable name in for-in");
+            parser_name_error(p, "expected variable name in for-in");
             break;
         }
         advance(p);
@@ -1526,8 +1537,12 @@ static SeaNode* parse_block_at(SeaParser *p) {
         // new line, be a semicolon (explicit separator), or end the block.
         if (!is_block_end(p) && !check(p, TK_SEMICOLON) && !p->had_error) {
             if (cur(p).line == p->last_line) {
-                parser_error(p, "multiple statements on the same line; "
-                             "use a newline to separate statements");
+                if (p->last_tk == TK_QUESTION)
+                    parser_error(p, "multiple statements on the same line (`?` propagates an error; "
+                                 "Sea has no `c ? a : b`: use if/else, or `c and a or b`)");
+                else
+                    parser_error(p, "multiple statements on the same line; "
+                                 "use a newline (or `;`) to separate statements");
             }
         }
     }

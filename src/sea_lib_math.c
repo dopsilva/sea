@@ -77,6 +77,15 @@ static SeaValue math_acos(SeaVM *vm, int argc, SeaValue *args) {
     return sea_number_val(acos(v));
 }
 
+/* math.atan2(y, x): the name most code from other languages reaches for first */
+static SeaValue math_atan2(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm;
+    if (argc < 2) return SEA_NIL_VAL;
+    double y = sea_is_int(args[0]) ? (double)sea_as_int(args[0]) : sea_as_number(args[0]);
+    double x = sea_is_int(args[1]) ? (double)sea_as_int(args[1]) : sea_as_number(args[1]);
+    return sea_number_val(atan2(y, x));
+}
+
 static SeaValue math_atan(SeaVM *vm, int argc, SeaValue *args) {
     (void)vm;
     if (argc < 1) return SEA_NIL_VAL;
@@ -246,6 +255,7 @@ void sea_lib_math_register(SeaVM *vm) {
     mod_set(vm, mod, "asin",       math_asin);
     mod_set(vm, mod, "acos",       math_acos);
     mod_set(vm, mod, "atan",       math_atan);
+    mod_set(vm, mod, "atan2",      math_atan2);
     mod_set(vm, mod, "log",        math_log);
     mod_set(vm, mod, "log2",       math_log2);
     mod_set(vm, mod, "log10",      math_log10);

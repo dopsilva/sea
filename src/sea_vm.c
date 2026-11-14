@@ -138,6 +138,133 @@ void sea_vm_error_noreturn(SeaVM *vm, const char *fmt, ...) {
     sea_vm_raise(vm, sea_make_error_str(vm, vm->err_msg));
 }
 
+/* ---- Naming the operand of a failed call/index ----------------------------
+ * "attempt to call a nil value" does not say which value. The failing
+ * instruction's register is traced back to the instruction that loaded it
+ * (LOAD_GLOBAL, GET_FIELD, LOAD_UP) to give "(global 'pcall')" or
+ * "(field 'gsub' of global 'string')", and a table of names that other
+ * languages have and Sea does not adds what to use instead. */
+
+static bool op_is_jump(int op) {
+    return op == OP_JMP || op == OP_JMP_TRUE || op == OP_JMP_FALSE || op == OP_JMP_NIL ||
+           op == OP_JMP_NOT_ERR || op == OP_FOR_PREP || op == OP_FOR_LOOP ||
+           op == OP_FOR_LOOP_STEP1 || op == OP_FOR_LOOP_INT || op == OP_FOR_IN_INIT ||
+           op == OP_FOR_IN_NEXT;
+}
+
+static const char *const_name(SeaChunk *c, int k) {
+    if (k < 0 || k >= c->const_len || !sea_is_string(c->constants[k])) return NULL;
+    return SEA_AS_STRING(c->constants[k])->data;
+}
+
+/* What loaded register `reg` just before instruction `idx`: kind 'g' global,
+ * 'f' field, 'u' upvalue (name in *name; *owner is the global the field was
+ * read from, if any). 0: unknown. */
+static int trace_reg(SeaChunk *c, int idx, int reg, const char **name, const char **owner) {
+    *name = NULL;
+    *owner = NULL;
+    for (int j = idx - 1; j >= 0 && j >= idx - 16; j--) {
+        uint32_t ins = c->code[j];
+        int op = (int)(ins & 0xff), a = (int)((ins >> 8) & 0xff);
+        if (op_is_jump(op)) return 0;                 /* a branch may join here */
+        if (op == OP_STORE_GLOBAL || op == OP_STORE_UP || op == OP_SET_FIELD ||
+            op == OP_SET_TABLE || op == OP_SET_ARRAY || op == OP_ARRAY_PUSH) continue;
+        if (a != reg) continue;
+        if (op == OP_LOAD_GLOBAL) {
+            *name = const_name(c, (int)(ins >> 16));
+            return *name ? 'g' : 0;
+        }
+        if (op == OP_GET_FIELD) {
+            *name = const_name(c, (int)((ins >> 24) & 0xff));
+            if (!*name) return 0;
+            const char *n2, *o2;
+            if (trace_reg(c, j, (int)((ins >> 16) & 0xff), &n2, &o2) == 'g') *owner = n2;
+            return 'f';
+        }
+        if (op == OP_LOAD_UP) {
+            int u = (int)((ins >> 16) & 0xff);
+            if (u < c->upval_count && c->upvals[u].name) { *name = c->upvals[u].name; return 'u'; }
+        }
+        return 0;                                     /* some other writer */
+    }
+    return 0;
+}
+
+/* What Sea has instead of a name from Lua, Python or JavaScript. */
+static const char *name_hint(const char *owner, const char *name) {
+    static const struct { const char *key, *hint; } table[] = {
+        { "table",         "there is no 'table' library: sort with sort.sort(list), append with list[] = v, remove with del list[i], length with len(list)" },
+        { "pcall",         "there is no pcall: use `defer function() recover() end` (recover works like Go's)" },
+        { "xpcall",        "there is no xpcall: use `defer function() recover() end`" },
+        { "ipairs",        "iterate directly: for i, v in list do ... end" },
+        { "pairs",         "iterate directly: for k, v in map do ... end" },
+        { "unpack",        "assign directly: local a, b = list[0], list[1]" },
+        { "setmetatable",  "there are no metatables: use tables or struct literals with function fields" },
+        { "min",           "use math.min" }, { "max", "use math.max" }, { "abs", "use math.abs" },
+        { "format",        "use string.format" }, { "sprintf", "use string.format" },
+        { "join",          "use string.join(list, sep)" }, { "split", "use string.split(s, sep)" },
+        { "trim",          "use string.trim(s)" }, { "contains", "use string.contains(s, sub)" },
+        { "sum",           "use list.sum" }, { "range", "use list.range" },
+        { "sleep",         "use time.sleep(n * time.Second)" }, { "exit", "use os.exit(code)" },
+        { "int",           "use tonumber(x) (it returns an int for integer text)" },
+        { "float",         "use tonumber(x)" }, { "str", "use tostring(x)" },
+        { "string.gsub",   "use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl)" },
+        { "string.gmatch", "use re.all(pattern, s) or string.split" },
+        { "string.match",  "use re.match(pattern, s)" },
+        { "string.startswith", "use string.starts_with" }, { "string.endswith", "use string.ends_with" },
+        { "string.strip",  "use string.trim" }, { "string.lstrip", "use string.trim" }, { "string.rstrip", "use string.trim" },
+        { "string.lines",  "use string.splitlines" },
+        { "list.sort",     "use sort.sort(list)" }, { "list.insert", "append with list[] = v" },
+        { "list.push",     "append with list[] = v" }, { "list.append", "append with list[] = v" },
+        { "list.pop",      "remove with del list[i]" }, { "list.remove", "remove with del list[i]" },
+        { "list.reverse",  "use list.reversed(list) or sort.reverse" }, { "list.join", "use string.join(list, sep)" },
+        { "os.clock",      "use time.clock()" }, { "os.date", "use time.now() and its methods (see time)" },
+        { "os.sleep",      "use time.sleep(n * time.Second)" },
+        { "math.sign",     "no math.sign: write `if x > 0 then ... elseif x < 0 then ...`" },
+        { "math.clamp",    "use math.max(lo, math.min(hi, x))" },
+        { "math.tointeger","use tonumber(x) or x // 1" },
+        { "math.inf", "use math.huge" },
+    };
+    char key[96];
+    if (owner) snprintf(key, sizeof key, "%s.%s", owner, name);
+    else snprintf(key, sizeof key, "%s", name);
+    for (size_t i = 0; i < sizeof table / sizeof table[0]; i++)
+        if (strcmp(table[i].key, key) == 0) return table[i].hint;
+    return NULL;
+}
+
+/* Raise "attempt to <verb> a <type> value (<what>) - <hint>". `callee`: the
+ * failing register is the called one (A); otherwise it is the indexed object. */
+static void vm_operand_error(SeaVM *vm, const char *verb, SeaValue v, bool callee) {
+    char what[160] = "", hint[260] = "";
+    if (vm->frame_count > 0) {
+        SeaCallFrame *f = &vm->frames[vm->frame_count - 1];
+        SeaChunk *c = f->closure ? f->closure->chunk : NULL;
+        int idx = c ? (int)(f->ip - 1 - c->code) : -1;
+        if (c && idx >= 0 && idx < c->code_len) {
+            uint32_t ins = c->code[idx];
+            int op = (int)(ins & 0xff), a = (int)((ins >> 8) & 0xff), b = (int)((ins >> 16) & 0xff);
+            int reg = -1;
+            if (op == OP_CALL || op == OP_CALL_SELF || op == OP_CALL_MULTI) reg = a;
+            else if (op == OP_GET_FIELD || op == OP_GET_TABLE || op == OP_GET_TABLE2 || op == OP_GET_ARRAY) reg = b;
+            else if (op == OP_SET_FIELD || op == OP_SET_TABLE || op == OP_SET_ARRAY) reg = a;
+            const char *name, *owner;
+            int kind = reg >= 0 ? trace_reg(c, idx, reg, &name, &owner) : 0;
+            if (kind == 'g') snprintf(what, sizeof what, " (global '%s')", name);
+            else if (kind == 'f' && owner) snprintf(what, sizeof what, " (field '%s' of global '%s')", name, owner);
+            else if (kind == 'f') snprintf(what, sizeof what, " (field '%s')", name);
+            else if (kind == 'u') snprintf(what, sizeof what, " (upvalue '%s')", name);
+            if (kind == 'g' || kind == 'f') {
+                const char *h = name_hint(kind == 'f' ? owner : NULL, name);
+                /* indexing a missing global library: the hint is about the library */
+                if (h) snprintf(hint, sizeof hint, ": %s", h);
+            }
+            (void)callee;
+        }
+    }
+    sea_vm_error_noreturn(vm, "attempt to %s a %s value%s%s", verb, sea_type_name(v), what, hint);
+}
+
 /* ---- Panics ----
  * A panic (panic(v) or a runtime error) unwinds the call stack frame by frame,
  * running each frame's deferred calls (panic_unwind in vm_run_inner). A
@@ -568,7 +695,7 @@ static SeaValue table_get(SeaVM *vm, SeaValue obj_val, SeaValue key) {
         }
         return SEA_NIL_VAL;
     }
-    sea_vm_error_noreturn(vm, "attempt to index a %s value", sea_type_name(obj_val));
+    vm_operand_error(vm, "index", obj_val, false);
 }
 
 static void table_set(SeaVM *vm, SeaValue obj_val, SeaValue key, SeaValue value) {
@@ -632,7 +759,7 @@ static void table_set(SeaVM *vm, SeaValue obj_val, SeaValue key, SeaValue value)
         sea_float32_array_set(SEA_AS_FLOAT32_ARRAY(obj_val), idx, v);
         return;
     }
-    sea_vm_error_noreturn(vm, "attempt to index a %s value", sea_type_name(obj_val));
+    vm_operand_error(vm, "index", obj_val, false);
 }
 
 /* ---- Frame arena ---- */
@@ -2375,7 +2502,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                 chunk = frame->closure->chunk;
             }
         } else {
-            sea_vm_error_noreturn(vm, "attempt to call a %s value", sea_type_name(fn_val));
+            vm_operand_error(vm, "call", fn_val, true);
         }
         DISPATCH();
     }

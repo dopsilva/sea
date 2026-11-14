@@ -11,7 +11,7 @@ panic in defer:	nil	error: 110_panic_recover.sea:82: attempt to index a nil valu
 re-panic:	nil	second
 native callback:	nil	in once
 module body:	nil	error: 110_panic_mod.sea:9: attempt to index a nil value
-goroutine:	error: 110_panic_recover.sea:111: attempt to index a nil value
+goroutine:	error: 110_panic_recover.sea:111: attempt to index a nil value (field 'b')
 hot ok:	4501500	nil
 hot fails:	nil	error: 110_panic_recover.sea:121: attempt to perform arithmetic on nil
 after:	5050

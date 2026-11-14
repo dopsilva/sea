@@ -22,6 +22,7 @@ typedef struct {
     int       func_depth;    // for return validation
     int       depth;         // expression/block nesting (limited)
     int       last_line;     // line of the last consumed token (for same-line check)
+    int       last_tk;       // type of the last consumed token (for hints)
 } SeaParser;
 
 // Initialize parser with source code
