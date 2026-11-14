@@ -4,17 +4,21 @@
 -- tests/run_tests.sea — Sea VM unit test runner
 --
 -- Usage:
---   bin/sea tests/run_tests.sea
+--   bin/sea tests/run_tests.sea [name-substring]
 --
--- Tests run in a goroutine. Main thread blocks on channel receives while the
--- shimmer pthread animates independently at 30 fps.
-
-local console = require("./libs/console/console")
-
--- ---- Helpers ----------------------------------------------------------------
+-- Plain text, one line per test: it reads the same in a terminal, a CI log
+-- and a pipe (no animation, no escape codes). Each test is a .sea file in
+-- tests/unit/ run as ./bin/sea with stdout and stderr merged; it passes when
+-- the exit code is 0 and the output equals its .expected file (a test with no
+-- .expected only has to exit 0). A test that runs longer than TEST_TIMEOUT
+-- seconds (default 60) is killed and counts as a failure, so one hung test
+-- cannot stall the whole run. Exit code 1 if anything failed.
 
 local SEA  = "./bin/sea"
 local UNIT = "./tests/unit"
+
+local timeout_s = tonumber(os.getenv("TEST_TIMEOUT") or "60")
+local filter = os.args[1]
 
 local function trim_trailing_newline(s)
     local n = len(s)
@@ -24,203 +28,98 @@ local function trim_trailing_newline(s)
     return string.sub(s, 1, n)
 end
 
-local function basename(path)
-    local slash = 0
-    local i = 1
-    while i <= len(path) do
-        if string.sub(path, i, i) == "/" then slash = i end
-        i = i + 1
-    end
-    return string.sub(path, slash + 1)
-end
-
-local function strip_ext(name, ext)
-    local elen = len(ext)
-    local nlen = len(name)
-    if nlen > elen and string.sub(name, nlen - elen + 1) == ext then
-        return string.sub(name, 1, nlen - elen)
-    end
-    return name
-end
-
--- ---- Banner -----------------------------------------------------------------
-
-console.writeln("")
-console.write("  ")
-console.shimmer("Sea VM  ·  Unit Test Runner", { duration = 1.2, wave_width = 0.28 })
-console.writeln("")
-console.writeln("")
-
--- ---- Discover tests ---------------------------------------------------------
-
-local files  = os.glob(UNIT, ".sea")
-local total  = len(files)
-local pass   = 0
-local fail   = 0
-local failed = []
-
-console.writeln(
-    "  " .. total .. " testes em " .. UNIT .. "/",
-    { color = "bright_black" }
-)
-console.writeln("")
-
--- ---- Channels for goroutine coordination ------------------------------------
---
--- status_ch: goroutine → main: {index, name} before each test, {done=true} at end
--- result_ch: goroutine → main: {ok, entry} after each test
--- Both unbuffered (size 1) so the goroutine naturally pauses while the test runs.
-
-local status_ch = chan(1)
-local result_ch = chan(1)
-
--- ---- Test runner goroutine --------------------------------------------------
-
-go (function()
+-- the first lines that differ, "-" expected and "+" actual (enough to see why)
+local function first_diff(expected, actual)
+    local e = string.split(expected, "\n")
+    local a = string.split(actual, "\n")
+    local n = len(e)
+    if len(a) > n then n = len(a) end
+    local out = []
     local i = 0
-    while i < total do
-        local sea_file = files[i]
-        local name     = strip_ext(basename(sea_file), ".sea")
-        local exp_file = UNIT .. "/" .. name .. ".expected"
-
-        -- Tell main which test is starting (blocks until main receives)
-        status_ch <- {index = i, name = name}
-
-        -- Run the test
-        local r      = os.exec(SEA .. " " .. sea_file)
-        local actual = trim_trailing_newline(r["output"])
-        local code   = r["code"]
-
-        -- Determine pass / fail
-        local ok    = true
-        local entry = nil
-        if code ~= 0 then
-            ok    = false
-            entry = {name = name, kind = "error", output = actual}
-        else
-            local exp_raw = os.readfile(exp_file)
-            if exp_raw ~= nil then
-                local expected = trim_trailing_newline(exp_raw)
-                if actual ~= expected then
-                    ok    = false
-                    entry = {name = name, kind = "mismatch",
-                             expected = expected, actual = actual}
-                end
-            end
+    while i < n and len(out) < 12 do
+        local el = nil
+        local al = nil
+        if i < len(e) then el = e[i] end
+        if i < len(a) then al = a[i] end
+        if el ~= al then
+            out[] = "      line " .. (i + 1)
+            if el ~= nil then out[] = "      - " .. el end
+            if al ~= nil then out[] = "      + " .. al end
         end
-
-        -- Send result (blocks until main receives)
-        result_ch <- {ok = ok, entry = entry}
-
         i = i + 1
     end
+    return string.join(out, "\n")
+end
 
-    -- Signal completion
-    status_ch <- {done = true}
-end)()
+local all = os.glob(UNIT, ".sea")
+local files = []
+for _, f in all do
+    if filter == nil or string.contains(f, filter) then files[] = f end
+end
+local total = len(files)
+print(total .. " testes em " .. UNIT .. "/ (limite " .. timeout_s .. " s cada)")
 
--- ---- Main: animate shimmer while goroutine runs tests -----------------------
+local pass = 0
+local failed = []
+for _, sea_file in files do
+    local name = string.sub(sea_file, len(UNIT) + 2)
+    name = string.sub(name, 1, len(name) - 4)
+    local exp_file = UNIT .. "/" .. name .. ".expected"
 
-console.shimmer_start("Preparando...", {
-    bar_width  = 24,
-    bar_total  = total,
-    color      = {r = 120, g = 200, b = 255},
-    base       = {r =  25, g =  50, b =  80},
-    wave_width = 0.38,
-})
+    local opts = {}
+    opts.stderr = "stdout"
+    opts.timeout = math.floor(timeout_s * 1000)
+    local t0 = time.now()
+    local r = process.run([SEA, sea_file], opts)
+    local secs = (time.since(t0) // time.Millisecond) / 1000
 
-local running = true
-while running do
-    local s = <-status_ch         -- block here; shimmer thread animates freely
-
-    if s["done"] then
-        running = false
+    local ok = true
+    local why = ""
+    local detail = ""
+    if is_error(r) then
+        ok = false
+        why = "não rodou: " .. r.message
+    elseif r.timed_out then
+        ok = false
+        why = "travou (limite de " .. timeout_s .. " s)"
+        detail = trim_trailing_newline(r.stdout)
+    elseif r.code ~= 0 then
+        ok = false
+        why = "saiu com código " .. r.code
+        detail = trim_trailing_newline(r.stdout)
     else
-        local i    = s["index"]
-        local name = s["name"]
-
-        -- Update the shimmer label + progress bar
-        console.shimmer_update(
-            "Executando teste " .. (i + 1) .. "/" .. total .. ":  " .. name,
-            i,
-            total
-        )
-
-        -- Wait for test result; shimmer thread still animating during os.exec
-        local res = <-result_ch
-
-        if res["ok"] then
-            pass = pass + 1
-        else
-            fail = fail + 1
-            if res["entry"] ~= nil then
-                failed[] = res["entry"]
+        local exp_raw = os.readfile(exp_file)
+        if exp_raw ~= nil then
+            local expected = trim_trailing_newline(exp_raw)
+            local actual = trim_trailing_newline(r.stdout)
+            if actual ~= expected then
+                ok = false
+                why = "saída diferente do .expected"
+                detail = first_diff(expected, actual)
             end
         end
+    end
+
+    if ok then
+        pass = pass + 1
+        print("ok    " .. name .. "  (" .. secs .. " s)")
+    else
+        print("FAIL  " .. name .. "  (" .. secs .. " s): " .. why)
+        if detail ~= "" then
+            -- a crash or a hang: the tail of the output; a mismatch: the diff
+            local lines = string.split(detail, "\n")
+            local from = 0
+            if r.code ~= nil and (r.timed_out or r.code ~= 0) and len(lines) > 15 then from = len(lines) - 15 end
+            for i = from, len(lines) - 1 do print("      " .. lines[i]) end
+        end
+        failed[] = name
     end
 end
 
-console.shimmer_update("Concluído!", total, total)
-console.shimmer_stop()
-
--- ---- Results ----------------------------------------------------------------
-
-console.writeln("")
-
-if fail == 0 then
-    console.write("  ")
-    console.shimmer(
-        "Resultados: " .. pass .. "/" .. total .. " passaram",
-        {
-            duration   = 1.4,
-            color      = {r = 80,  g = 255, b = 120},
-            base       = {r = 20,  g = 80,  b = 40},
-            wave_width = 0.35,
-        }
-    )
-    console.writeln("")
-    console.writeln("")
-    console.writeln("  Todos os testes passaram.", { color = "bright_green", bold = true })
+print("")
+if len(failed) == 0 then
+    print("Resultados: " .. pass .. "/" .. total .. " passaram")
 else
-    local fi = 0
-    while fi < len(failed) do
-        local e = failed[fi]
-        console.write("  FAIL  ", { color = "red", bold = true })
-        console.writeln(e["name"], { color = "white", bold = true })
-
-        if e["kind"] == "error" then
-            local lines = string.split(e["output"], "\n")
-            local li = 0
-            while li < len(lines) do
-                console.writeln("         " .. lines[li], { color = "red", dim = true })
-                li = li + 1
-            end
-        else
-            console.writeln("         esperado:", { color = "bright_black" })
-            local exp_lines = string.split(e["expected"], "\n")
-            local ei = 0
-            while ei < len(exp_lines) and ei < 5 do
-                console.writeln("           + " .. exp_lines[ei], { color = "green", dim = true })
-                ei = ei + 1
-            end
-            console.writeln("         obtido:", { color = "bright_black" })
-            local act_lines = string.split(e["actual"], "\n")
-            local ai = 0
-            while ai < len(act_lines) and ai < 5 do
-                console.writeln("           - " .. act_lines[ai], { color = "red", dim = true })
-                ai = ai + 1
-            end
-        end
-
-        console.writeln("")
-        fi = fi + 1
-    end
-
-    console.writeln(
-        "  Resultados: " .. pass .. "/" .. total .. " passaram  (" .. fail .. " falha(s))",
-        { color = "red", bold = true }
-    )
+    print("Resultados: " .. pass .. "/" .. total .. " passaram (" .. len(failed) .. " falha(s): " .. string.join(failed, ", ") .. ")")
     os.exit(1)
 end
-
-console.writeln("")
