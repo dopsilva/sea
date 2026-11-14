@@ -1,0 +1,23 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- `sea doc string.split` and `sea doc replace` print the signature and the
+-- description of a built-in function; `sea check -` reads the program from
+-- standard input. (Run as ./bin/sea from the repository root.)
+
+local function sea(args, stdin)
+    local cmd = ["./bin/sea"]
+    for _, a in args do cmd[] = a end
+    local opts = {}
+    opts.stderr = "stdout"
+    if stdin ~= nil then opts.stdin = stdin end
+    local r = process.run(cmd, opts)
+    return string.trim(r.stdout)
+end
+
+local out = sea(["doc", "string.split"])
+print(string.contains(out, "string.split(s, sep [, n])"), string.contains(out, "Returns array"))
+local bare = sea(["doc", "starts_with"])
+print(string.contains(bare, "string.starts_with(s, prefix)"))
+print(sea(["doc", "nosuchthing"]))
+print(sea(["check", "-"], "print(pcall)\n"))

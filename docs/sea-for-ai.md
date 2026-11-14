@@ -34,12 +34,20 @@ sea file.sea args...      # run (also: sea run file.sea, or any file starting wi
 sea -e 'print(1 + 1)'     # a one-liner; `sea -` runs a program from stdin
 sea test                  # run the *_test.sea files (sea/test framework)
 sea doc file.sea          # the documentation in the comments
+sea doc string.split      # signature and description of a built-in (or: sea doc split)
+echo 'print(x)' | sea check -   # check a program from stdin (-f json: machine-readable)
 ```
 
 In this repository the binary is `bin/sea` (`make` builds it). `sea check`
 knows the common mistakes of programmers coming from other languages and
 says what to write instead (`undefined variable 'pairs' (iterate with
 'for k, v in t do')`). Run it after every edit.
+
+Runtime errors name the value that failed and, for names from other
+languages, what to use instead: `attempt to call a nil value (field 'gsub' of
+global 'string'): use string.replace(s, old, new) for plain text, or
+re.gsub(pattern, s, repl)`. Read the parenthesis and the hint before
+changing anything else.
 
 ---
 

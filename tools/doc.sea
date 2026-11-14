@@ -238,6 +238,37 @@ end
 
 -- ---- built-in modules -------------------------------------------------------------------
 
+-- the API tables of docs/reference.md: "module.function" → {signature, description}
+local ref_index = nil
+local function ref_lookup(name)
+    if ref_index == nil then
+        ref_index = {}
+        local rows = require("sea/ref")
+        for _, row in rows do ref_index[row[0]] = row end
+    end
+    return ref_index[name]
+end
+
+-- "split(s, sep [, n]) → array" → "s, sep [, n]" and "array"
+local function split_signature(sig)
+    local open = string.find(sig, "(", 1, true)
+    if open == nil then return nil, sig end
+    local depth = 0
+    for i = open, len(sig) do
+        local c = string.sub(sig, i, i)
+        if c == "(" then depth = depth + 1 end
+        if c == ")" then
+            depth = depth - 1
+            if depth == 0 then
+                local tail = string.trim(string.sub(sig, i + 1))
+                if string.starts_with(tail, "→") then tail = string.trim(string.sub(tail, len("→") + 1)) end
+                return string.sub(sig, open + 1, i - 1), tail
+            end
+        end
+    end
+    return nil, sig
+end
+
 local function builtin_module(name)
     local m = require(name)
     local mod = {}
@@ -252,7 +283,16 @@ local function builtin_module(name)
         local v = m[k]
         local kind = type(v) == "function" and "function" or "field"
         local shown = string.replace(name, "sea/", "") .. "." .. k
-        mod.entries[] = new_entry(shown, kind, kind == "function" and "..." or nil, "", 0)
+        local params = kind == "function" and "..." or nil
+        local doc = ""
+        local row = ref_lookup(shown)
+        if row ~= nil then
+            local ps, ret = split_signature(row[1])
+            if ps ~= nil then params = ps end
+            doc = row[2]
+            if ret ~= "" and ps ~= nil then doc = "Returns " .. ret .. ". " .. doc end
+        end
+        mod.entries[] = new_entry(shown, kind, params, doc, 0)
     end
     return mod
 end
@@ -746,8 +786,17 @@ for _, a in args do
         for _, b in BUILTINS do
             if b == a then is_builtin = true end
         end
+        local dot = string.find(a, ".", 1, true)
+        local prefix = dot ~= nil and string.sub(a, 1, dot - 1) or nil
+        local prefix_builtin = false
+        for _, b in BUILTINS do
+            if b == prefix then prefix_builtin = true end
+        end
         if is_builtin then
             builtin = a
+        elseif prefix_builtin and builtin == nil and filter == nil then
+            builtin = prefix                 -- sea doc string.split
+            filter = a
         elseif filter == nil then
             filter = a
         else
@@ -960,6 +1009,21 @@ if filter ~= nil then
         end
     end
     mods = kept
+    if len(mods) == 0 then
+        -- a bare function name (sea doc split): look in the built-in modules
+        for _, b in BUILTINS do
+            local bm = builtin_module(b)
+            local es = []
+            for _, e in bm.entries do
+                if string.ends_with(e.name, "." .. filter) then es[] = e end
+            end
+            if len(es) > 0 then
+                bm.entries = es
+                bm.doc = ""
+                mods[] = bm
+            end
+        end
+    end
     if len(mods) == 0 then
         print("sea doc: nothing named " .. filter)
         os.exit(1)

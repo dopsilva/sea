@@ -43,7 +43,7 @@ local flags = require("sea/flags")
 
 local cli = flags.new("sea check", {
     long = "-",
-    usage = "[-disable CODES] [-only CODES] [-g NAMES] [-all] [-f text|json] [-w] [path ...]",
+    usage = "[-disable CODES] [-only CODES] [-g NAMES] [-all] [-f text|json] [-w] [path ... | -]",
     about = string.join({
         "Checks (errors fail at run time, warnings are probable mistakes):",
         "  syntax       error    the file does not parse or compile",
@@ -98,6 +98,8 @@ for _, p in paths do
             end
             if not hidden and path.ext(f) == ".sea" then files[] = path.normalize(f) end
         end
+    elseif p == "-" then
+        files[] = p                      -- the program on standard input
     elseif fs.exists(p) then
         files[] = p
     else
@@ -110,7 +112,8 @@ end
 local sources = {}
 local globals = {}
 for _, f in files do
-    local src = fs.read(f)
+    local src = nil
+    if f == "-" then src = io.read_all(io.stdin()) else src = fs.read(f) end
     sources[f] = src
     if not is_error(src) then
         for g, _ in check.defined_globals(src) do globals[g] = true end
@@ -135,7 +138,15 @@ local errors = 0
 local warnings = 0
 local json = []
 for _, f in files do
-    local diags = check.file(f, opts)
+    local diags = nil
+    if f == "-" then
+        local so = {}
+        for k, v in opts do so[k] = v end
+        so.name = "<stdin>"
+        diags = check.source(sources[f], so)
+    else
+        diags = check.file(f, opts)
+    end
     for _, d in diags do
         if d.severity == "error" then errors = errors + 1 else warnings = warnings + 1 end
         if format == "json" then

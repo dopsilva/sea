@@ -88,12 +88,16 @@ $(JIT_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(JIT_OBJ_DIR)
 # that `require("sea/...")` finds without a file: gen/sea_modules.h, included
 # by sea_stdlib.c (name=file).
 TOOLS = $(wildcard tools/*.sea)
-MODULES = sea/test=libs/test/test.sea sea/check=tools/lib/check.sea sea/stream=libs/stream/stream.sea sea/flags=libs/flags/flags.sea sea/log=libs/log/log.sea sea/dotenv=libs/dotenv/dotenv.sea
+MODULES = sea/test=libs/test/test.sea sea/check=tools/lib/check.sea sea/stream=libs/stream/stream.sea sea/flags=libs/flags/flags.sea sea/log=libs/log/log.sea sea/dotenv=libs/dotenv/dotenv.sea sea/ref=gen/ref.sea
 GEN_DIR = gen
 CFLAGS += -I$(GEN_DIR)
 
 $(GEN_DIR)/sea_tools.h: $(TOOLS) tools/embed.sh | $(GEN_DIR)
 	sh tools/embed.sh SEA_TOOLS $(TOOLS) > $@
+
+# sea/ref: the API tables of docs/reference.md, for `sea doc <built-in function>`
+$(GEN_DIR)/ref.sea: docs/reference.md tools/refgen.sh | $(GEN_DIR)
+	sh tools/refgen.sh docs/reference.md > $@
 
 $(GEN_DIR)/sea_modules.h: $(foreach m,$(MODULES),$(lastword $(subst =, ,$(m)))) tools/embed.sh | $(GEN_DIR)
 	sh tools/embed.sh SEA_MODULES $(MODULES) > $@

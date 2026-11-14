@@ -9,7 +9,9 @@ Key differences from Lua: arrays are 0-indexed and built with `[]` and `a[] = v`
 `len(x)` instead of `#x`; `for k, v in t do` instead of pairs/ipairs; one statement
 per line; `{x = 1}` is a sealed struct; maps are `[=]`; errors are values
 (`error("msg")`, `is_error(v)`, postfix `?`); no pcall, metatables or Lua patterns.
-Check code with `sea check file.sea` and format it with `sea fmt file.sea`.
+Check code with `sea check file.sea` (or `sea check -` on stdin, `-f json`), format it with
+`sea fmt file.sea`, look up a built-in with `sea doc string.split`. Errors name the failing value and
+say what Sea has instead of `table.sort`, `pcall`, `string.gsub`, `#x`, `?:`.
 
 ## Docs
 
