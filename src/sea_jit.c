@@ -165,6 +165,14 @@ static bool load_gccjit(void) {
 
 /* ---- Which opcodes Phase 1 can compile ------------------------------------ */
 
+static bool op_supported(SeaOpcode op);
+/* RETURN/CALL with B=255 (`return f(x)` forwarding all results): interpreter only */
+static bool instr_supported(uint32_t in) {
+    SeaOpcode op = (SeaOpcode)SEA_INSTR_OP(in);
+    if ((op == OP_RETURN || op == OP_CALL || op == OP_CALL_SELF) && SEA_INSTR_B(in) == 255) return false;
+    return op_supported(op);
+}
+
 static bool op_supported(SeaOpcode op) {
     switch (op) {
         case OP_LOAD_NIL: case OP_LOAD_TRUE: case OP_LOAD_FALSE:
@@ -247,7 +255,7 @@ static bool plan_chunk(SeaChunk *c, uint8_t *entry) {
     for (int idx = 0; idx < n; idx++) {
         uint32_t in = c->code[idx];
         SeaOpcode op = (SeaOpcode)SEA_INSTR_OP(in);
-        if (!op_supported(op)) { all_supported = false; continue; }
+        if (!instr_supported(in)) { all_supported = false; continue; }
         if (!op_is_jump(op)) continue;
         int t = idx + 1 + SEA_INSTR_sBx(in);
         if (t < 0 || t >= n) return false;     /* bad target */
@@ -255,7 +263,7 @@ static bool plan_chunk(SeaChunk *c, uint8_t *entry) {
 
         int bad = -1;
         for (int j = t; j <= idx && bad < 0; j++)
-            if (!op_supported((SeaOpcode)SEA_INSTR_OP(c->code[j]))) bad = j;
+            if (!instr_supported(c->code[j])) bad = j;
         if (bad < 0) {
             entry[t] = 1;
             clean_loop = true;
@@ -264,7 +272,7 @@ static bool plan_chunk(SeaChunk *c, uint8_t *entry) {
                     c->name ? c->name : "?", t, idx);
             for (int j = bad; j <= idx; j++) {
                 SeaOpcode bop = (SeaOpcode)SEA_INSTR_OP(c->code[j]);
-                if (!op_supported(bop)) fprintf(stderr, " %s", sea_opcode_name(bop));
+                if (!instr_supported(c->code[j])) fprintf(stderr, " %s", sea_opcode_name(bop));
             }
             fputc('\n', stderr);
         }
@@ -1595,7 +1603,7 @@ static void compute_reachable(SeaChunk *c, const uint8_t *entry, uint8_t *reach)
             uint32_t in = c->code[idx];
             SeaOpcode op = (SeaOpcode)SEA_INSTR_OP(in);
             int nx = -1, tg = -1;
-            if (!op_supported(op) || op == OP_RETURN || op == OP_RETURN0) {
+            if (!instr_supported(in) || op == OP_RETURN || op == OP_RETURN0) {
                 /* bail or return: no successor */
             } else if (op == OP_JMP) {
                 tg = idx + 1 + SEA_INSTR_sBx(in);

@@ -450,7 +450,7 @@ void sea_op_reads(uint32_t in, SeaRegRanges *r) {
     case OP_CALL: case OP_CALL_SELF: case OP_CALL_MULTI: case OP_TAIL_CALL:
         rr_add(r, a, c == 255 ? 255 : a + c); break;   /* fn + args (255: varargs) */
     case OP_RETURN: case OP_PRINT:        /* R[A..A+B-1] */
-        rr_add(r, a, a + b - 1); break;
+        rr_add(r, a, b == 255 ? 255 : a + b - 1); break;
     case OP_DEFER:                        /* fn + B args */
         rr_add(r, a, a + b); break;
     case OP_GO:                           /* fn R[A], args R[B..B+C-1] */

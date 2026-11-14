@@ -103,6 +103,7 @@ struct SeaVM {
     // Call stack
     SeaCallFrame frames[SEA_MAX_CALL_DEPTH];
     int          frame_count;
+    int          ret_n;          /* results of the last call made with B=255 (return f(x)) */
 
     // Open upvalue chain (sorted by register address, highest first)
     SeaUpvalue  *open_upvalues;

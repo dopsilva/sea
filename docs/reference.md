@@ -1643,6 +1643,10 @@ local sql = query:from("clientes")
 ```sea
 function divmod(a, b) return a // b, a % b end
 local q, r = divmod(10, 3)
+
+-- `return f(x)` passes on every value f returns
+function wrapped(a, b) return divmod(a, b) end
+local q2, r2 = wrapped(10, 3)
 ```
 
 ### Variadic functions

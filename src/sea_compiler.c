@@ -3317,9 +3317,24 @@ static void compile_stmt(SeaCompiler *c, SeaNode *node) {
                     emit_abc(c, OP_RETURN, reg, 1, 0, line);
                 } else {
                     int reg = compile_expr(c, e, -1);
+                    /* `return f(x)` hands over every value f returns: the
+                     * CALL asks for all (B=255) and RETURN takes the count
+                     * from the VM. Not for method calls (their result is
+                     * moved down by one register) nor calls that are not
+                     * the last instruction. */
+                    int nr = 1;
+                    if (e->type == NODE_CALL && c->chunk->code_len > 0) {
+                        uint32_t last = c->chunk->code[c->chunk->code_len - 1];
+                        SeaOpcode lop = SEA_INSTR_OP(last);
+                        if ((lop == OP_CALL || lop == OP_CALL_SELF) && SEA_INSTR_A(last) == reg &&
+                            SEA_INSTR_B(last) == 1) {
+                            c->chunk->code[c->chunk->code_len - 1] = (last & 0xFF00FFFF) | (255u << 16);
+                            nr = 255;
+                        }
+                    }
                     own_temp(c, reg, line);
                     emit_locals_cleanup(c, 0, false, -1, line);
-                    emit_abc(c, OP_RETURN, reg, 1, 0, line);
+                    emit_abc(c, OP_RETURN, reg, nr, 0, line);
                     c->reg_meta[reg].is_owned = 0;
                     free_reg(c, reg);
                 }

@@ -1,0 +1,26 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- `return f(x)` passes along every value f returns.
+local function two() return 1, 2 end
+local function none() return end
+local function fwd() return two() end
+local function fwd0() return none() end
+local function nat() return tostring(5) end
+local function deep(n)
+    if n == 0 then return two() end
+    return deep(n - 1)
+end
+local a, b = fwd()
+print(a, b)
+print(fwd0())
+print(nat())
+local x, y = deep(5)
+print(x, y)
+local t = {m = function(self) return 7, 8 end}
+local function viam() return t:m() end
+print(viam())
+local c = fwd()
+print(c)
+for i = 1, 3000 do local p, q = fwd(); if q ~= 2 then print("bad") end end
+print("ok")

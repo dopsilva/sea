@@ -104,8 +104,10 @@ changing anything else.
 16. **A float with an integral value prints without `.0`**: `print(3.0)`
     shows `3`. Use `type(v)` to tell `int` from `number`.
 17. **A function call in an expression list gives one value.**
-    `print(f())`, `return f()`, `{f()}` and `g(f())` all keep only the first
-    result. Only `local a, b = f()` (and `a, b = f()`) receive several.
+    `print(f())`, `{f()}` and `g(f())` keep only the first result. Only
+    `local a, b = f()` (and `a, b = f()`) receive several, and `return f()`
+    passes all of f's results on (not `return obj:m()`: a method call keeps
+    one; assign it to locals to get more).
     Varargs do pass through: `return g(...)`, `[a, ...]`, `{...}` and
     `local x, y = ...` take all of them.
 18. **Not-equal is `~=`** (`!=` is accepted too). Logical operators are the

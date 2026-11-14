@@ -1308,6 +1308,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
             if (vm->open_upvalues) close_upvalues(vm, (_nf)->base); \
             vm->frame_arena_used = (_nf)->arena_mark; \
             vm->frame_count--; \
+            if ((_nf)->expected_ret < 0) vm->ret_n = _nret; \
             deliver_results(&base[(_a)], (_nf)->base, _nret, (_nf)->expected_ret); \
             DISPATCH(); \
         } \
@@ -2333,6 +2334,8 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         // R[a] = fn, R[a+1..a+c] = args
         // Returns B values starting at R[a]
         SeaValue fn_val = REG(a);
+        /* B=255: `return f(x)` forwards every result; the count lands in vm->ret_n */
+        int eb = (b == 255) ? -1 : b;
         /* C=255: vararg call - argc = (fixed args already pushed) + vararg_count.
          * The compiler emitted OP_VARARG with B=0 before this CALL, expanding varargs
          * into the registers right after the fixed args. */
@@ -2399,7 +2402,8 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                     frame->ip = ip - 1;
                     return SEA_SUSPENDED;
                 }
-                native_call_done(base, a, b, argc, result);
+                if (SEA_UNLIKELY(b == 255)) vm->ret_n = 1;
+                native_call_done(base, a, b == 255 ? 1 : b, argc, result);
                 if (SEA_UNLIKELY(vm->panic_propagating)) {   /* from a callback */
                     SAVE_IP();
                     goto panic_unwind;
@@ -2418,7 +2422,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                     nf->closure = cl;
                     nf->ip = callee_chunk->code;
                     nf->base = &base[a + 1];
-                    nf->expected_ret = b;
+                    nf->expected_ret = eb;
                     nf->defer_base = vm->defer_count;
                     nf->vararg_count = 0;
                     nf->varargs = NULL;
@@ -2443,7 +2447,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                 new_frame->ip = callee_chunk->code;
                 /* Base points at arg0: args are already in the right slots. */
                 new_frame->base = &base[a + 1];
-                new_frame->expected_ret = b;
+                new_frame->expected_ret = eb;
                 new_frame->defer_base = vm->defer_count;
                 new_frame->arena_mark = vm->frame_arena_used;
 
@@ -2494,7 +2498,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
             nf->closure = cl;
             nf->ip = callee_chunk->code;
             nf->base = &base[a + 1];
-            nf->expected_ret = b;
+            nf->expected_ret = b == 255 ? -1 : b;
             nf->defer_base = vm->defer_count;
             nf->vararg_count = 0;
             nf->varargs = NULL;
@@ -2557,6 +2561,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
     lbl_RETURN: {
         uint32_t i = ip[-1];
         int a = SEA_INSTR_A(i), b = SEA_INSTR_B(i);
+        if (SEA_UNLIKELY(b == 255)) b = vm->ret_n;   /* `return f(x)`: as many as f gave */
 
         /* Fast path: skip defer/upvalue teardown when nothing is pending */
         if (SEA_UNLIKELY(vm->defer_count > frame->defer_base || vm->open_upvalues != NULL)) {
@@ -2587,8 +2592,11 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         // The function was at R[fn_reg] in the caller's frame
         uint32_t call_instr = caller->ip[-1];
         int fn_reg = SEA_INSTR_A(call_instr);
-        deliver_results(&caller->base[fn_reg], &base[a], b,
-                        vm->frames[vm->frame_count].expected_ret);
+        {
+            int er = vm->frames[vm->frame_count].expected_ret;
+            if (er < 0) vm->ret_n = b;
+            deliver_results(&caller->base[fn_reg], &base[a], b, er);
+        }
 
         frame = caller;
         base = frame->base;
@@ -2620,6 +2628,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
         uint32_t call_instr = caller->ip[-1];
         int fn_reg = SEA_INSTR_A(call_instr);
         int exp_ret = vm->frames[vm->frame_count].expected_ret;
+        if (exp_ret < 0) vm->ret_n = 0;
         if (exp_ret > 0) {
             // Fill with nil
             for (int j = 0; j < exp_ret; j++) {
