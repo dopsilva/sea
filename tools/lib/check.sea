@@ -24,6 +24,7 @@
 --   require      require() of a module that cannot be found
 --   dupkey       a key written twice in a table literal
 --   selfassign   x = x
+--   sealed       x.k = v where x was built from a {a = 1} literal that has no field k (a runtime error)
 --   longstring   [[a, b], [c, d]]: `[[` opens a long string, not a nested array
 --
 -- A line ending with the comment `-- check:ignore` gets no diagnostics; with
@@ -35,7 +36,7 @@ local M = {}
 
 M.CODES = {
     "syntax", "undefined", "unused", "redeclared", "shadow", "unreachable", "args", "format", "require",
-    "dupkey", "selfassign", "longstring",
+    "dupkey", "selfassign", "longstring", "sealed",
 }
 
 local ERRORS = {}
@@ -44,6 +45,7 @@ ERRORS.undefined = true
 ERRORS.require = true
 ERRORS.args = true
 ERRORS.format = true
+ERRORS.sealed = true
 
 -- what to say about names from other languages: tools/hints.txt, the same
 -- table the runtime uses for "attempt to call a nil value"
@@ -489,6 +491,9 @@ function M.source(src, opts)
                 expr(n.callee)
             end
             args_of(n)
+            if v == nil and n.callee.type == "ident" and n.callee.name == "recover" and len(n.args) > 0 then
+                report("args", n, "recover() takes no arguments and does not call anything: use it inside a deferred call, defer function() local e = recover() ... end()")
+            end
             local fixed = len(n.args) - (expands(n.args) and 1 or 0)
             if v ~= nil and v.params ~= nil and not v.vararg and fixed > v.params then
                 report("args", n, "'" .. v.name .. "' takes " .. tostring(v.params) .. " argument" .. (v.params == 1 and "" or "s") ..
@@ -560,12 +565,24 @@ function M.source(src, opts)
         end
     end
 
+    -- the field names of a {a = 1, b = 2} literal (a sealed struct), else nil
+    local function sealed_fields(n)
+        if n.type ~= "table" or len(n.fields) == 0 then return nil end
+        local out = {}
+        for _, f in n.fields do
+            if f.key == nil or f.key.type ~= "string" then return nil end
+            out[f.key.value] = true
+        end
+        return out
+    end
+
     -- an assignment target
     local function target(n)
         if n.type == "ident" then
             local v = lookup(n.name)
             if v ~= nil then
                 v.written = true
+                v.sealed = nil
                 v.params = nil -- no longer known to be that function
             end
         elseif n.type == "index" then
@@ -573,6 +590,13 @@ function M.source(src, opts)
             expr(n.index)
         elseif n.type == "field" then
             expr(n.object)
+            if n.object.type == "ident" then
+                local v = lookup(n.object.name)
+                if v ~= nil and v.sealed ~= nil and not v.sealed[n.field] then
+                    report("sealed", n, "'" .. n.object.name .. "' was built from a {...} literal, which fixes its fields: '" .. n.field ..
+                        "' is not one of them (build it with {} and assign every field, or use a map [=])")
+                end
+            end
         else
             expr(n)
         end
@@ -598,6 +622,7 @@ function M.source(src, opts)
                 for _, v in s.values do expr(v) end
                 for i, nm in s.names do
                     local v = declare(nm, s, "local")
+                    if v ~= nil and i < len(s.values) then v.sealed = sealed_fields(s.values[i]) end
                     if v ~= nil and i < len(s.values) and s.values[i].type == "func" then
                         local p = 0
                         local va = false

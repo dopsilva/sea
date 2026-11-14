@@ -705,7 +705,7 @@ static void table_set(SeaVM *vm, SeaValue obj_val, SeaValue key, SeaValue value)
                 return;
             }
             if (!sea_struct_set(st, SEA_AS_STRING(key), value)) {
-                sea_vm_error_noreturn(vm, "attempt to add field '%s' to sealed struct",
+                sea_vm_error_noreturn(vm, "attempt to add field '%s' to a sealed struct (a {a = 1} literal fixes its fields: build with {} and assign, or use a map [=])",
                                      SEA_AS_STRING(key)->data);
             }
             return;
@@ -1191,7 +1191,7 @@ static void vm_set_field_move(SeaVM *vm, SeaValue *base, int a, int c, SeaValue 
             sea_struct_init_field_borrow(st, SEA_AS_STRING(key), v);
         } else if (!sea_struct_set_move(st, SEA_AS_STRING(key), v)) {
             vm_release_val(v);
-            sea_vm_error_noreturn(vm, "attempt to add field '%s' to sealed struct",
+            sea_vm_error_noreturn(vm, "attempt to add field '%s' to a sealed struct (a {a = 1} literal fixes its fields: build with {} and assign, or use a map [=])",
                                   SEA_AS_STRING(key)->data);
         }
     } else if (sea_is_obj(obj_v) && sea_as_obj(obj_v)->type == OBJ_TABLE) {
@@ -2148,7 +2148,7 @@ static int vm_run_inner(SeaVM *vm, int base_frame, bool top, bool unwind) {
                 sea_struct_init_field(st, key_str, REG(c));
             } else if (!sea_struct_set(st, key_str, REG(c))) {
                 SAVE_IP();
-                sea_vm_error_noreturn(vm, "attempt to add field '%s' to sealed struct",
+                sea_vm_error_noreturn(vm, "attempt to add field '%s' to a sealed struct (a {a = 1} literal fixes its fields: build with {} and assign, or use a map [=])",
                                      key_str->data);
             }
         } else {
@@ -3525,7 +3525,7 @@ int sea_jit_set_field(SeaVM *vm, SeaValue *base, int a, int c, SeaValue key) {
         if (st->building_remaining > 0) {
             sea_struct_init_field(st, key_str, base[c]);
         } else if (!sea_struct_set(st, key_str, base[c])) {
-            sea_vm_error_noreturn(vm, "attempt to add field '%s' to sealed struct",
+            sea_vm_error_noreturn(vm, "attempt to add field '%s' to a sealed struct (a {a = 1} literal fixes its fields: build with {} and assign, or use a map [=])",
                                   key_str->data);
         }
     } else {

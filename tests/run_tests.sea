@@ -13,11 +13,14 @@
 -- .expected only has to exit 0). A test that runs longer than TEST_TIMEOUT
 -- seconds (default 60) is killed and counts as a failure, so one hung test
 -- cannot stall the whole run. Exit code 1 if anything failed.
+-- Only failures (with the first lines of the difference) and the summary are
+-- printed; TEST_VERBOSE=1 also prints one "ok" line per passing test.
 
 local SEA  = "./bin/sea"
 local UNIT = "./tests/unit"
 
 local timeout_s = tonumber(os.getenv("TEST_TIMEOUT") or "60")
+local verbose = os.getenv("TEST_VERBOSE") == "1"
 local filter = os.args[1]
 
 local function trim_trailing_newline(s)
@@ -102,7 +105,7 @@ for _, sea_file in files do
 
     if ok then
         pass = pass + 1
-        print("ok    " .. name .. "  (" .. secs .. " s)")
+        if verbose then print("ok    " .. name .. "  (" .. secs .. " s)") end
     else
         print("FAIL  " .. name .. "  (" .. secs .. " s): " .. why)
         if detail ~= "" then

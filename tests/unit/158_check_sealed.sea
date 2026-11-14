@@ -1,0 +1,24 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- sea check: adding a field to a {a = 1} literal (sealed struct) and calling
+-- recover(fn) are reported before the program runs.
+
+local check = require("sea/check")
+
+local src = string.join({
+    "local p = {x = 1, y = 2}",
+    "p.x = 5",
+    "p.z = 3",
+    "local q = {}",
+    "q.z = 1",
+    "local r = {a = 1}",
+    "r = [=]",
+    "r.b = 2",
+    "print(p, q, r)",
+    "print(recover(function() return 1 end))",
+}, "\n")
+
+for _, d in check.source(src, {name = "t.sea"}) do
+    print(d.line .. ":" .. d.col .. " [" .. d.code .. "] " .. d.message)
+end

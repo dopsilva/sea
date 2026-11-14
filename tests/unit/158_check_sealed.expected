@@ -1,0 +1,2 @@
+3:2 [sealed] 'p' was built from a {...} literal, which fixes its fields: 'z' is not one of them (build it with {} and assign every field, or use a map [=])
+10:14 [args] recover() takes no arguments and does not call anything: use it inside a deferred call, defer function() local e = recover() ... end()
