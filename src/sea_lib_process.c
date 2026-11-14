@@ -37,8 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/epoll.h>
-#include <sys/syscall.h>
+#include "sea_compat.h"
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -251,11 +250,11 @@ static int spawn(Spec *sp, pid_t *pid_out, int fds[3]) {
     int devnull = -1, err = 0;
     fds[0] = fds[1] = fds[2] = -1;
     for (int i = 0; i < 3; i++) {
-        if (sp->mode[i] == IO_PIPE && pipe2(p[i], O_CLOEXEC) != 0) { err = errno; goto fail; }
+        if (sp->mode[i] == IO_PIPE && sea_pipe_cloexec(p[i]) != 0) { err = errno; goto fail; }
         if (sp->mode[i] == IO_NULL && devnull < 0 && (devnull = open("/dev/null", O_RDWR | O_CLOEXEC)) < 0) { err = errno; goto fail; }
     }
     int ep[2];
-    if (pipe2(ep, O_CLOEXEC) != 0) { err = errno; goto fail; }
+    if (sea_pipe_cloexec(ep) != 0) { err = errno; goto fail; }
     pid_t pid = fork();
     if (pid < 0) { err = errno; close(ep[0]); close(ep[1]); goto fail; }
     if (pid == 0) {
@@ -273,8 +272,12 @@ static int spawn(Spec *sp, pid_t *pid_out, int fds[3]) {
             if (src >= 0 && dup2(src, target) < 0) goto child_fail;
         }
         if (sp->cwd && chdir(sp->cwd) != 0) goto child_fail;
-        if (sp->envp) execvpe(sp->argv[0], sp->argv, sp->envp);
-        else execvp(sp->argv[0], sp->argv);
+        if (sp->envp) {
+            /* execvpe is a GNU extension: the child is about to exec, so it can
+             * simply replace its own environment and use execvp */
+            environ = sp->envp;
+            execvp(sp->argv[0], sp->argv);
+        } else execvp(sp->argv[0], sp->argv);
     child_fail: {
             int e = errno;
             ssize_t w = write(ep[1], &e, sizeof e);
@@ -326,6 +329,7 @@ static void status_fields(SeaTable *t, int status) {
 typedef struct {
     pid_t  pid;
     int    in, out, err, ep, pidfd;
+    bool   armed;
     Buf    o, e;
     char  *input;
     size_t in_len, in_off;
@@ -337,20 +341,12 @@ static void run_free(Run *r) {
     if (r->in >= 0) close(r->in);
     if (r->out >= 0) close(r->out);
     if (r->err >= 0) close(r->err);
-    if (r->pidfd >= 0) close(r->pidfd);
+    if (r->pidfd >= 0) sea_mux_del_pid(r->ep, r->pidfd, r->pid);
     if (r->ep >= 0) sea_netpoll_close(r->ep);
     free(r->o.d);
     free(r->e.d);
     free(r->input);
     free(r);
-}
-
-static void ep_add(int ep, int fd, uint32_t events) {
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof ev);
-    ev.events = events;
-    ev.data.fd = fd;
-    epoll_ctl(ep, EPOLL_CTL_ADD, fd, &ev);
 }
 
 /* Read what is available from *fd into b; close it at end of stream. */
@@ -361,9 +357,38 @@ static void drain(Run *r, int *fd, Buf *b) {
         if (n > 0) { buf_push(b, chunk, (size_t)n); continue; }
         if (n < 0 && errno == EINTR) continue;
         if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return;
-        epoll_ctl(r->ep, EPOLL_CTL_DEL, *fd, NULL);
+        sea_mux_del(r->ep, *fd);
         close(*fd);
         *fd = -1;
+    }
+}
+
+/* Put what process.run waits for into its multiplexer. With epoll (Linux) the
+ * interest is level-triggered and stays registered, so this only has to run
+ * once. With kqueue the multiplexer is itself waited on as a file descriptor
+ * but nobody reads its events, so each interest is one-shot and is registered
+ * again on every turn of the loop (a registration that finds the fd already
+ * ready fires at once, so nothing is lost); events left over from the last
+ * turn are discarded first. */
+static void run_arm(Run *r) {
+    if (r->ep < 0) return;
+#ifdef SEA_MUX_KQUEUE
+    int stale[16];
+    while (sea_mux_wait(r->ep, stale, 16, 0) > 0) {}
+    bool oneshot = true;
+#else
+    if (r->armed) return;
+    r->armed = true;
+    bool oneshot = false;
+#endif
+    if (r->out >= 0) sea_mux_add(r->ep, r->out, SEA_MUX_READ, oneshot);
+    if (r->err >= 0) sea_mux_add(r->ep, r->err, SEA_MUX_READ, oneshot);
+    if (r->in >= 0) sea_mux_add(r->ep, r->in, SEA_MUX_WRITE, oneshot);
+    if (!r->exited) {
+        if (r->pidfd < 0 || oneshot) {
+            int h = sea_mux_add_pid(r->ep, r->pid);
+            if (h >= 0) r->pidfd = h;
+        }
     }
 }
 
@@ -377,7 +402,7 @@ static void feed(Run *r) {
         break;                                     /* EPIPE: the child does not read */
     }
     if (r->in >= 0) {
-        epoll_ctl(r->ep, EPOLL_CTL_DEL, r->in, NULL);
+        sea_mux_del(r->ep, r->in);
         close(r->in);
         r->in = -1;
     }
@@ -392,8 +417,7 @@ static void reap(Run *r, bool block) {
         r->exited = true;
         r->status = st;
         if (r->pidfd >= 0) {
-            epoll_ctl(r->ep, EPOLL_CTL_DEL, r->pidfd, NULL);
-            close(r->pidfd);
+            sea_mux_del_pid(r->ep, r->pidfd, r->pid);
             r->pidfd = -1;
         }
     }
@@ -480,12 +504,8 @@ static SeaValue proc_run(SeaVM *vm, int argc, SeaValue *args) {
         r->in = fds[0];
         r->out = fds[1];
         r->err = fds[2];
-        r->ep = epoll_create1(EPOLL_CLOEXEC);
-        r->pidfd = (int)syscall(SYS_pidfd_open, r->pid, 0);
-        if (r->out >= 0) ep_add(r->ep, r->out, EPOLLIN);
-        if (r->err >= 0) ep_add(r->ep, r->err, EPOLLIN);
-        if (r->in >= 0) ep_add(r->ep, r->in, EPOLLOUT);
-        if (r->pidfd >= 0) ep_add(r->ep, r->pidfd, EPOLLIN);
+        r->ep = sea_mux_create();
+        run_arm(r);
         io = sea_io_begin(vm, timeout);
         io->aux[0] = (int64_t)(intptr_t)r;
         io->progress = 1;
@@ -494,6 +514,7 @@ static SeaValue proc_run(SeaVM *vm, int argc, SeaValue *args) {
         r = (Run *)(intptr_t)io->aux[0];
     }
     for (;;) {
+        run_arm(r);
         feed(r);
         drain(r, &r->out, &r->o);
         drain(r, &r->err, &r->e);
@@ -699,7 +720,7 @@ static SeaValue h_wait(SeaVM *vm, int argc, SeaValue *args) {
     SeaIoCall *io = sea_io_begin(vm, ms_arg(argc, args, 1));
     int pidfd = (int)io->aux[1] - 1;
     if (io->progress == 0) {
-        pidfd = (int)syscall(SYS_pidfd_open, (pid_t)pid, 0);
+        pidfd = sea_pid_waitfd((pid_t)pid);
         io->aux[1] = pidfd + 1;
         io->progress = 1;
     }

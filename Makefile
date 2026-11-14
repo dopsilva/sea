@@ -2,9 +2,29 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 CC     = gcc
-CFLAGS = -std=c11 -O3 -march=native -mtune=native -Wall -Wextra -Wno-unused-parameter \
+
+# Linux and macOS (Darwin) differ in a few flags (see libs/platform.mk): the
+# machine tuning option, and how the executable exports its symbols to the
+# native libraries it loads.
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S),Darwin)
+ifeq ($(UNAME_M),arm64)
+NATIVE_FLAGS = -mcpu=native
+else
+NATIVE_FLAGS = -march=native -mtune=native
+endif
+LDBASE = -lpthread -lm -ldl -Wl,-export_dynamic
+SHARED = -dynamiclib -undefined dynamic_lookup
+else
+NATIVE_FLAGS = -march=native -mtune=native
+LDBASE = -lpthread -lm -ldl -rdynamic
+SHARED = -shared
+endif
+
+CFLAGS = -std=c11 -O3 $(NATIVE_FLAGS) -Wall -Wextra -Wno-unused-parameter \
          -fno-strict-aliasing -D_GNU_SOURCE
-LDFLAGS = -lpthread -lm -ldl -rdynamic
+LDFLAGS = $(LDBASE)
 
 # The REPL uses readline for line editing when its headers are installed
 # (src/sea_main.c checks with __has_include); link it in that case.
@@ -140,7 +160,7 @@ debug: $(TARGET)
 
 # Build without readline (for environments without it)
 noreadline: CFLAGS += -DSEA_NO_READLINE
-noreadline: LDFLAGS = -lpthread -lm -ldl -rdynamic
+noreadline: LDFLAGS = $(LDBASE)
 noreadline: $(TARGET)
 
 # Build an external Sea library: make lib SRC=mylib.c OUT=mylib.so
@@ -149,7 +169,7 @@ lib:
 ifndef SRC
 	$(error Usage: make lib SRC=mylib.c OUT=mylib.so)
 endif
-	$(CC) -shared -fPIC $(CFLAGS) \
+	$(CC) $(SHARED) -fPIC $(CFLAGS) \
 	    -I$(SRC_DIR) \
 	    -o $(if $(OUT),$(OUT),$(basename $(SRC)).so) \
 	    $(SRC)

@@ -18,7 +18,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/eventfd.h>
+#include "sea_compat.h"
 #include <sys/socket.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -85,7 +85,7 @@ typedef struct DnsJob {
     struct DnsJob   *next;
     atomic_int       refs;
     atomic_int       done;
-    int              efd;
+    int              efd, wfd;      /* wake-up channel: read end, write end */
     int              gai;
     struct addrinfo *res;
     char             port[32];
@@ -103,6 +103,7 @@ static void dns_job_unref(DnsJob *j) {
     if (atomic_fetch_sub(&j->refs, 1) != 1) return;
     if (j->res) freeaddrinfo(j->res);
     sea_netpoll_close(j->efd);
+    sea_wake_close_wr(j->efd, j->wfd);
     free(j);
 }
 
@@ -125,9 +126,7 @@ static void *dns_worker(void *arg) {
         hints.ai_socktype = SOCK_STREAM;
         j->gai = getaddrinfo(j->host, j->port, &hints, &j->res);
         atomic_store(&j->done, 1);
-        uint64_t one = 1;
-        ssize_t wr = write(j->efd, &one, sizeof one);
-        (void)wr;
+        sea_wake_post(j->wfd);
         dns_job_unref(j);
     }
     return NULL;
@@ -137,8 +136,7 @@ static DnsJob *dns_submit(const char *host, const char *port) {
     size_t hl = strlen(host);
     DnsJob *j = calloc(1, sizeof *j + hl + 1);
     if (!j) return NULL;
-    j->efd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (j->efd < 0) { free(j); return NULL; }
+    if (sea_wake_open(&j->efd, &j->wfd) < 0) { free(j); return NULL; }
     atomic_init(&j->refs, 2);
     atomic_init(&j->done, 0);
     memcpy(j->host, host, hl + 1);
@@ -164,6 +162,7 @@ static DnsJob *dns_submit(const char *host, const char *port) {
     pthread_mutex_unlock(&dns_mu);
     if (none) {
         close(j->efd);
+        sea_wake_close_wr(j->efd, j->wfd);
         free(j);
         return NULL;
     }
@@ -288,7 +287,7 @@ static SeaValue net_connect(SeaVM *vm, int argc, SeaValue *args) {
                 continue;
             }
         } else {
-            fd = socket(p->ai_family, p->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC, p->ai_protocol);
+            fd = sea_socket_nb(p->ai_family, p->ai_socktype, p->ai_protocol);
             if (fd < 0) { last_err = errno; continue; }
             if (connect(fd, p->ai_addr, p->ai_addrlen) == 0) {
                 free_resolved(io);
@@ -351,7 +350,7 @@ static SeaValue net_listen(SeaVM *vm, int argc, SeaValue *args) {
     }
     int last_err = 0;
     for (struct addrinfo *p = res; p; p = p->ai_next) {
-        int fd = socket(p->ai_family, p->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC, p->ai_protocol);
+        int fd = sea_socket_nb(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (fd < 0) { last_err = errno; continue; }
         int one = 1, zero = 0;
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
@@ -375,7 +374,7 @@ static SeaValue net_accept(SeaVM *vm, int argc, SeaValue *args) {
     SeaIoCall *io = sea_io_begin(vm, opt_ms(argc, args, 1));
     if (io->closed) return wait_failed(vm, SEA_IO_CLOSED, "accept");
     for (;;) {
-        int fd = accept4(lfd, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        int fd = sea_accept_nb(lfd);
         if (fd >= 0) {
             sea_io_end(vm);
             set_nodelay(fd);
@@ -445,7 +444,7 @@ static SeaValue net_write(SeaVM *vm, int argc, SeaValue *args) {
             result = sea_int_val((int64_t)s->len);
             break;
         }
-        ssize_t n = send(fd, s->data + sent, s->len - sent, MSG_NOSIGNAL);
+        ssize_t n = send(fd, s->data + sent, s->len - sent, SEA_MSG_NOSIGNAL);
         if (n > 0) { io->progress += n; continue; }
         if (n < 0 && errno == EINTR) continue;
         if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {

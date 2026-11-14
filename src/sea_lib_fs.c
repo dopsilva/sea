@@ -30,6 +30,7 @@
 #include "sea_stdlib.h"
 #include "sea_struct.h"
 #include "sea_vm.h"
+#include "sea_compat.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -313,9 +314,9 @@ static SeaValue stat_impl(SeaVM *vm, const char *fn, int argc, SeaValue *args, b
     tset(t, "type", new_cstr(type_name(st.st_mode)));
     tset(t, "size", sea_int_val((int64_t)st.st_size));
     tset(t, "mode", sea_int_val((int64_t)(st.st_mode & 07777)));
-    tset(t, "mtime", sea_number_val(ts(st.st_mtim)));
-    tset(t, "atime", sea_number_val(ts(st.st_atim)));
-    tset(t, "ctime", sea_number_val(ts(st.st_ctim)));
+    tset(t, "mtime", sea_number_val(ts(SEA_ST_MTIM(st))));
+    tset(t, "atime", sea_number_val(ts(SEA_ST_ATIM(st))));
+    tset(t, "ctime", sea_number_val(ts(SEA_ST_CTIM(st))));
     tset(t, "uid", sea_int_val((int64_t)st.st_uid));
     tset(t, "gid", sea_int_val((int64_t)st.st_gid));
     tset(t, "ino", sea_int_val((int64_t)(st.st_ino & ((UINT64_C(1) << 47) - 1))));

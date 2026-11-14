@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <dlfcn.h>
 #include <sys/mman.h>
+#include "sea_compat.h"
 #include "sea_bundle.h"
 
 // ---- Module helpers ----
@@ -258,9 +259,7 @@ static int require_try_native(const char *dir, const char *name,
  * when it exists. */
 static bool require_libdir(char *out, size_t outsz) {
     char exe[PATH_MAX];
-    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
-    if (n <= 0) return false;
-    exe[n] = '\0';
+    if (sea_exe_path(exe, sizeof exe) <= 0) return false;
     char *slash = strrchr(exe, '/');
     if (!slash) return false;
     *slash = '\0';                         /* .../bin */
@@ -374,24 +373,20 @@ static SeaValue require_bundled(SeaVM *vm, const SeaBundleEntry *e) {
     sea_map_set(vm_loaded(vm), sea_obj_val(&key->obj), SEA_NIL_VAL);
     if (e->kind == 'S') return require_run_source(vm, key, e->data, e->name);
     const char *base = strrchr(e->name, '/');
-    int fd = memfd_create(base ? base + 1 : e->name, MFD_CLOEXEC);
-    size_t done = 0;
-    while (fd >= 0 && done < e->size) {
-        ssize_t w = write(fd, e->data + done, e->size - done);
-        if (w <= 0) break;
-        done += (size_t)w;
-    }
-    if (fd < 0 || done != e->size) {
+    char path[PATH_MAX];
+    bool tmp = false;
+    int fd = sea_mem_library(base ? base + 1 : e->name, e->data, e->size, path, sizeof path, &tmp);
+    if (fd < 0) {
         fprintf(stderr, "sea: cannot load the bundled library '%s'\n", e->name);
-        if (fd >= 0) close(fd);
         sea_obj_release(&key->obj);
         return SEA_NIL_VAL;
     }
-    char path[64];
-    snprintf(path, sizeof path, "/proc/self/fd/%d", fd);
     /* fd stays open: closed, its number (so the path) would be reused by the
-     * next library, and dlopen would return this one for it */
-    return require_load_native(vm, key, path);
+     * next library, and dlopen would return this one for it. Where the library
+     * had to go to a temporary file, the file is removed once it is loaded. */
+    SeaValue lib = require_load_native(vm, key, path);
+    if (tmp) { unlink(path); close(fd); }
+    return lib;
 }
 
 // require(name)

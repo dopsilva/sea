@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/random.h>
+#include "sea_compat.h"
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -254,16 +254,8 @@ void sea_lib_os_set_script(const char *path) {
 /* ---- secure random bytes (getrandom, else /dev/urandom) ---- */
 
 static bool fill_random(unsigned char *buf, size_t n) {
+    if (sea_sys_random(buf, n)) return true;
     size_t got = 0;
-    while (got < n) {
-        ssize_t r = getrandom(buf + got, n - got, 0);
-        if (r < 0) {
-            if (errno == EINTR) continue;
-            break;
-        }
-        got += (size_t)r;
-    }
-    if (got == n) return true;
     int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     if (fd < 0) return false;
     while (got < n) {
@@ -276,6 +268,16 @@ static bool fill_random(unsigned char *buf, size_t n) {
     }
     close(fd);
     return got == n;
+}
+
+/* os.executable() → the absolute path of the running executable (nil if unknown) */
+static SeaValue os_executable(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm; (void)argc; (void)args;
+    char path[4096];
+    long n = sea_exe_path(path, sizeof path);
+    if (n <= 0) return SEA_NIL_VAL;
+    SeaString *s = sea_string_new(path, (size_t)n);
+    return sea_obj_val(&s->obj);
 }
 
 /* os.urandom(n) → n random bytes from the system's cryptographic generator */
@@ -338,6 +340,7 @@ void sea_lib_os_register(SeaVM *vm) {
     mod_set(vm, mod, "readfile", os_readfile);
     mod_set(vm, mod, "filesize", os_filesize);
     mod_set(vm, mod, "glob",     os_glob);
+    mod_set(vm, mod, "executable", os_executable);
     mod_set(vm, mod, "urandom",  os_urandom);
     mod_set(vm, mod, "token",    os_token);
     mod_set(vm, mod, "uuid",     os_uuid);

@@ -12,14 +12,13 @@
 #include <poll.h>
 #include <pthread.h>
 #include <string.h>
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
+#include "sea_compat.h"
 #include <time.h>
 #include <unistd.h>
 
 /* Netpoller — see sea_netpoll.h.
  *
- * One poller thread waits in epoll_wait for the registered fds (one-shot) and
+ * One poller thread waits in the multiplexer (epoll, or kqueue off Linux: sea_compat.h) for the registered fds (one-shot) and
  * for the nearest deadline (a binary min-heap of goroutines). Everything that
  * decides a goroutine's wake-up runs on that thread under g_mu, so an fd event,
  * its deadline and a close cannot both complete the same wait. Woken
@@ -37,7 +36,7 @@ int64_t sea_now_ms(void) {
 
 static pthread_once_t  g_once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t g_mu   = PTHREAD_MUTEX_INITIALIZER;
-static int             g_epfd = -1, g_evfd = -1;
+static int             g_epfd = -1, g_evfd = -1, g_evwr = -1;
 static bool            g_ok;
 
 static SeaGoroutine  **g_fd_waiter;     /* fd -> goroutine waiting on it */
@@ -50,11 +49,9 @@ static int             g_heap_n, g_heap_cap;
 static void *poller_main(void *arg);
 
 static void poller_init(void) {
-    g_epfd = epoll_create1(EPOLL_CLOEXEC);
-    g_evfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (g_epfd < 0 || g_evfd < 0) return;
-    struct epoll_event ev = { .events = EPOLLIN, .data.fd = g_evfd };
-    if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, g_evfd, &ev) < 0) return;
+    g_epfd = sea_mux_create();
+    if (g_epfd < 0 || sea_wake_open(&g_evfd, &g_evwr) < 0) return;
+    if (!sea_mux_add(g_epfd, g_evfd, SEA_MUX_READ, false)) return;
     pthread_t t;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -139,7 +136,7 @@ static void complete(SeaGoroutine *g, WakeList *wl) {
     int fd = g->io_fd;
     if (fd >= 0) {
         if (fd < g_fd_cap && g_fd_waiter[fd] == g) g_fd_waiter[fd] = NULL;
-        epoll_ctl(g_epfd, EPOLL_CTL_DEL, fd, NULL);
+        sea_mux_del(g_epfd, fd);
     }
     if (wl->n == wl->cap) {
         int nc = wl->cap ? wl->cap * 2 : 16;
@@ -158,7 +155,7 @@ static void wake_all(WakeList *wl) {       /* g_mu NOT held */
 
 static void *poller_main(void *arg) {
     (void)arg;
-    struct epoll_event evs[128];
+    int ready[128];
     for (;;) {
         pthread_mutex_lock(&g_mu);
         int timeout = -1;
@@ -168,19 +165,21 @@ static void *poller_main(void *arg) {
         }
         pthread_mutex_unlock(&g_mu);
 
-        int n = epoll_wait(g_epfd, evs, 128, timeout);
-        if (n < 0 && errno != EINTR) continue;
+        int n = sea_mux_wait(g_epfd, ready, 128, timeout);
+        if (n < 0) {
+            if (errno != EINTR) usleep(1000);      /* do not spin on a failing multiplexer */
+            n = 0;
+        }
 
         WakeList wl = {0};
         pthread_mutex_lock(&g_mu);
         for (int i = 0; i < n; i++) {
-            int fd = evs[i].data.fd;
+            int fd = ready[i];
             if (fd == g_evfd) {
-                uint64_t v;
-                while (read(g_evfd, &v, sizeof v) > 0) {}
+                sea_wake_drain(g_evfd);
                 continue;
             }
-            SeaGoroutine *g = (fd < g_fd_cap) ? g_fd_waiter[fd] : NULL;
+            SeaGoroutine *g = (fd >= 0 && fd < g_fd_cap) ? g_fd_waiter[fd] : NULL;
             if (g && g->io_waiting && g->io_fd == fd) complete(g, &wl);
         }
         int64_t now = sea_now_ms();
@@ -204,13 +203,8 @@ static bool poll_register(SeaGoroutine *g, int fd, int events, int64_t deadline)
             pthread_mutex_unlock(&g_mu);
             return false;
         }
-        struct epoll_event ev = {0};
-        ev.events = EPOLLONESHOT | EPOLLRDHUP |
-                    ((events & SEA_IO_READ) ? EPOLLIN : 0) |
-                    ((events & SEA_IO_WRITE) ? EPOLLOUT : 0);
-        ev.data.fd = fd;
-        if (epoll_ctl(g_epfd, EPOLL_CTL_ADD, fd, &ev) < 0 &&
-            !(errno == EEXIST && epoll_ctl(g_epfd, EPOLL_CTL_MOD, fd, &ev) == 0)) {
+        if (!sea_mux_add(g_epfd, fd, ((events & SEA_IO_READ) ? SEA_MUX_READ : 0) |
+                                     ((events & SEA_IO_WRITE) ? SEA_MUX_WRITE : 0), true)) {
             pthread_mutex_unlock(&g_mu);
             return false;                  /* e.g. a regular file */
         }
@@ -227,9 +221,7 @@ static bool poll_register(SeaGoroutine *g, int fd, int events, int64_t deadline)
     }
     pthread_mutex_unlock(&g_mu);
     if (new_first) {                       /* the poller may sleep past it */
-        uint64_t one = 1;
-        ssize_t w = write(g_evfd, &one, sizeof one);
-        (void)w;
+        sea_wake_post(g_evwr);
     }
     return true;
 }

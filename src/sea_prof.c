@@ -18,8 +18,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/syscall.h>
+#include <sys/time.h>
 #include <time.h>
+#if defined(__linux__)
+#  include <sys/syscall.h>
+#endif
 #include <unistd.h>
 
 bool sea_prof_enabled = false;
@@ -28,14 +31,20 @@ bool sea_prof_enabled = false;
 #define BUF_WORDS  (2u * 1024 * 1024)      /* 16 MB of samples, touched as used */
 #define MAX_TIMERS 1024
 
+#ifndef MAP_NORESERVE
+#  define MAP_NORESERVE 0
+#endif
+
 static SeaProfOptions opts;
 static uintptr_t     *buf;                  /* samples: [depth, (chunk, ip) * depth] */
 static atomic_uint    buf_used;
 static atomic_uint    n_samples, n_dropped, n_outside;
 static atomic_bool    sampling;
+#if defined(__linux__)
 static pthread_mutex_t timers_mu = PTHREAD_MUTEX_INITIALIZER;
 static timer_t        timers[MAX_TIMERS];
 static int            n_timers;
+#endif
 static SeaVM         *root_vm;
 static SeaChunk      *root_chunk;
 static bool           finished;
@@ -74,6 +83,7 @@ static void on_sigprof(int sig, siginfo_t *si, void *uc) {
     errno = saved;
 }
 
+#if defined(__linux__)
 void sea_prof_thread_start(void) {
     if (!sea_prof_enabled) return;
     struct sigevent sev;
@@ -91,6 +101,22 @@ void sea_prof_thread_start(void) {
     else timer_delete(t);
     pthread_mutex_unlock(&timers_mu);
 }
+#else
+/* No per-thread CPU timers here (timer_create is Linux's): one process-wide
+ * CPU timer, whose SIGPROF the system hands to a thread that is running. The
+ * handler samples the VM of the thread it lands on, so a program that keeps
+ * several threads busy is sampled at random among them. */
+void sea_prof_thread_start(void) {}
+static void prof_process_timer(int hz) {
+    long us = 1000000L / hz;
+    struct itimerval it = { { us / 1000000L, us % 1000000L }, { us / 1000000L, us % 1000000L } };
+    setitimer(ITIMER_PROF, &it, NULL);
+}
+static void prof_process_timer_stop(void) {
+    struct itimerval it = { { 0, 0 }, { 0, 0 } };
+    setitimer(ITIMER_PROF, &it, NULL);
+}
+#endif
 
 static void at_exit(void) { sea_prof_finish(); }
 
@@ -113,6 +139,9 @@ void sea_prof_start(const SeaProfOptions *o) {
     sea_prof_enabled = true;
     atomic_store(&sampling, true);
     atexit(at_exit);
+#if !defined(__linux__)
+    prof_process_timer(opts.hz);
+#endif
     sea_prof_thread_start();
 }
 
@@ -266,10 +295,14 @@ void sea_prof_finish(void) {
     if (!sea_prof_enabled || finished) return;
     finished = true;
     atomic_store(&sampling, false);
+#if defined(__linux__)
     pthread_mutex_lock(&timers_mu);
     for (int i = 0; i < n_timers; i++) timer_delete(timers[i]);
     n_timers = 0;
     pthread_mutex_unlock(&timers_mu);
+#else
+    prof_process_timer_stop();
+#endif
     struct timespec pause = { 0, 2000000 };
     nanosleep(&pause, NULL);                /* let a handler in flight finish */
 

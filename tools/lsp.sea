@@ -448,7 +448,7 @@ end
 -- its bin/ directory, or libs/ of the source tree it runs from, as require
 -- looks; nil when there is none
 local function sea_libdir()
-    local exe = fs.realpath("/proc/self/exe")
+    local exe = os.executable()
     if is_error(exe) then return nil end
     local top = path.dirname(path.dirname(exe))
     local d = path.join(top, "lib", "sea")

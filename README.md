@@ -41,12 +41,15 @@ for i = 1, 6 do print(<-results) end
 
 ## Quick start
 
-**Platform: Linux, on x86-64 or aarch64 (ARM64).** The netpoller and the `net`
-module use `epoll`, `eventfd` and `accept4`, so macOS and the BSDs are not
-supported yet. On other CPU architectures the interpreter builds without its
-pinned registers but is untested.
+**Platform: Linux and macOS, on x86-64 or aarch64 (ARM64).** The netpoller is
+epoll on Linux and kqueue on macOS (`src/sea_compat.c` holds the few places where
+the two differ). The macOS port is new: it is built and tested by the CI
+workflow (`.github/workflows/ci.yml`). Not on macOS yet: the JIT, and the
+`duckdb` and `embed` libraries (their vendored binaries are Linux builds).
+Windows and the BSDs are not supported. On other CPU architectures the
+interpreter builds without its pinned registers but is untested.
 
-Requirements: GCC (computed goto, register variables), GNU Make, pthreads.
+Requirements: GCC or Clang (computed goto), GNU Make, pthreads.
 readline is optional: the REPL uses it for line editing when its headers are
 installed (`make noreadline` leaves it out). The JIT additionally needs the
 libgccjit headers (`libgccjit-13-dev` or similar). Native libraries have their

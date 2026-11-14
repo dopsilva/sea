@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 CC     = gcc
-CFLAGS = -std=c11 -O3 -march=native -ffast-math -fno-finite-math-only -Wall -Wextra \
-         -Wno-unused-parameter -fno-strict-aliasing -D_GNU_SOURCE -fPIC -shared
+include ../platform.mk
+CFLAGS = -std=c11 -O3 $(NATIVE) -ffast-math -fno-finite-math-only -Wall -Wextra \
+         -Wno-unused-parameter -fno-strict-aliasing -D_GNU_SOURCE -fPIC $(SHARED)
 SEA_SRC = ../../src
 
 .PHONY: all clean

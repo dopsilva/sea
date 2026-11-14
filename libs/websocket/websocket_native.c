@@ -23,7 +23,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/random.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "sea_compat.h"
 
 static void tset(SeaTable *t, const char *k, SeaValue v) {
     sea_table_set_str(t, k, v);
@@ -31,12 +33,16 @@ static void tset(SeaTable *t, const char *k, SeaValue v) {
 }
 
 static void fill_random(unsigned char *p, size_t n) {
-    while (n > 0) {
-        ssize_t r = getrandom(p, n, 0);
+    if (sea_sys_random(p, n)) return;
+    int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) abort();
+    while (fd >= 0 && n > 0) {
+        ssize_t r = read(fd, p, n);
         if (r <= 0) continue;
         p += r;
         n -= (size_t)r;
     }
+    if (fd >= 0) close(fd);
 }
 
 static SeaValue fn_random(SeaVM *vm, int argc, SeaValue *args) {

@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "sea_compat.h"
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -16,7 +17,7 @@ static SeaBundleEntry *entries = NULL;
 static int n_entries = 0;
 
 bool sea_bundle_open(void) {
-    int fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
+    int fd = sea_exe_open();
     if (fd < 0) return false;
     struct stat st;
     char trailer[28];

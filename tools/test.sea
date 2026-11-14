@@ -112,7 +112,7 @@ if jobs == nil then
     jobs = (not is_error(r) and r.ok) and (tonumber(string.trim(r.stdout)) or 4) or 4
 end
 
-local self = fs.realpath("/proc/self/exe")
+local self = os.executable()
 local tmp = fs.tempdir("seatest-")
 if is_error(self) or is_error(tmp) then
     io.write_err("sea test: cannot set up: " .. tostring(is_error(self) and self.message or tmp.message) .. "\n")

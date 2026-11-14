@@ -820,7 +820,8 @@ end
 | `os.readfile` | `readfile(path) → string\|nil` | Read entire file contents as a string (module `fs` has the full set: `fs.read` reports why a read failed) |
 | `os.filesize` | `filesize(path) → int\|nil` | File size in bytes, or `nil` if not found |
 | `os.glob` | `glob(dir, suffix) → array` | Sorted array of full paths in `dir` whose names end with `suffix` |
-| `os.urandom` | `urandom(n) → string` | `n` random bytes from the system's cryptographic generator (`getrandom`): for keys, salts, nonces (`math.random` is not secure) |
+| `os.executable` | `executable() → string\|nil` | absolute path of the running `sea` binary (what `/proc/self/exe` gave on Linux) |
+| `os.urandom` | `urandom(n) → string` | `n` random bytes from the system's cryptographic generator (`getrandom`, `getentropy` on macOS): for keys, salts, nonces (`math.random` is not secure) |
 | `os.token` | `token([n]) → string` | `n` random bytes (default 16) as lowercase hex: session tokens, salts, ids |
 | `os.uuid` | `uuid() → string` | A random UUID, version 4: `"1b4e28ba-2fa1-41d2-883f-0016d3cca427"` |
 

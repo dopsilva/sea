@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 CC     = gcc
+include ../platform.mk
 CFLAGS = -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter \
          -fno-strict-aliasing -D_GNU_SOURCE -fPIC
 SEA_SRC = ../../src

@@ -30,6 +30,7 @@ int sea_jit_hot_loops = SEA_JIT_LOOP_THRESHOLD;
  */
 
 #ifdef SEA_JIT
+#include "sea_compat.h"
 #include <libgccjit.h>   /* types and prototypes; symbols come from dlopen */
 #include <pthread.h>
 #include <time.h>
@@ -2178,7 +2179,7 @@ static pthread_mutex_t g_srv_mu = PTHREAD_MUTEX_INITIALIZER;
 static bool write_all(int fd, const void *p, size_t n) {
     const char *c = (const char*)p;
     while (n > 0) {
-        ssize_t w = send(fd, c, n, MSG_NOSIGNAL);   /* no SIGPIPE if the peer died */
+        ssize_t w = send(fd, c, n, SEA_MSG_NOSIGNAL);   /* no SIGPIPE if the peer died */
         if (w < 0) { if (errno == EINTR) continue; return false; }
         c += w; n -= (size_t)w;
     }

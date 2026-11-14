@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/eventfd.h>
+#include "sea_compat.h"
 #include <unistd.h>
 
 #ifndef EMBED_LLAMA_VERSION
@@ -165,7 +165,7 @@ typedef enum { J_LOAD, J_EMBED } JobKind;
 typedef struct Job {
     struct Job *next;
     atomic_int  refs, done;
-    int         efd;
+    int         efd, wfd;
     JobKind     kind;
     char       *err;
     /* load */
@@ -199,7 +199,10 @@ static void job_free(Job *j) {
     free(j->out);
     model_unref(j->loaded);
     model_unref(j->model);
-    if (j->efd >= 0) sea_netpoll_close(j->efd);
+    if (j->efd >= 0) {
+        sea_netpoll_close(j->efd);
+        sea_wake_close_wr(j->efd, j->wfd);
+    }
     free(j);
 }
 
@@ -363,9 +366,7 @@ static void *pool_worker(void *arg) {
 
         job_run(j);
         atomic_store(&j->done, 1);
-        uint64_t one = 1;
-        ssize_t wr = write(j->efd, &one, sizeof one);
-        (void)wr;
+        sea_wake_post(j->wfd);
         job_unref(j);
     }
     return NULL;
@@ -373,8 +374,7 @@ static void *pool_worker(void *arg) {
 
 /* Hand j to a worker (it takes a reference). False: run it in place. */
 static bool pool_submit(Job *j) {
-    j->efd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (j->efd < 0) return false;
+    if (sea_wake_open(&j->efd, &j->wfd) < 0) { j->efd = j->wfd = -1; return false; }
     atomic_fetch_add(&j->refs, 1);
     pthread_mutex_lock(&pool_mu);
     if (pool_idle == 0 && pool_threads < POOL_MAX) {
@@ -395,7 +395,8 @@ static bool pool_submit(Job *j) {
     if (!ok) {
         atomic_fetch_sub(&j->refs, 1);
         close(j->efd);
-        j->efd = -1;
+        sea_wake_close_wr(j->efd, j->wfd);
+        j->efd = j->wfd = -1;
     }
     return ok;
 }
@@ -405,7 +406,7 @@ static Job *job_new(JobKind kind) {
     if (!j) return NULL;
     atomic_init(&j->refs, 1);
     atomic_init(&j->done, 0);
-    j->efd = -1;
+    j->efd = j->wfd = -1;
     j->kind = kind;
     return j;
 }

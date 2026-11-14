@@ -6,6 +6,7 @@
 -- every path out: end of block, break/continue, return.
 
 local function rss_kb()
+    if not fs.exists("/proc/self/statm") then return 0 end   -- no procfs (macOS): the growth check is skipped
     return tonumber(string.split(os.readfile("/proc/self/statm"), " ")[1]) * 4
 end
 

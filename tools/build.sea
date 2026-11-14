@@ -77,7 +77,7 @@ builtin["sea/dotenv"] = true
 -- its bin/ directory, or libs/ of the source tree it runs from, as require
 -- looks; nil when there is none
 local function sea_libdir()
-    local exe = fs.realpath("/proc/self/exe")
+    local exe = os.executable()
     if is_error(exe) then return nil end
     local top = path.dirname(path.dirname(exe))
     local d = path.join(top, "lib", "sea")
@@ -218,7 +218,7 @@ end
 payload[] = "E\n"
 
 -- This binary, without a bundle of its own
-local exe = fs.read(fs.realpath("/proc/self/exe"))
+local exe = fs.read(os.executable())
 if is_error(exe) then
     io.write_err("sea build: cannot read the sea binary: " .. exe.message .. "\n")
     os.exit(1)
