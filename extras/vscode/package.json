@@ -2,7 +2,7 @@
   "name": "sea-language",
   "displayName": "Sea Language",
   "description": "Sea language support: syntax highlighting, snippets and the sea lsp language server (diagnostics, formatting, hover, go to definition, completion, outline)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "dopsilva",
   "engines": {
     "vscode": "^1.85.0"

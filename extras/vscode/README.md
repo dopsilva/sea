@@ -37,8 +37,8 @@ example).
 ```sh
 cd extras/vscode
 npm install
-npm run package                                   # → sea-language-0.2.0.vsix
-code --install-extension sea-language-0.2.0.vsix
+npm run package                                   # → sea-language-0.3.0.vsix
+code --install-extension sea-language-0.3.0.vsix
 ```
 
 `npm run package` needs [`vsce`](https://github.com/microsoft/vscode-vsce)
