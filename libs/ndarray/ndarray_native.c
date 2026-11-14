@@ -3979,7 +3979,9 @@ static zcplx *twiddles(int64_t n) {
     int64_t q = n / 4, e = n / 8;
     for (int64_t k = 0; k <= e; k++) {
         double s, c;
-        sincos(2 * M_PI * (double)k / (double)n, &s, &c);
+        double ang = 2 * M_PI * (double)k / (double)n;
+        s = sin(ang);        /* sincos() is a GNU extension; the compiler fuses the pair anyway */
+        c = cos(ang);
         t[k] = CMPLX(c, -s);
     }
     for (int64_t k = 1; k < e; k++) t[q - k] = CMPLX(-cimag(t[k]), -creal(t[k]));   /* -i·conj(w) */

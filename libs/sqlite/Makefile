@@ -24,7 +24,7 @@ vendor/sqlite3.o: vendor/sqlite3.c
 	$(CC) -O2 -fPIC -w $(SQLITE_FLAGS) -c -o $@ $<
 
 sqlite_native.so: sqlite_native.c vendor/sqlite3.h vendor/sqlite3.o $(wildcard ../../src/*.h)
-	$(CC) $(CFLAGS) -shared -I$(SEA_SRC) -Ivendor -o $@ sqlite_native.c vendor/sqlite3.o -lpthread -lm
+	$(CC) $(CFLAGS) $(SHARED) -I$(SEA_SRC) -Ivendor -o $@ sqlite_native.c vendor/sqlite3.o -lpthread -lm
 
 test: all
 	@../../bin/sea test.sea > test.out 2>&1; \

@@ -15,6 +15,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -25,5 +26,22 @@ jobs:
           for l in json csv console compress http ssl jwt websocket xml yaml toml ndarray tensor sqlite; do
             make -C libs/$l || echo "::warning::libs/$l did not build"
           done
+      - name: Where does the http test hang (macOS)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: |
+          cd tests/unit
+          ../../bin/sea 108_http_lib.sea > /tmp/h.out 2>&1 &
+          pid=$!
+          sleep 30
+          if kill -0 $pid 2>/dev/null; then
+            echo "HUNG"
+            sample $pid 3 -file /tmp/sample.txt || true
+            head -200 /tmp/sample.txt || true
+            lsof -p $pid | head -40 || true
+            kill -9 $pid
+          fi
+          head -60 /tmp/h.out
       - name: Unit tests
+        timeout-minutes: 12
         run: make test
