@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `sea fmt`: wraps one-line tables, arrays, calls and `and`/`or` chains wider than
+  `--width` (default 100); `and`/`or` start the continuation line; a broken
+  `if`/`while` condition goes one level deeper than the body; aligned `=` columns
+  written by the author are kept. Idempotent, and the tree does not change.
+
 ## 0.3.0
 
 A release about reliability and about helping people (and AI assistants) get

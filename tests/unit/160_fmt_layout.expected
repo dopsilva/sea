@@ -1,0 +1,33 @@
+local routes = {
+    method = method,
+    parts = split_path(pattern),
+    mws = mws,
+    handler = fn,
+    extra = 'some text',
+    n = 12345,
+}
+local names = [
+    'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet',
+    'kilo',
+]
+do_something_with(
+    first_argument_value,
+    second_argument_value,
+    third_argument_value,
+    fourth_argument
+)
+local reason = current == HALF_OPEN and 'HALF_OPEN failed'
+    or 'threshold=' .. threshold .. ' reached now'
+if first_condition_is_true and second_condition_is_true and third_condition_is_true
+        or fourth_cond then
+    run()
+end
+local CLOSED    = 'CLOSED'
+local OPEN      = 'OPEN'
+local HALF_OPEN = 'HALF_OPEN'
+local a = 1
+local bb = 2
+local short = {a = 1, b = 2}
+
+true
+true

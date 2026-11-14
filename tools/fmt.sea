@@ -14,6 +14,8 @@
 --   --check      like -l, and exit with status 1 if any file would change
 --   -p           print the formatted code to stdout instead of writing files
 --   --indent N   spaces per level (default 4)
+--   --width N    wrap one-line tables, arrays, calls and and/or chains wider than N
+--                columns (default 100; 0 never wraps)
 --
 -- A file with a syntax error is reported (file:line:col: message) and left
 -- alone; the exit status is then 2.
@@ -23,7 +25,7 @@ local parser = require("sea/parser")
 local flags = require("sea/flags")
 
 local cli = flags.new("sea fmt", {
-    usage = "[-l | -d | -p | --check] [--indent N] [path ...]",
+    usage = "[-l | -d | -p | --check] [--indent N] [--width N] [path ...]",
     about = "Formats Sea source in the canonical layout. Without flags, files are\n" ..
         "rewritten in place and the changed ones listed; without paths, stdin\n" .. "is formatted to stdout.",
 })
@@ -32,6 +34,7 @@ local diff = cli:bool("d", false, "print a diff for each file that would change"
 local print_ = cli:bool("p", false, "print the formatted code instead of writing files")
 local check = cli:bool("check", false, "like -l, and exit with status 1 if any file would change")
 local indent_flag = cli:int("indent", 4, "spaces per level", {arg = "n"})
+local width_flag = cli:int("width", 100, "wrap lines wider than this (0: never)", {arg = "n"})
 local paths = cli:parse()
 
 local mode = "write"
@@ -47,6 +50,7 @@ end
 
 local opts = {}
 opts.indent = indent
+opts.width = width_flag.value
 
 -- stdin → stdout
 if len(paths) == 0 or (len(paths) == 1 and paths[0] == "-") then

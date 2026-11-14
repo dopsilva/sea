@@ -7,7 +7,7 @@ if x then print(x) end
 [0] a.sea	true
 [0] 
 [2]  | sea fmt: unknown flag --bogus
-usage: sea fmt [-l | -d | -p | --check] [--indent N] [path ...]
+usage: sea fmt [-l | -d | -p | --check] [--indent N] [--width N] [path ...]
 
 Formats Sea source in the canonical layout. Without flags, files are
 rewritten in place and the changed ones listed; without paths, stdin
@@ -19,6 +19,7 @@ flags:
   -p          print the formatted code instead of writing files
   --check     like -l, and exit with status 1 if any file would change
   --indent N  spaces per level (default 4)
+  --width N   wrap lines wider than this (0: never) (default 100)
 -- sea doc
 [0] MYLIB  (mylib.sea)
 

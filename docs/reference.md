@@ -55,6 +55,16 @@ directories); without paths, stdin is formatted to stdout.
 | `--check` | Like `-l`, and exit with status 1 if any file would change (for CI) |
 | `-p` | Print the formatted code instead of writing files |
 | `--indent N` | Spaces per level (1-16) |
+| `--width N` | Wrap a one-line table, array, call or `and`/`or` chain that goes past column N (default 100; 0 never wraps) |
+
+Layout rules: a table or array too wide for its line gets one field per row
+(scalar array elements fill rows instead); a call too wide gets one argument per
+line with `)` on its own line; a long `and`/`or` chain breaks *before* the
+operator (other operators end the line); a broken `if`/`while` condition goes one
+level deeper than the body. Line breaks the source already has are kept.
+Consecutive one-line `local x = ...` / `x = ...` lines keep their `=` aligned
+where the author lined the values up (the formatter never imposes the columns).
+Formatting twice changes nothing, and the parsed tree is the same as before.
 
 A file with a syntax error is reported as `file:line:col: message` (on
 stderr) and left alone; the exit status is then 2.

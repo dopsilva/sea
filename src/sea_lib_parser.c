@@ -866,6 +866,10 @@ typedef struct {
      * offset of the space before each comment */
     size_t     *tc;
     int         ntc, ctc;
+    int         width;        /* wrap one-line literals/calls/chains wider than this (0: never) */
+    int         slack;        /* text that follows the expression on its line (` then`) */
+    int         dry;          /* >0: a trial print whose output is thrown away */
+    int         eq_pad;       /* spaces to add before the `=` of this statement (alignment) */
     bool        failed;
     char        err[256];
 } Printer;
@@ -1050,6 +1054,30 @@ static size_t text_width(const char *buf, size_t a, size_t b) {
     size_t w = 0;
     for (size_t i = a; i < b; i++) if (((unsigned char)buf[i] & 0xC0) != 0x80) w++;
     return w;
+}
+
+/* A trial print: remember the output state, print, measure, go back. */
+typedef struct { size_t len; int ntc; uint32_t ci; int last_line; bool at_start; int depth, nest; } Snap;
+
+static Snap snap(Printer *P) {
+    Snap s = { P->len, P->ntc, P->ci, P->last_line, P->at_start, P->depth, P->nest };
+    return s;
+}
+
+static void unsnap(Printer *P, const Snap *s) {
+    P->len = s->len; P->ntc = s->ntc; P->ci = s->ci; P->last_line = s->last_line;
+    P->at_start = s->at_start; P->depth = s->depth; P->nest = s->nest;
+}
+
+/* Width of the output line being written. */
+static size_t cur_width(Printer *P) {
+    size_t ls = P->len;
+    while (ls > 0 && P->buf[ls - 1] != '\n') ls--;
+    return text_width(P->buf, ls, P->len);
+}
+
+static bool too_wide(Printer *P) {
+    return P->width > 0 && cur_width(P) + (size_t)P->slack > (size_t)P->width;
 }
 
 /* Align the trailing comments of consecutive lines in one column. Returns a
@@ -1302,16 +1330,16 @@ static bool ends_multiline(Obj *n) {
 
 /* Call arguments, keeping the line breaks between them. `open` is the line
  * of the opening parenthesis. */
-static void print_args(Printer *P, Obj *call) {
+static void print_args(Printer *P, Obj *call, bool force) {
     SeaArray *a = tget_arr(call, "args");
     int open = node_line(call);
     int prev_max = open;
     bool broke = false;
+    bool prev_multi = false;       /* the argument before ends with `}`, `]` or `end` on its own line */
     for (uint32_t i = 0; a && i < a->len && !P->failed; i++) {
         Obj *arg = as_node(a->data[i]);
         int lo = arg ? min_line(arg, 0) : 0;
-        bool brk = lo > 0 && prev_max > 0 && lo > prev_max &&
-                   !(i > 0 && ends_multiline(as_node(a->data[i - 1])));
+        bool brk = force || (lo > 0 && prev_max > 0 && lo > prev_max && !(i > 0 && prev_multi));
         if (i) outc(P, ',');
         if (brk) {
             if (!broke) { P->depth++; broke = true; }
@@ -1319,18 +1347,45 @@ static void print_args(Printer *P, Obj *call) {
         } else if (i) {
             outc(P, ' ');
         }
+        size_t start = P->len;
         print_expr(P, a->data[i]);
         prev_max = arg ? max_line(arg, 0) : 0;
+        /* as written, or a literal this formatter broke up */
+        prev_multi = ends_multiline(arg) ||
+                     (arg && !has_paren(arg) &&
+                      (is_type(arg, "table") || is_type(arg, "array_lit")) &&
+                      memchr(P->buf + start, '\n', P->len - start) != NULL);
     }
     if (broke) P->depth--;
     /* `)` on a line of its own */
     int end = node_end(call);
-    if (end > 0 && prev_max > 0 && end > prev_max && a && a->len &&
-        !ends_multiline(as_node(a->data[a->len - 1]))) {
+    if (a && a->len && !prev_multi &&
+        (force || (end > 0 && prev_max > 0 && end > prev_max))) {
         attach_trailing(P, prev_max, prev_max);
         outc(P, '\n');
         indent(P);
     }
+}
+
+/* A source line holding the whole of `n` (or no line information at all). */
+static bool src_one_line(Obj *n) {
+    int lo = min_line(n, 0), hi = max_line(n, 0);
+    return lo == 0 || lo == hi;
+}
+
+/* The `(` is printed. Do the arguments, on one line, make the line too wide
+ * (so each goes on a line of its own)? */
+static bool args_too_wide(Printer *P, Obj *call) {
+    SeaArray *a = tget_arr(call, "args");
+    if (P->dry || P->width <= 0 || !a || a->len < 2 || !src_one_line(call)) return false;
+    Snap sn = snap(P);
+    P->dry++;
+    print_args(P, call, false);
+    outc(P, ')');
+    P->dry--;
+    bool wide = !P->failed && too_wide(P);
+    unsnap(P, &sn);
+    return wide;
 }
 
 static void print_name(Printer *P, const char *s, const char *what) {
@@ -1358,7 +1413,9 @@ static void print_func_rest(Printer *P, Obj *fn) {
     Obj *body = as_node(tget(fn, "body"));
     SeaArray *stmts = tget_arr(body, "stmts");
     if (one_line(fn)) {
+        P->dry++;                  /* what a one-line function holds stays as written */
         print_inline_stmts(P, stmts);
+        P->dry--;
         outs(P, "end");
         return;
     }
@@ -1416,14 +1473,21 @@ static void print_table(Printer *P, Obj *t) {
         if ((tline > 0 && field_line(f) > tline) || (is_type(v, "func") && !one_line(v)))
             multi = true;
     }
+    bool rows = false;       /* one field per row, because the line is too wide */
     if (!multi) {
+        Snap sn = snap(P);
+        bool trial = !P->dry && P->width > 0;
+        if (trial) P->dry++;
         outc(P, '{');
         for (uint32_t i = 0; i < n; i++) {
             if (i) outs(P, ", ");
             print_field(P, as_record(fields->data[i]));
         }
         outc(P, '}');
-        return;
+        if (trial) P->dry--;
+        if (!trial || P->failed || !too_wide(P)) return;
+        unsnap(P, &sn);
+        rows = true;
     }
 
     /* one row per source line: fields written on one line stay together */
@@ -1434,12 +1498,14 @@ static void print_table(Printer *P, Obj *t) {
     P->at_start = true;
     for (uint32_t i = 0; i < n; ) {
         Obj *f = as_record(fields->data[i]);
-        int line = field_line(f);
+        int line = rows ? 0 : field_line(f);
         if (line > 0) flush_before(P, line);
         begin_item(P, line);
+        size_t row_start = P->len;
         print_field(P, f);
         uint32_t j = i + 1;
-        while (j < n && line > 0 && field_line(as_record(fields->data[j])) == line &&
+        /* fields that share a source line share a row, unless one of them broke over lines */
+        while (j < n && line > 0 && !memchr(P->buf + row_start, '\n', P->len - row_start) && field_line(as_record(fields->data[j])) == line &&
                !is_type(as_node(tget(f, "value")), "func") &&
                !is_type(as_node(tget(as_record(fields->data[j]), "value")), "func")) {
             outs(P, ", ");
@@ -1456,6 +1522,19 @@ static void print_table(Printer *P, Obj *t) {
     P->depth--;
     indent(P);
     outc(P, '}');
+}
+
+/* Would `, elem` still fit on the current line (flat)? */
+static bool elem_fits(Printer *P, SeaValue v) {
+    if (P->width <= 0 || P->dry) return true;
+    Snap sn = snap(P);
+    P->dry++;
+    outs(P, ", ");
+    print_expr(P, v);
+    P->dry--;
+    bool fits = P->failed || cur_width(P) + 1 <= (size_t)P->width;
+    unsnap(P, &sn);
+    return fits;
 }
 
 /* An array literal: one line, or (when the source had several) one row per
@@ -1478,11 +1557,19 @@ static void print_array(Printer *P, Obj *t) {
         const char *raw = tget_str(first, "raw");
         if (raw && raw[0] == '[') pad = true;
     }
+    bool rows = false;
     if (!multi) {
+        Snap sn = snap(P);
+        Obj *e0 = as_node(elems->data[0]);
+        bool trial = !P->dry && P->width > 0 && (n >= 2 || is_type(e0, "table") || is_type(e0, "array_lit"));
+        if (trial) P->dry++;
         outs(P, pad ? "[ " : "[");
         print_list(P, elems);
         outs(P, pad ? " ]" : "]");
-        return;
+        if (trial) P->dry--;
+        if (!trial || P->failed || !too_wide(P)) return;
+        unsnap(P, &sn);
+        rows = true;
     }
     outc(P, '[');
     attach_trailing(P, tline, tline);
@@ -1491,14 +1578,24 @@ static void print_array(Printer *P, Obj *t) {
     P->at_start = true;
     for (uint32_t i = 0; i < n && !P->failed; ) {
         Obj *e = as_node(elems->data[i]);
-        int line = e ? min_line(e, 0) : 0;
+        int line = rows ? 0 : (e ? min_line(e, 0) : 0);
         if (line > 0) flush_before(P, line);
         begin_item(P, line);
         print_expr(P, elems->data[i]);
         uint32_t j = i + 1;
+        /* too wide for one line: fill each row up to the width */
+        while (rows && j < n && !P->failed && !is_type(e, "func") && !is_type(e, "table") &&
+               !is_type(e, "array_lit") && !is_type(as_node(elems->data[j]), "func") &&
+               !is_type(as_node(elems->data[j]), "table") && !is_type(as_node(elems->data[j]), "array_lit")) {
+            if (!elem_fits(P, elems->data[j])) break;
+            outs(P, ", ");
+            print_expr(P, elems->data[j]);
+            j++;
+        }
         while (j < n && line > 0 && !is_type(e, "func")) {
             Obj *next = as_node(elems->data[j]);
             if (!next || min_line(next, 0) != line || is_type(next, "func")) break;
+            if (!elem_fits(P, elems->data[j])) break;     /* a source line too long for one row */
             outs(P, ", ");
             print_expr(P, elems->data[j]);
             j++;
@@ -1617,17 +1714,42 @@ static void print_expr(Printer *P, SeaValue v) {
         Obj *l = need(P, n, "left"), *r = need(P, n, "right");
         if (!l || !r) goto done;
         if (binop_prec(op) == PR_NONE) { fail(P, "unknown binary operator '%s'", op ? op : "(none)"); goto done; }
+        /* `and` / `or` start the continuation line; the other operators end the line */
+        bool lead = strcmp(op, "and") == 0 || strcmp(op, "or") == 0;
+        bool too_long = false;
+        if (lead && !P->dry && P->width > 0 && src_one_line(n)) {
+            Snap sn = snap(P);
+            P->dry++;
+            print_paren(P, sea_obj_val(l), binop_paren(n, l, true));
+            outc(P, ' ');
+            outs(P, op);
+            outc(P, ' ');
+            print_paren(P, sea_obj_val(r), binop_paren(n, r, false));
+            P->dry--;
+            too_long = !P->failed && too_wide(P);
+            unsnap(P, &sn);
+        }
         print_paren(P, sea_obj_val(l), binop_paren(n, l, true));
-        outc(P, ' ');
-        outs(P, op);
-        /* a break around the operator in the source: after it here */
+        /* a break around the operator in the source */
         int opl = node_line(n), rl = min_line(r, 0), ll = max_line(l, 0);
-        if (opl > 0 && ((rl > opl) || (ll > 0 && opl > ll)) && !ends_multiline(l)) {
+        bool src_break = opl > 0 && ((rl > opl) || (ll > 0 && opl > ll)) && !ends_multiline(l);
+        if (lead && (src_break || too_long)) {
+            P->depth++;
+            cont_break(P, rl > opl ? opl : ll);
+            outs(P, op);
+            outc(P, ' ');
+            print_paren(P, sea_obj_val(r), binop_paren(n, r, false));
+            P->depth--;
+        } else if (src_break) {
+            outc(P, ' ');
+            outs(P, op);
             P->depth++;
             cont_break(P, rl > opl ? opl : ll);
             print_paren(P, sea_obj_val(r), binop_paren(n, r, false));
             P->depth--;
         } else {
+            outc(P, ' ');
+            outs(P, op);
             outc(P, ' ');
             print_paren(P, sea_obj_val(r), binop_paren(n, r, false));
         }
@@ -1659,7 +1781,7 @@ static void print_expr(Printer *P, SeaValue v) {
         if (!callee) goto done;
         print_paren(P, sea_obj_val(callee), postfix_paren(callee));
         outc(P, '(');
-        print_args(P, n);
+        print_args(P, n, args_too_wide(P, n));
         outc(P, ')');
     } else if (strcmp(type, "method_call") == 0) {
         Obj *obj = need(P, n, "object");
@@ -1670,7 +1792,7 @@ static void print_expr(Printer *P, SeaValue v) {
         print_name(P, tget_str(n, "method"), "method");
         outc(P, '(');
         P->depth += broke;
-        print_args(P, n);
+        print_args(P, n, args_too_wide(P, n));
         P->depth -= broke;
         outc(P, ')');
     } else if (strcmp(type, "propagate") == 0) {
@@ -1715,6 +1837,114 @@ static bool starts_with_paren(Obj *n) {
 
 static void print_stmt(Printer *P, Obj *s, int limit);
 
+/* The leftmost column on the node's first line (the AST keeps an operator's
+ * position for a binary expression, not its left operand's). */
+static int first_col(Obj *n, int line, int depth) {
+    int best = node_line(n) == line ? node_col(n) : 0;
+    if (depth > FMT_MAX_NEST) return best;
+    SeaArray *kids = sea_array_new(4);
+    collect_children(n, kids);
+    for (uint32_t i = 0; i < kids->len; i++) {
+        int c = first_col(as_record(kids->data[i]), line, depth + 1);
+        if (c > 0 && (best == 0 || c < best)) best = c;
+    }
+    sea_obj_release(&kids->obj);
+    return best;
+}
+
+/* How many of the parentheses a user wrote around the leftmost operand
+ * start the expression (the AST keeps a flag, not their positions). */
+static int spine_parens(Obj *n) {
+    int cnt = 0;
+    for (int guard = 0; n && guard < FMT_MAX_NEST; guard++) {
+        if (has_paren(n)) cnt++;
+        if (is_type(n, "call")) n = as_node(tget(n, "callee"));
+        else if (is_type(n, "method_call") || is_type(n, "index") || is_type(n, "field")) n = as_node(tget(n, "object"));
+        else if (is_type(n, "propagate")) n = as_node(tget(n, "expr"));
+        else if (is_type(n, "chan_send")) n = as_node(tget(n, "channel"));
+        else if (is_type(n, "binop")) n = as_node(tget(n, "left"));
+        else break;
+    }
+    return cnt;
+}
+
+/* `local a = 1` / `a.b = 2` on one source line, with a plain value: the width
+ * of what comes before the `=` (0 if the statement does not qualify). */
+static size_t align_prefix(Printer *P, Obj *s, size_t *bytes) {
+    const char *type = tget_str(s, "type");
+    if (node_line(s) <= 0 || !src_one_line(s)) return 0;
+    SeaArray *values = tget_arr(s, "values");
+    if (!values || values->len != 1 || is_type(as_node(values->data[0]), "func")) return 0;
+    if (strcmp(type, "local") == 0) {
+        SeaArray *names = tget_arr(s, "names");
+        if (!names || names->len != 1) return 0;
+        const char *nm = str_data(names->data[0], NULL);
+        if (!nm) return 0;
+        *bytes = 6 + strlen(nm);
+        return 6 + text_width(nm, 0, strlen(nm));   /* `local ` and `const ` are both 6 */
+    }
+    if (strcmp(type, "assign") == 0 && !tget_str(s, "op")) {
+        SeaArray *targets = tget_arr(s, "targets");
+        if (!targets || targets->len != 1) return 0;
+        Obj *t = as_node(targets->data[0]);
+        if (!t || starts_with_paren(t)) return 0;
+        Snap sn = snap(P);
+        P->dry++;
+        print_expr(P, targets->data[0]);
+        P->dry--;
+        size_t w = text_width(P->buf, sn.len, P->len);
+        bool bad = P->failed || memchr(P->buf + sn.len, '\n', P->len - sn.len) != NULL;
+        *bytes = P->len - sn.len;
+        unsnap(P, &sn);
+        return bad ? 0 : w;
+    }
+    return 0;
+}
+
+/* Runs of consecutive one-line assignments line their `=` up in one column
+ * (pad[i] spaces before it), unless the names differ too much in length. */
+static void align_runs(Printer *P, SeaArray *stmts, uint32_t n, int *pad) {
+    size_t *w = (size_t*)calloc(n ? n : 1, sizeof(size_t));
+    int *vc = (int*)calloc(n ? n : 1, sizeof(int));     /* column of each value in the source */
+    for (uint32_t i = 0; i < n; i++) {
+        Obj *s = as_node(stmts->data[i]);
+        size_t wb = 0;
+        w[i] = s ? align_prefix(P, s, &wb) : 0;
+        /* the source's columns count bytes: convert to characters */
+        if (w[i]) {
+            Obj *v = as_node(tget_arr(s, "values")->data[0]);
+            vc[i] = first_col(v, node_line(s), 0) - spine_parens(v) - (int)(wb - w[i]);
+        }
+        if (vc[i] <= 0) w[i] = 0;
+    }
+    for (uint32_t i = 0; i < n; ) {
+        if (!w[i]) { i++; continue; }
+        uint32_t j = i + 1;
+        size_t lo = w[i], hi = w[i];
+        while (j < n && w[j] &&
+               node_line(as_node(stmts->data[j])) == node_line(as_node(stmts->data[j - 1])) + 1 &&
+               vc[j] == vc[i] &&
+               strcmp(tget_str(as_node(stmts->data[j]), "type"), tget_str(as_node(stmts->data[i]), "type")) == 0) {
+            size_t nlo = w[j] < lo ? w[j] : lo, nhi = w[j] > hi ? w[j] : hi;
+            if (nhi - nlo > 8) break;       /* names too different in length: a new group */
+            lo = nlo; hi = nhi;
+            j++;
+        }
+        /* only where the source already lines the values up in one column (and
+         * some of them with extra spaces): the formatter keeps the author's
+         * columns, it does not impose them */
+        bool padded = false;
+        for (uint32_t k = i; k < j; k++)
+            if (vc[k] - node_col(as_node(stmts->data[k])) > (int)w[k] + 3) padded = true;
+        bool aligned = j - i >= 2;
+        if (aligned && padded)
+            for (uint32_t k = i; k < j; k++) pad[k] = (int)(hi - w[k]);
+        i = j;
+    }
+    free(w);
+    free(vc);
+}
+
 /* The statements of a block (or `do` node), one level deeper. `limit` is the
  * line where the block ends when the node does not say (end_line). */
 static void print_body(Printer *P, Obj *block, int parent_col, int limit) {
@@ -1724,9 +1954,12 @@ static void print_body(Printer *P, Obj *block, int parent_col, int limit) {
     P->depth++;
     P->at_start = true;
     uint32_t n = stmts ? stmts->len : 0;
+    int *pad = (int*)calloc(n ? n : 1, sizeof(int));
+    if (n > 1 && !P->dry) align_runs(P, stmts, n, pad);
     for (uint32_t i = 0; i < n && !P->failed; i++) {
         Obj *s = as_node(stmts->data[i]);
         if (!s) { fail(P, "a block holds a %s, not a node", sea_type_name(stmts->data[i])); break; }
+        P->eq_pad = pad[i];
         int line = node_line(s);
         int next = limit;
         if (i + 1 < n) {
@@ -1735,7 +1968,9 @@ static void print_body(Printer *P, Obj *block, int parent_col, int limit) {
         }
         if (line > 0) flush_before(P, line);
         print_stmt(P, s, next);
+        P->eq_pad = 0;
     }
+    free(pad);
     if (end > 0) flush_before(P, end);     /* comments before its `end` */
     else flush_block_end(P, limit, parent_col);
     P->depth--;
@@ -1782,7 +2017,11 @@ static bool print_simple(Printer *P, Obj *s) {
             print_name(P, str_data(names->data[i], NULL), "variable");
         }
         SeaArray *values = tget_arr(s, "values");
-        if (values && values->len) { outs(P, " = "); print_list(P, values); }
+        if (values && values->len) {
+            for (; P->eq_pad > 0; P->eq_pad--) outc(P, ' ');
+            outs(P, " = ");
+            print_list(P, values);
+        }
     } else if (strcmp(type, "assign") == 0) {
         SeaArray *targets = tget_arr(s, "targets"), *values = tget_arr(s, "values");
         if (!targets || !targets->len || !values || !values->len) {
@@ -1805,6 +2044,7 @@ static bool print_simple(Printer *P, Obj *s) {
             outs(P, op);
             outs(P, "= ");
         } else {
+            for (; P->eq_pad > 0; P->eq_pad--) outc(P, ' ');
             outs(P, " = ");
         }
         print_list(P, values);
@@ -1944,7 +2184,9 @@ static bool print_compound(Printer *P, Obj *s, int limit, bool inl) {
         outs(P, "if ");
         for (;;) {
             P->depth++;     /* a broken condition goes one level deeper than the body */
+            P->slack = 5;   /* ` then` */
             print_expr(P, tget(n, "cond"));
+            P->slack = 0;
             P->depth--;
             outs(P, " then");
             Obj *els = as_node(tget(n, "else_body"));
@@ -1965,7 +2207,9 @@ static bool print_compound(Printer *P, Obj *s, int limit, bool inl) {
     } else if (strcmp(type, "while") == 0) {
         outs(P, "while ");
         P->depth++;
+        P->slack = 3;       /* ` do` */
         print_expr(P, tget(s, "cond"));
+        P->slack = 0;
         P->depth--;
         outs(P, " do");
         block_part(P, s, as_node(tget(s, "body")), P->stmt_col, limit, inl);
@@ -2037,6 +2281,15 @@ static void print_stmt(Printer *P, Obj *s, int limit) {
     note_line(P, line);
 
     bool inl = one_line(s);
+    if (inl && !P->dry && P->width > 0) {      /* `if x then ... end` too wide for a line: expand it */
+        Snap sn = snap(P);
+        P->dry++;
+        bool compound = print_compound(P, s, limit, true);
+        P->dry--;
+        bool wide = compound && !P->failed && too_wide(P);
+        unsnap(P, &sn);
+        if (wide) inl = false;
+    }
     if (print_compound(P, s, limit, inl)) {
         if (inl) {
             attach_trailing(P, line, line);
@@ -2096,6 +2349,10 @@ static SeaValue fn_format(SeaVM *vm, int argc, SeaValue *args) {
     } else if (str_data(iv, NULL)) {
         P.ind = str_data(iv, NULL);
     }
+
+    P.width = 100;
+    SeaValue wv = tget(opts, "width");
+    if (sea_is_int(wv) && sea_as_int(wv) >= 0 && sea_as_int(wv) <= 10000) P.width = (int)sea_as_int(wv);
 
     SeaValue ast;
     bool *blank = NULL;
