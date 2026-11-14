@@ -280,12 +280,13 @@ void sea_lib_math_register(SeaVM *vm) {
     sea_table_set(mod, sea_obj_val(&huge_key->obj), sea_number_val(HUGE_VAL));
     sea_obj_release(&huge_key->obj);
 
+    /* ints are 48-bit (NaN-boxed): the largest is 2^47 - 1 */
     SeaString *maxint_key = sea_string_intern("maxinteger", 10);
-    sea_table_set(mod, sea_obj_val(&maxint_key->obj), sea_int_val(INT64_MAX));
+    sea_table_set(mod, sea_obj_val(&maxint_key->obj), sea_int_val(((int64_t)1 << 47) - 1));
     sea_obj_release(&maxint_key->obj);
 
     SeaString *minint_key = sea_string_intern("mininteger", 10);
-    sea_table_set(mod, sea_obj_val(&minint_key->obj), sea_int_val(INT64_MIN));
+    sea_table_set(mod, sea_obj_val(&minint_key->obj), sea_int_val(-((int64_t)1 << 47)));
     sea_obj_release(&minint_key->obj);
 
     sea_vm_register_module(vm, "math", mod);

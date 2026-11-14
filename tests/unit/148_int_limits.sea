@@ -1,0 +1,7 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- ints are 48-bit: math.maxinteger / mininteger are the real limits
+print(math.maxinteger, math.mininteger)
+print(math.maxinteger + 1 == math.mininteger)
+print(math.maxinteger > 0, math.mininteger < 0, type(math.maxinteger))

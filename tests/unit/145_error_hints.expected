@@ -1,5 +1,5 @@
-error(load:1: attempt to index a nil value (global 'table'): there is no 'table' library: sort with sort.sort(list), append with list[] = v, remove with del list[i], length with len(list))
-error(load:1: attempt to call a nil value (global 'pcall'): there is no pcall: use `defer function() recover() end` (recover works like Go's))
+error(load:1: attempt to index a nil value (global 'table'): there is no 'table' library: sort with sort.sort(list), append with list[] = v, remove with del list[i], length with len(list), join with string.join)
+error(load:1: attempt to call a nil value (global 'pcall'): there is no pcall: use `defer function() recover() end`)
 error(load:1: attempt to call a nil value (field 'gsub' of global 'string'): use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl))
 error(load:1: attempt to call a nil value (field 'clock' of global 'os'): use time.clock())
 error(load:2: attempt to index a nil value (field 'a'))

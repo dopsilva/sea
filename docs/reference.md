@@ -688,8 +688,8 @@ a number (by value: `bigint.new(5) == 5`).
 |------|-------|
 | `math.pi` | π (3.14159…) |
 | `math.huge` | Positive infinity |
-| `math.maxinteger` | Maximum 64-bit signed integer |
-| `math.mininteger` | Minimum 64-bit signed integer |
+| `math.maxinteger` | Largest `int`: 2^47 - 1 = 140737488355327 (ints are 48-bit) |
+| `math.mininteger` | Smallest `int`: -2^47 = -140737488355328 |
 
 ### Functions
 

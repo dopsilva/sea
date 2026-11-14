@@ -1,4 +1,4 @@
-2:1 [undefined] undefined variable 'table' (append to an array with arr[] = v, join with string.join; there is no table library)
+2:1 [undefined] undefined variable 'table' (there is no 'table' library: sort with sort.sort(list), append with list[] = v, remove with del list[i], length with len(list), join with string.join)
 3:13 [undefined] string has no 'gsub' (use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl))
 4:11 [longstring] `[[` opens a long string, not a nested array: write [ [a, b], [c, d] ] (with a space)
-5:10 [undefined] undefined variable 'pcall' (there is no pcall; use `defer function() recover() end`)
+5:10 [undefined] undefined variable 'pcall' (there is no pcall: use `defer function() recover() end`)

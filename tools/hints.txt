@@ -1,0 +1,57 @@
+# What Sea has instead of a name from Lua, Python or JavaScript.
+# One line per name: key TAB hint. A key is a global ("pcall") or a library
+# function ("string.gsub"). tools/hintgen.sh turns this file into the table the
+# runtime consults for "attempt to call a nil value" (src/sea_vm.c) and into
+# the module sea/hints that `sea check` uses for undefined names.
+None	nil is Sea's null
+abs	use math.abs
+array	arrays are written [a, b, c] or [], append with arr[] = v
+contains	use string.contains(s, sub)
+exit	use os.exit(code)
+float	use tonumber(x)
+format	use string.format
+int	use tonumber(x) (it returns an int for integer text)
+ipairs	iterate directly: for i, v in list do ... end
+join	use string.join(list, sep)
+list.append	append with list[] = v
+list.insert	append with list[] = v
+list.join	use string.join(list, sep)
+list.pop	remove with del list[i]
+list.push	append with list[] = v
+list.remove	remove with del list[i]
+list.reverse	use list.reversed(list) or sort.reverse
+list.sort	use sort.sort(list)
+math.clamp	use math.max(lo, math.min(hi, x))
+math.inf	use math.huge
+math.sign	no math.sign: write `if x > 0 then ... elseif x < 0 then ...`
+math.tointeger	use tonumber(x) or x // 1
+max	use math.max
+min	use math.min
+null	nil is Sea's null
+os.clock	use time.clock()
+os.date	use time.now() and its methods (see time)
+os.sleep	use time.sleep(n * time.Second)
+pairs	iterate directly: for k, v in map do ... end
+pcall	there is no pcall: use `defer function() recover() end`
+push	append to an array with arr[] = v
+range	use list.range
+self	self exists only in functions declared with `:` (function T:m())
+setmetatable	there are no metatables: use tables or struct literals with function fields
+sleep	use time.sleep(n * time.Second)
+split	use string.split(s, sep)
+sprintf	use string.format
+str	use tostring(x)
+string.endswith	use string.ends_with
+string.gmatch	use re.all(pattern, s) or string.split
+string.gsub	use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl)
+string.lines	use string.splitlines
+string.lstrip	use string.trim
+string.match	use re.match(pattern, s)
+string.rstrip	use string.trim
+string.startswith	use string.starts_with
+string.strip	use string.trim
+sum	use list.sum
+table	there is no 'table' library: sort with sort.sort(list), append with list[] = v, remove with del list[i], length with len(list), join with string.join
+trim	use string.trim(s)
+unpack	assign directly: local a, b = list[0], list[1]
+xpcall	there is no xpcall: use `defer function() recover() end`

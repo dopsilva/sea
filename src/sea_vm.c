@@ -190,46 +190,17 @@ static int trace_reg(SeaChunk *c, int idx, int reg, const char **name, const cha
     return 0;
 }
 
-/* What Sea has instead of a name from Lua, Python or JavaScript. */
+/* What Sea has instead of a name from Lua, Python or JavaScript: the table
+ * is tools/hints.txt (generated into gen/sea_hints.h; `sea check` reads the
+ * same file as the module sea/hints). */
+#include "sea_hints.h"
+
 static const char *name_hint(const char *owner, const char *name) {
-    static const struct { const char *key, *hint; } table[] = {
-        { "table",         "there is no 'table' library: sort with sort.sort(list), append with list[] = v, remove with del list[i], length with len(list)" },
-        { "pcall",         "there is no pcall: use `defer function() recover() end` (recover works like Go's)" },
-        { "xpcall",        "there is no xpcall: use `defer function() recover() end`" },
-        { "ipairs",        "iterate directly: for i, v in list do ... end" },
-        { "pairs",         "iterate directly: for k, v in map do ... end" },
-        { "unpack",        "assign directly: local a, b = list[0], list[1]" },
-        { "setmetatable",  "there are no metatables: use tables or struct literals with function fields" },
-        { "min",           "use math.min" }, { "max", "use math.max" }, { "abs", "use math.abs" },
-        { "format",        "use string.format" }, { "sprintf", "use string.format" },
-        { "join",          "use string.join(list, sep)" }, { "split", "use string.split(s, sep)" },
-        { "trim",          "use string.trim(s)" }, { "contains", "use string.contains(s, sub)" },
-        { "sum",           "use list.sum" }, { "range", "use list.range" },
-        { "sleep",         "use time.sleep(n * time.Second)" }, { "exit", "use os.exit(code)" },
-        { "int",           "use tonumber(x) (it returns an int for integer text)" },
-        { "float",         "use tonumber(x)" }, { "str", "use tostring(x)" },
-        { "string.gsub",   "use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl)" },
-        { "string.gmatch", "use re.all(pattern, s) or string.split" },
-        { "string.match",  "use re.match(pattern, s)" },
-        { "string.startswith", "use string.starts_with" }, { "string.endswith", "use string.ends_with" },
-        { "string.strip",  "use string.trim" }, { "string.lstrip", "use string.trim" }, { "string.rstrip", "use string.trim" },
-        { "string.lines",  "use string.splitlines" },
-        { "list.sort",     "use sort.sort(list)" }, { "list.insert", "append with list[] = v" },
-        { "list.push",     "append with list[] = v" }, { "list.append", "append with list[] = v" },
-        { "list.pop",      "remove with del list[i]" }, { "list.remove", "remove with del list[i]" },
-        { "list.reverse",  "use list.reversed(list) or sort.reverse" }, { "list.join", "use string.join(list, sep)" },
-        { "os.clock",      "use time.clock()" }, { "os.date", "use time.now() and its methods (see time)" },
-        { "os.sleep",      "use time.sleep(n * time.Second)" },
-        { "math.sign",     "no math.sign: write `if x > 0 then ... elseif x < 0 then ...`" },
-        { "math.clamp",    "use math.max(lo, math.min(hi, x))" },
-        { "math.tointeger","use tonumber(x) or x // 1" },
-        { "math.inf", "use math.huge" },
-    };
     char key[96];
     if (owner) snprintf(key, sizeof key, "%s.%s", owner, name);
     else snprintf(key, sizeof key, "%s", name);
-    for (size_t i = 0; i < sizeof table / sizeof table[0]; i++)
-        if (strcmp(table[i].key, key) == 0) return table[i].hint;
+    for (size_t i = 0; i < sizeof SEA_HINTS / sizeof SEA_HINTS[0]; i++)
+        if (strcmp(SEA_HINTS[i].key, key) == 0) return SEA_HINTS[i].hint;
     return NULL;
 }
 

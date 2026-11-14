@@ -88,7 +88,7 @@ $(JIT_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(JIT_OBJ_DIR)
 # that `require("sea/...")` finds without a file: gen/sea_modules.h, included
 # by sea_stdlib.c (name=file).
 TOOLS = $(wildcard tools/*.sea)
-MODULES = sea/test=libs/test/test.sea sea/check=tools/lib/check.sea sea/stream=libs/stream/stream.sea sea/flags=libs/flags/flags.sea sea/log=libs/log/log.sea sea/dotenv=libs/dotenv/dotenv.sea sea/ref=gen/ref.sea
+MODULES = sea/test=libs/test/test.sea sea/check=tools/lib/check.sea sea/stream=libs/stream/stream.sea sea/flags=libs/flags/flags.sea sea/log=libs/log/log.sea sea/dotenv=libs/dotenv/dotenv.sea sea/ref=gen/ref.sea sea/hints=gen/hints.sea
 GEN_DIR = gen
 CFLAGS += -I$(GEN_DIR)
 
@@ -99,11 +99,20 @@ $(GEN_DIR)/sea_tools.h: $(TOOLS) tools/embed.sh | $(GEN_DIR)
 $(GEN_DIR)/ref.sea: docs/reference.md tools/refgen.sh | $(GEN_DIR)
 	sh tools/refgen.sh docs/reference.md > $@
 
+# the hints for names from other languages: one table (tools/hints.txt) for the
+# runtime's errors (gen/sea_hints.h) and for `sea check` (sea/hints)
+$(GEN_DIR)/sea_hints.h: tools/hints.txt tools/hintgen.sh | $(GEN_DIR)
+	sh tools/hintgen.sh c tools/hints.txt > $@
+
+$(GEN_DIR)/hints.sea: tools/hints.txt tools/hintgen.sh | $(GEN_DIR)
+	sh tools/hintgen.sh sea tools/hints.txt > $@
+
 $(GEN_DIR)/sea_modules.h: $(foreach m,$(MODULES),$(lastword $(subst =, ,$(m)))) tools/embed.sh | $(GEN_DIR)
 	sh tools/embed.sh SEA_MODULES $(MODULES) > $@
 
 $(OBJ_DIR)/sea_main.o $(JIT_OBJ_DIR)/sea_main.o: $(GEN_DIR)/sea_tools.h
 $(OBJ_DIR)/sea_stdlib.o $(JIT_OBJ_DIR)/sea_stdlib.o: $(GEN_DIR)/sea_modules.h
+$(OBJ_DIR)/sea_vm.o $(JIT_OBJ_DIR)/sea_vm.o: $(GEN_DIR)/sea_hints.h
 
 $(BIN_DIR) $(OBJ_DIR) $(JIT_OBJ_DIR) $(GEN_DIR):
 	mkdir -p $@

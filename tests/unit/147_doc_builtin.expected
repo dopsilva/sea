@@ -1,4 +1,4 @@
 true	true
 true
 sea doc: nothing named nosuchthing
-<stdin>:1:7: undefined variable 'pcall' (there is no pcall; use `defer function() recover() end`) [undefined]
+<stdin>:1:7: undefined variable 'pcall' (there is no pcall: use `defer function() recover() end`) [undefined]
