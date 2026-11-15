@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 - `sea fmt`: wraps one-line tables, arrays, calls and `and`/`or` chains wider than
   `--width` (default 100); `and`/`or` start the continuation line; a broken

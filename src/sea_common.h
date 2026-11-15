@@ -16,7 +16,7 @@
 #define SEA_VERSION_MAJOR 0
 #define SEA_VERSION_MINOR 3
 #define SEA_VERSION_PATCH 0
-#define SEA_VERSION "0.3.0"
+#define SEA_VERSION "0.3.1"
 
 // Compiler hints
 #define SEA_LIKELY(x)    __builtin_expect(!!(x), 1)
