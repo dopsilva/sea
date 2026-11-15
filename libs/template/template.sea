@@ -230,11 +230,8 @@ local function build(src, toks)
             end
             local top = stack[len(stack) - 1]
             if top.tok.name ~= t.name then
-                return fail(
-                    src,
-                    t.start,
-                    "closing tag '" .. t.name .. "' does not match '" .. top.tok.name .. "'"
-                )
+                return fail(src, t.start,
+                    "closing tag '" .. t.name .. "' does not match '" .. top.tok.name .. "'")
             end
             top.tok.raw = string.sub(src, top.tok.after, t.start - 1)
             if top.tok.kind == "block" and top.tok.indent ~= nil then

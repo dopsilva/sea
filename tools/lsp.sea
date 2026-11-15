@@ -423,15 +423,8 @@ local function declarations(ast, src_lines)
             for i, nm in n.names do
                 local v = n.values[i]
                 local kind = (v ~= nil and v.type == "func") and "function" or "local"
-                add(
-                    nm,
-                    nil,
-                    kind,
-                    n.line,
-                    col_of(n.line, nm, n.col),
-                    v ~= nil and v.type == "func" and v.body.end_line or n.line,
-                    v
-                )
+                add(nm, nil, kind, n.line, col_of(n.line, nm, n.col),
+                    v ~= nil and v.type == "func" and v.body.end_line or n.line, v)
             end
         elseif t == "assign" then
             for i, tg in n.targets do
@@ -439,30 +432,16 @@ local function declarations(ast, src_lines)
                 local fn = v ~= nil and v.type == "func"
                 local endl = fn and v.body.end_line or n.line
                 if tg.type == "ident" then
-                    add(
-                        tg.name,
-                        nil,
-                        fn and "function" or "global",
-                        n.line,
-                        col_of(n.line, tg.name, n.col),
-                        endl,
-                        v
-                    )
+                    add(tg.name, nil, fn and "function" or "global", n.line,
+                        col_of(n.line, tg.name, n.col), endl, v)
                 elseif tg.type == "field" and tg.object.type == "ident" then
                     local kind = fn
                         and ((v.is_method or (len(v.params) > 0 and v.params[0].name == "self"))
                             and "method"
                             or "function")
                         or "field"
-                    add(
-                        tg.field,
-                        tg.object.name,
-                        kind,
-                        n.line,
-                        col_of(n.line, tg.field, n.col),
-                        endl,
-                        v
-                    )
+                    add(tg.field, tg.object.name, kind, n.line, col_of(n.line, tg.field, n.col),
+                        endl, v)
                 end
             end
         elseif t == "func" then
@@ -812,13 +791,10 @@ local function completion(params)
                 local owner = returned_table(req.ast)
                 for _, x in req.decls do
                     if x.owner == owner then
-                        item(
-                            x.name,
-                            x.params ~= nil and 3 or 5,
+                        item(x.name, x.params ~= nil and 3 or 5,
                             path.stem(modname) .. "." .. x.name .. (x.params ~= nil
                                 and ("(" .. string.join(x.params, ", ") .. ")")
-                                or "")
-                        )
+                                or ""))
                     end
                 end
             end
@@ -956,11 +932,8 @@ local function on_notification(method, params)
     elseif method == "textDocument/didChange" then
         local changes = params.contentChanges
         if changes ~= nil and len(changes) > 0 then
-            set_doc(
-                params.textDocument.uri,
-                changes[len(changes) - 1].text,
-                params.textDocument.version
-            )
+            set_doc(params.textDocument.uri, changes[len(changes) - 1].text,
+                params.textDocument.version)
             publish(params.textDocument.uri)
         end
     elseif method == "textDocument/didSave" then

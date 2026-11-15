@@ -481,10 +481,8 @@ function M.diff(a, n, axis)
             hi[] = d == axis and "1:" or ":"
             lo[] = d == axis and ":-1" or ":"
         end
-        a = native.subtract(
-            native.get(a, string.join(hi, ",")),
-            native.get(a, string.join(lo, ","))
-        )
+        a = native.subtract(native.get(a, string.join(hi, ",")),
+            native.get(a, string.join(lo, ",")))
     end
     return a
 end
@@ -517,10 +515,8 @@ function M.inner(a, b)
     return native.matmul(a, native.swapaxes(b, -1, -2))
 end
 function M.outer(a, b)
-    return native.multiply(
-        native.reshape(native.ravel(M.asarray(a)), -1, 1),
-        native.reshape(native.ravel(M.asarray(b)), 1, -1)
-    )
+    return native.multiply(native.reshape(native.ravel(M.asarray(a)), -1, 1),
+        native.reshape(native.ravel(M.asarray(b)), 1, -1))
 end
 
 -- np.cross(a, b) for vectors of 3 (along the last axis)
@@ -549,14 +545,11 @@ function M.convolve(a, v, mode)
     -- each output is a dot product of a window of a with v reversed
     local rv = native.flip(v)
     local full = n + m - 1
-    local pad = native.concatenate(
-        [native.full(m - 1, 0, a.dtype), a, native.full(m - 1, 0, a.dtype)],
-        0
-    )
-    local idx = native.add(
-        native.reshape(native.arange(0, full, 1), -1, 1),
-        native.reshape(native.arange(0, m, 1), 1, -1)
-    )
+    local pad = native.concatenate([
+        native.full(m - 1, 0, a.dtype), a, native.full(m - 1, 0, a.dtype),
+    ], 0)
+    local idx = native.add(native.reshape(native.arange(0, full, 1), -1, 1),
+        native.reshape(native.arange(0, m, 1), 1, -1))
     local windows = native.take(pad, idx)
     local out = native.matmul(windows, rv)
     mode = mode or "full"
@@ -685,10 +678,8 @@ function M.average(a, axis, weights)
         s[axis] = w.size
         w = native.reshape(w, s)
     end
-    return native.divide(
-        native.sum(native.multiply(a, w), axis),
-        native.sum(native.broadcast_to(w, a.shape), axis)
-    )
+    return native.divide(native.sum(native.multiply(a, w), axis),
+        native.sum(native.broadcast_to(w, a.shape), axis))
 end
 
 -- np.ptp(a [, axis]): max - min
@@ -1019,11 +1010,8 @@ function linalg.pinv(a, rcond)
     local u, s, vh = linalg.svd(a, false)
     rcond = rcond or 1e-15
     local cut = s.size > 0 and native.max(s) * rcond or 0
-    local sinv = native.where(
-        native.greater(s, cut),
-        native.divide(1.0, native.maximum(s, 1e-300)),
-        0.0
-    )
+    local sinv = native.where(native.greater(s, cut), native.divide(1.0, native.maximum(s, 1e-300)),
+        0.0)
     return native.matmul(native.multiply(native.transpose(vh), sinv), native.transpose(u))
 end
 
@@ -1492,10 +1480,8 @@ function fft.irfft(a, n, axis, norm)
     end
     local parts = [head]
     if n - m > 0 then
-        parts[] = native.conjugate(native.flip(
-            native.get(head, along(head.ndim, axis, 1, n - m + 1)),
-            axis
-        ))
+        parts[] = native.conjugate(native.flip(native.get(head,
+            along(head.ndim, axis, 1, n - m + 1)), axis))
     end
     local full = native.concatenate(parts, axis)
     return native.copy(native.real(native.fft(full, n, axis, true, norm)))
@@ -1520,10 +1506,9 @@ function fft.irfft2(a, s, axes, norm) return fft.irfftn(a, s, axes or [-2, -1], 
 
 -- np.fft.fftfreq(n [, d = 1]), rfftfreq: the frequencies of the bins
 function fft.fftfreq(n, d)
-    local k = native.concatenate(
-        [native.arange(0, (n - 1) // 2 + 1, 1), native.arange(-(n // 2), 0, 1)],
-        0
-    )
+    local k = native.concatenate([
+        native.arange(0, (n - 1) // 2 + 1, 1), native.arange(-(n // 2), 0, 1),
+    ], 0)
     return native.divide(k, (d or 1.0) * n)
 end
 function fft.rfftfreq(n, d)

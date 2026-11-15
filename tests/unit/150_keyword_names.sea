@@ -29,7 +29,5 @@ print(r)
 
 -- the formatter keeps these names bare
 local parser = require("sea/parser")
-printf(
-    "%s",
-    parser.format("local t = {or = 1}\nprint(t.in, t:not(), x.y.end)\nfunction a.b:in() end\n")
-)
+printf("%s",
+    parser.format("local t = {or = 1}\nprint(t.in, t:not(), x.y.end)\nfunction a.b:in() end\n"))

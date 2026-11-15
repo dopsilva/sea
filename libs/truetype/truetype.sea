@@ -495,15 +495,8 @@ function Font.draw(self, img, text, x, baseline, size, ink)
                 minx = math.min(minx, e[0], e[2])
                 maxx = math.max(maxx, e[0], e[2])
             end
-            fill(
-                img,
-                edges,
-                ink,
-                math.floor(minx) - 1,
-                baseline - m.ascent - 2,
-                math.ceil(maxx) + 1,
-                baseline + m.descent + 2
-            )
+            fill(img, edges, ink, math.floor(minx) - 1, baseline - m.ascent - 2,
+                math.ceil(maxx) + 1, baseline + m.descent + 2)
         end
         pen += self:advance(gid) * sc
     end

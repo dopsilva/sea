@@ -238,24 +238,14 @@ local function read_module(file)
                         or (is_method and "method" or "function")
                     mod.entries[] = new_entry(shown, kind, func_params(v, is_method), doc, s.line)
                 elseif t.type == "field" and doc ~= "" then
-                    mod.entries[] = new_entry(
-                        display(chain(t.object), t.field),
-                        "field",
-                        nil,
-                        doc,
-                        s.line
-                    )
+                    mod.entries[] = new_entry(display(chain(t.object), t.field), "field", nil, doc,
+                        s.line)
                 end
             end
         elseif s.type == "local" and show_all and len(s.values) >= 1
                 and s.values[0].type == "func" then
-            mod.entries[] = new_entry(
-                s.names[0],
-                "local",
-                func_params(s.values[0], false),
-                doc_above(s.line),
-                s.line
-            )
+            mod.entries[] = new_entry(s.names[0], "local", func_params(s.values[0], false),
+                doc_above(s.line), s.line)
         end
     end
     return mod

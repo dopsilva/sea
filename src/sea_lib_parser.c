@@ -1328,18 +1328,25 @@ static bool ends_multiline(Obj *n) {
     return false;
 }
 
+static bool elem_fits(Printer *P, SeaValue v);
+
 /* Call arguments, keeping the line breaks between them. `open` is the line
  * of the opening parenthesis. */
+static bool args_fill(Printer *P, Obj *call);
+
 static void print_args(Printer *P, Obj *call, bool force) {
     SeaArray *a = tget_arr(call, "args");
     int open = node_line(call);
+    /* too wide, and every argument short: pack them, row by row, up to the width */
+    bool fill = force && args_fill(P, call);
     int prev_max = open;
     bool broke = false;
     bool prev_multi = false;       /* the argument before ends with `}`, `]` or `end` on its own line */
     for (uint32_t i = 0; a && i < a->len && !P->failed; i++) {
         Obj *arg = as_node(a->data[i]);
         int lo = arg ? min_line(arg, 0) : 0;
-        bool brk = force || (lo > 0 && prev_max > 0 && lo > prev_max && !(i > 0 && prev_multi));
+        bool brk = fill ? (i > 0 && !elem_fits(P, a->data[i]))
+                        : force || (lo > 0 && prev_max > 0 && lo > prev_max && !(i > 0 && prev_multi));
         if (i) outc(P, ',');
         if (brk) {
             if (!broke) { P->depth++; broke = true; }
@@ -1360,11 +1367,22 @@ static void print_args(Printer *P, Obj *call, bool force) {
     /* `)` on a line of its own */
     int end = node_end(call);
     if (a && a->len && !prev_multi &&
-        (force || (end > 0 && prev_max > 0 && end > prev_max))) {
+        !fill && (force || (end > 0 && prev_max > 0 && end > prev_max))) {
         attach_trailing(P, prev_max, prev_max);
         outc(P, '\n');
         indent(P);
     }
+}
+
+/* Arguments that can be packed several to a line: none is a function or a table. */
+static bool args_fill(Printer *P, Obj *call) {
+    (void)P;
+    SeaArray *a = tget_arr(call, "args");
+    for (uint32_t i = 0; a && i < a->len; i++) {
+        Obj *x = as_node(a->data[i]);
+        if (is_type(x, "func") || is_type(x, "table")) return false;
+    }
+    return true;
 }
 
 /* A source line holding the whole of `n` (or no line information at all). */

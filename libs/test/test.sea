@@ -233,10 +233,8 @@ function T.eq(got, want, msg)
         if string.starts_with(p, ".") then p = string.sub(p, 2) end
         where = "\n    at " .. p
     end
-    failure(
-        "not equal" .. where .. "\n    expected: " .. show(want) .. "\n         got: " .. show(got),
-        msg
-    )
+    failure("not equal" .. where .. "\n    expected: " .. show(want) .. "\n         got: " .. show(got),
+        msg)
 end
 
 -- t.ne(got, other [, msg])
@@ -274,10 +272,8 @@ function T.near(got, want, eps, msg)
     local tol = eps
     if tol == nil then tol = 1e-9 * math.max(1, math.abs(want)) end
     if math.abs(got - want) > tol then
-        failure(
-            "expected " .. tostring(want) .. " ± " .. tostring(tol) .. ", got " .. tostring(got),
-            msg
-        )
+        failure("expected " .. tostring(want) .. " ± " .. tostring(tol) .. ", got " .. tostring(got),
+            msg)
     end
     return got
 end
@@ -639,12 +635,8 @@ function T.run(opts)
                     r.ns_per_op = ns
                     res.benches[] = r
                     if format == "pretty" then
-                        say(string.format(
-                            "%-" .. tostring(width) .. "s  %10d  %14.1f ns/op",
-                            name,
-                            iters,
-                            ns
-                        ))
+                        say(string.format("%-" .. tostring(width) .. "s  %10d  %14.1f ns/op", name,
+                            iters, ns))
                     elseif format == "tap" then
                         say(string.format("# bench %s %d %.1f ns/op", name, iters, ns))
                     end
@@ -659,17 +651,9 @@ function T.run(opts)
     -- for `sea test`: the counts of this file
     local counts_file = os.getenv("SEA_TEST_RESULT")
     if counts_file ~= nil then
-        fs.write(
-            counts_file,
-            string.format(
-                "%d %d %d %d %d",
-                res.passed,
-                res.failed,
-                res.skipped,
-                res.todo,
-                len(res.benches)
-            )
-        )
+        fs.write(counts_file,
+            string.format("%d %d %d %d %d", res.passed, res.failed, res.skipped, res.todo,
+                len(res.benches)))
     end
     if format == "pretty" then
         for i = 0, len(res.failures) - 1 do

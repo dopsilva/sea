@@ -2,7 +2,7 @@
 
 ## 0.3.1
 
-- `sea fmt`: wraps one-line tables, arrays, calls and `and`/`or` chains wider than
+- `sea fmt`: wraps one-line tables, arrays, calls (arguments packed row by row) and `and`/`or` chains wider than
   `--width` (default 100); `and`/`or` start the continuation line; a broken
   `if`/`while` condition goes one level deeper than the body; aligned `=` columns
   written by the author are kept. Idempotent, and the tree does not change.

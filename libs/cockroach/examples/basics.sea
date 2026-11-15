@@ -70,16 +70,12 @@ for _, p in db:query("SELECT name, price, tags, specs FROM products WHERE 'usb' 
     print(p.name, p.price, json.encode(p.tags), p.specs and json.encode(p.specs) or "-")
 end
 
-local cheap = db:row(
-    "SELECT name, price FROM products WHERE price < $1 ORDER BY price LIMIT 1",
-    100
-)
+local cheap = db:row("SELECT name, price FROM products WHERE price < $1 ORDER BY price LIMIT 1",
+    100)
 print("cheapest:", cheap.name, cheap.price)
 print("count:", db:value("SELECT count(*) FROM products"))
-print(
-    "in a list:",
-    db:value("SELECT count(*) FROM products WHERE sku = ANY($1)", ["KB-01", "HS-02", "XX-99"])
-)
+print("in a list:",
+    db:value("SELECT count(*) FROM products WHERE sku = ANY($1)", ["KB-01", "HS-02", "XX-99"]))
 
 -- each: rows as they arrive (memory stays flat for big results)
 local total = 0
@@ -89,12 +85,8 @@ end)
 print("stock value:", total)
 
 -- errors are values carrying the SQLSTATE
-local dup = db:exec(
-    "INSERT INTO products (sku, name, price) VALUES ($1, $2, $3)",
-    "KB-01",
-    "Again",
-    1
-)
+local dup = db:exec("INSERT INTO products (sku, name, price) VALUES ($1, $2, $3)", "KB-01", "Again",
+    1)
 print(crdb.sqlstate(dup), dup.message)
 if crdb.sqlstate(dup) == "23505" then print("(23505: unique violation)") end
 

@@ -146,10 +146,8 @@ local function apply(self, f, text)
                 if c == text then ok = true end
             end
             if not ok then
-                return fail(
-                    self,
-                    show(f) .. " must be one of " .. string.join(f.choices, ", ") .. " (got '" .. text .. "')"
-                )
+                return fail(self,
+                    show(f) .. " must be one of " .. string.join(f.choices, ", ") .. " (got '" .. text .. "')")
             end
         end
         if f.kind == "list" then

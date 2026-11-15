@@ -127,14 +127,8 @@ local sr = http.get(sbase .. "/", {
         total += len(p)
     end,
 })
-print(
-    "stream:",
-    sr.status,
-    sr.headers["transfer-encoding"],
-    sr.body == "",
-    total,
-    string.sub(pieces[0], 1, 7)
-)
+print("stream:", sr.status, sr.headers["transfer-encoding"], sr.body == "", total,
+    string.sub(pieces[0], 1, 7))
 local seen = 0
 http.get(sbase .. "/", {
     on_data = function(p)
@@ -145,11 +139,9 @@ http.get(sbase .. "/", {
 print("stream stop:", seen)
 local fr = http.get(sbase .. "/fail", {on_data = function(p) panic("not for errors") end})
 print("stream error body:", fr.status, fr.body)
-print(
-    "stream again:",
+print("stream again:",
     http.get(sbase .. "/").body == string.rep("x", 70000) and "bad"
-        or len(http.get(sbase .. "/").body)
-)
+        or len(http.get(sbase .. "/").body))
 ssrv.close()
 ssrv.wait()
 
@@ -215,10 +207,8 @@ end
 local req = "GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"
 print("proxy v4:", raw(psrv.port, "PROXY TCP4 203.0.113.7 10.0.0.1 51000 80\r\n" .. req))
 print("proxy v6:", raw(psrv.port, "PROXY TCP6 2001:db8::7 2001:db8::1 51000 80\r\n" .. req))
-print(
-    "proxy unknown:",
-    string.starts_with(raw(psrv.port, "PROXY UNKNOWN\r\n" .. req), "127.0.0.1:")
-)
+print("proxy unknown:",
+    string.starts_with(raw(psrv.port, "PROXY UNKNOWN\r\n" .. req), "127.0.0.1:"))
 print("proxy missing:", json.encode(raw(psrv.port, req)))
 print("proxy bad:", json.encode(raw(psrv.port, "PROXY TCP4 evil 10.0.0.1 1 80\r\n" .. req)))
 psrv.close()

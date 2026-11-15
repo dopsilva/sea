@@ -59,10 +59,8 @@ recs[] = r1
 recs[] = r2
 print(csv.encode(recs))
 print(csv.encode(recs, {columns = {"name", "age"}, header = false}))
-print(
-    show(csv.encode({{1, 2}}, {crlf = true, quote_all = true})),
-    csv.encode({{"a", "b;c"}}, {sep = ";"})
-)
+print(show(csv.encode({{1, 2}}, {crlf = true, quote_all = true})),
+    csv.encode({{"a", "b;c"}}, {sep = ";"}))
 print(show(csv.encode({{print}})))
 print(show(csv.encode("x")))
 print(show(csv.encode({5})))

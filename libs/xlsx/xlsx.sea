@@ -71,10 +71,8 @@ end
 
 -- xlsx.date_to_serial("YYYY-MM-DD[ HH:MM[:SS]]") → number | nil
 function M.date_to_serial(s)
-    local m = re.match(
-        "^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?)?",
-        s or ""
-    )
+    local m = re.match("^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?)?",
+        s or "")
     if m == nil then return nil end
     local n = days_from(tonumber(m.groups[1]), tonumber(m.groups[2]), tonumber(m.groups[3])) - EPOCH_1900
     if m.groups[4] ~= nil then

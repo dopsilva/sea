@@ -26,10 +26,8 @@ M.TIMEOUT = 20000
 
 -- smtp.parse_url(url) → {secure, plain, host, port, user, pass} | error
 function M.parse_url(url)
-    local m = re.match(
-        "^(smtps?)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]+)(?::(\\d+))?/?(\\?.*)?$",
-        url or ""
-    )
+    local m = re.match("^(smtps?)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]+)(?::(\\d+))?/?(\\?.*)?$",
+        url or "")
     if m == nil then
         return error("smtp: the URL is smtp[s]://[user:pass@]host[:port][?tls=none]")
     end

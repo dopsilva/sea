@@ -176,12 +176,8 @@ local function follow(abs)
                 if not builtin[name] then
                     local found = resolve(name, dir)
                     if found == nil then
-                        io.write_err(string.format(
-                            "sea build: %s:%d: module '%s' not found\n",
-                            show(abs),
-                            n.line,
-                            name
-                        ))
+                        io.write_err(string.format("sea build: %s:%d: module '%s' not found\n",
+                            show(abs), n.line, name))
                         problems = problems + 1
                     elseif add(found) and path.ext(found) == ".sea" then
                         follow(found)

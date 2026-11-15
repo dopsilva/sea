@@ -359,11 +359,8 @@ function M.source(src, opts)
             local pos = {}
             pos.line = i + 1
             pos.col = c.start
-            report(
-                "longstring",
-                pos,
-                "`[[` opens a long string, not a nested array: write [ [a, b], [c, d] ] (with a space)"
-            )
+            report("longstring", pos,
+                "`[[` opens a long string, not a nested array: write [ [a, b], [c, d] ] (with a space)")
         end
     end
 
@@ -413,20 +410,14 @@ function M.source(src, opts)
         local prev = scope.vars[n]
         if prev ~= nil then
             if kind == "local" or kind == "func" then
-                report(
-                    "redeclared",
-                    node,
-                    "'" .. n .. "' is already declared in this block (line " .. tostring(prev.line) .. ")"
-                )
+                report("redeclared", node,
+                    "'" .. n .. "' is already declared in this block (line " .. tostring(prev.line) .. ")")
             end
         elseif kind == "local" or kind == "func" then
             local outer = lookup(n)
             if outer ~= nil and (outer.kind == "local" or outer.kind == "func") then
-                report(
-                    "shadow",
-                    node,
-                    "'" .. n .. "' hides the local declared at line " .. tostring(outer.line)
-                )
+                report("shadow", node,
+                    "'" .. n .. "' hides the local declared at line " .. tostring(outer.line))
             end
         end
         local v = {}
@@ -520,11 +511,8 @@ function M.source(src, opts)
             args_of(n)
             if v == nil and n.callee.type == "ident" and n.callee.name == "recover"
                     and len(n.args) > 0 then
-                report(
-                    "args",
-                    n,
-                    "recover() takes no arguments and does not call anything: use it inside a deferred call, defer function() local e = recover() ... end()"
-                )
+                report("args", n,
+                    "recover() takes no arguments and does not call anything: use it inside a deferred call, defer function() local e = recover() ... end()")
             end
             local fixed = len(n.args) - (expands(n.args) and 1 or 0)
             if v ~= nil and v.params ~= nil and not v.vararg and fixed > v.params then

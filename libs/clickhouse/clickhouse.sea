@@ -68,11 +68,8 @@ end
 local function param_text(v)
     if v == nil then return "\\N" end
     if type(v) == "string" then
-        return string.replace(
-            string.replace(string.replace(v, "\\", "\\\\"), "\t", "\\t"),
-            "\n",
-            "\\n"
-        )
+        return string.replace(string.replace(string.replace(v, "\\", "\\\\"), "\t", "\\t"), "\n",
+            "\\n")
     end
     if is_time(v) then return time_text(v) end
     return literal(v)
@@ -103,10 +100,8 @@ end
 -- http(s)://user:password@host:port/database?key=value or
 -- clickhouse://... (secure=true for https). Other query keys are settings.
 function M.parse_url(url)
-    local m = re.match(
-        "^(https?|clickhouse)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$",
-        url
-    )
+    local m = re.match("^(https?|clickhouse)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$",
+        url)
     if m == nil then return error(`clickhouse: bad URL '${url}'`) end
     local g = m.groups
     local function dec(s)

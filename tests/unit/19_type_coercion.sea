@@ -22,19 +22,14 @@ print(tostring(3.14))  -- 3.14
 print(tostring("hi"))  -- hi
 
 -- tonumber
-print(tonumber("42"))   -- 42
-print(tonumber("3.14")) -- 3.14
-print(tonumber("0xff")) -- 255
-print(tonumber(100))    -- 100
-print(tonumber(nil))    -- nil
-print(tonumber("abc"))  -- nil
-print(                  -- 10  8  int  -7  1250
-    tonumber("010"),
-    tonumber("08"),
-    type(tonumber("08")),
-    tonumber("-007"),
-    tonumber("000000000000001250")
-)
+print(tonumber("42"))                                                          -- 42
+print(tonumber("3.14"))                                                        -- 3.14
+print(tonumber("0xff"))                                                        -- 255
+print(tonumber(100))                                                           -- 100
+print(tonumber(nil))                                                           -- nil
+print(tonumber("abc"))                                                         -- nil
+print(tonumber("010"), tonumber("08"), type(tonumber("08")), tonumber("-007"), -- 10  8  int  -7  1250
+    tonumber("000000000000001250"))
 
 -- truthiness
 if 0 then print("zero is truthy") end                                   -- zero is truthy

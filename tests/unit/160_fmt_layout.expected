@@ -10,12 +10,8 @@ local names = [
     'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet',
     'kilo',
 ]
-do_something_with(
-    first_argument_value,
-    second_argument_value,
-    third_argument_value,
-    fourth_argument
-)
+do_something_with(first_argument_value, second_argument_value, third_argument_value,
+    fourth_argument)
 local reason = current == HALF_OPEN and 'HALF_OPEN failed'
     or 'threshold=' .. threshold .. ' reached now'
 if first_condition_is_true and second_condition_is_true and third_condition_is_true

@@ -290,12 +290,8 @@ if total.todo > 0 then parts[] = tostring(total.todo) .. " todo" end
 local nfiles = len(files) == 1 and "1 file" or (tostring(len(files)) .. " files")
 if failed_files > 0 then nfiles = nfiles .. ", " .. tostring(failed_files) .. " failed" end
 print("")
-print(string.format(
-    "%s; %s (%.2f s)",
-    nfiles,
-    string.join(parts, ", "),
-    time.since(t_start) / time.Second
-))
+print(string.format("%s; %s (%.2f s)", nfiles, string.join(parts, ", "),
+    time.since(t_start) / time.Second))
 
 if cover then
     local cwd = path.abs(".")
@@ -356,14 +352,8 @@ if cover then
         if len(missed) > 8 then ranges[] = "..." end
         local pct = len(nums) > 0 and 100 * ran / len(nums) or 100
         local miss = len(ranges) > 0 and ("  not run: " .. string.join(ranges, ", ")) or ""
-        print(string.format(
-            "  %-" .. tostring(width) .. "s  %5.1f%%  %d/%d%s",
-            show(f),
-            pct,
-            ran,
-            len(nums),
-            miss
-        ))
+        print(string.format("  %-" .. tostring(width) .. "s  %5.1f%%  %d/%d%s", show(f), pct, ran,
+            len(nums), miss))
     end
     if len(names) == 0 then
         print("  (no code outside the test files ran)")

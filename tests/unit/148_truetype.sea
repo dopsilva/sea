@@ -77,13 +77,8 @@ font_bytes ..= body
 print("-- parse")
 local f = tt.parse(font_bytes)
 print(f.units_per_em, f.num_glyphs, f.ascender, f.descender)
-print(
-    f:glyph_index(65),
-    f:glyph_index(66),
-    f:glyph_index(111),
-    f:glyph_index(32),
-    f:glyph_index(90)
-)
+print(f:glyph_index(65), f:glyph_index(66), f:glyph_index(111), f:glyph_index(32),
+    f:glyph_index(90))
 print(f:advance(1), f:advance(2), f:advance(4))
 local a = f:outline(1)
 print(len(a), len(a[0]), a[0][2].x, a[0][2].y, a[0][2].on)

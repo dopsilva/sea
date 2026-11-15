@@ -30,12 +30,8 @@ print(st.type, st.size, st.mode > 0, st.mtime > 0, st.nlink, type(st.uid))
 print(fs.stat(d).type, show(fs.stat(p("missing"))))
 print(fs.chmod(p("a.txt"), 0x180), fs.stat(p("a.txt")).mode == 0x180) -- 0600
 print(fs.write(p("mode.txt"), "x", {mode = 0x1C0}), fs.stat(p("mode.txt")).mode & 0x1C0 == 0x1C0)
-print(
-    fs.touch(p("touched")),
-    fs.stat(p("touched")).size,
-    fs.touch(p("a.txt")),
-    fs.stat(p("a.txt")).size
-)
+print(fs.touch(p("touched")), fs.stat(p("touched")).size, fs.touch(p("a.txt")),
+    fs.stat(p("a.txt")).size)
 
 print("-- directories")
 print(fs.mkdir(p("x/y/z"), {parents = true}), fs.mkdir(p("x/y/z"), {parents = true}))
@@ -44,12 +40,8 @@ print(show(fs.mkdir(p("q/r"))))
 print(show(fs.mkdir(p("a.txt/sub"), {parents = true})))
 fs.write(p("x/y/z/deep.txt"), "deep")
 fs.write(p("x/b.txt"), "b")
-print(
-    fs.symlink("a.txt", p("link")),
-    fs.readlink(p("link")),
-    fs.lstat(p("link")).type,
-    fs.stat(p("link")).type
-)
+print(fs.symlink("a.txt", p("link")), fs.readlink(p("link")), fs.lstat(p("link")).type,
+    fs.stat(p("link")).type)
 print(fs.symlink("nowhere", p("dangling")), fs.exists(p("dangling")), fs.isfile(p("dangling")))
 print(string.join(fs.list(d), " "))
 print(show(fs.list(p("missing"))))
@@ -66,11 +58,8 @@ print(fs.rename(p("c.txt"), p("d.txt")), fs.exists(p("c.txt")), fs.isfile(p("d.t
 print(show(fs.rename(p("missing"), p("e.txt"))))
 print(show(fs.remove(p("x"))))
 print(fs.remove(p("x"), {recursive = true}), fs.exists(p("x")), fs.exists(p("x2")))
-print(
-    show(fs.remove(p("missing"))),
-    fs.remove(p("missing"), {force = true}),
-    fs.remove(p("missing"), {recursive = true, force = true})
-)
+print(show(fs.remove(p("missing"))), fs.remove(p("missing"), {force = true}),
+    fs.remove(p("missing"), {recursive = true, force = true}))
 print(fs.remove(p("link")), fs.exists(p("link")), fs.exists(p("a.txt")))
 
 print("-- glob, temp files, working directory")
@@ -79,12 +68,8 @@ print(len(fs.glob(d .. "/{a,d}.txt")), len(fs.glob(d .. "/nothing*")))
 local tf = fs.tempfile("sea-")
 print(fs.isfile(tf), fs.stat(tf).size, string.starts_with(path.basename(tf), "sea-"), fs.remove(tf))
 local old = fs.cwd()
-print(
-    fs.chdir(d),
-    fs.cwd() == fs.realpath(d),
-    fs.read("atomic.txt"),
-    path.abs("a.txt") == path.join(fs.cwd(), "a.txt")
-)
+print(fs.chdir(d), fs.cwd() == fs.realpath(d), fs.read("atomic.txt"),
+    path.abs("a.txt") == path.join(fs.cwd(), "a.txt"))
 print(fs.chdir(old), fs.cwd() == old, show(fs.chdir(p("missing"))))
 print(fs.remove(d, {recursive = true}), fs.exists(d))
 
@@ -100,11 +85,8 @@ for i = 0, len(cases) - 1 do
 end
 print(path.join("a", "b", "c"), path.join("a", "/b", "c"), path.join("", "a", ""), "[" .. path.join() .. "]",
     path.join("a/", "../b"), path.join("/", "x"))
-print(
-    path.basename("file.txt", ".txt"),
-    path.basename("a/.txt", ".txt"),
-    path.basename("/x/y.tar.gz", ".gz")
-)
+print(path.basename("file.txt", ".txt"), path.basename("a/.txt", ".txt"),
+    path.basename("/x/y.tar.gz", ".gz"))
 local rel = {
     {"/a/b", "/a/b/c/d"}, {"/a/b/c", "/a/x"}, {"/a", "/a"}, {"a/b", "a/c"}, {".", "a/b"},
     {"a", "/b"}, {"../a", "b"}, {"/", "/x/y"}, {"a/b", "."},

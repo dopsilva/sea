@@ -5,15 +5,8 @@
 
 print("-- run")
 local r = process.run({"echo", "hello", "world"})
-print(
-    r.code,
-    r.ok,
-    "[" .. r.stdout .. "]",
-    "[" .. r.stderr .. "]",
-    r.timed_out,
-    r.signal,
-    r.pid > 0
-)
+print(r.code, r.ok, "[" .. r.stdout .. "]", "[" .. r.stderr .. "]", r.timed_out, r.signal,
+    r.pid > 0)
 r = process.run("echo out; echo err 1>&2; exit 3")
 print(r.code, r.ok, string.trim(r.stdout), string.trim(r.stderr))
 r = process.run({"printf", "%s|%s", "a b", 42})

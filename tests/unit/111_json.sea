@@ -33,21 +33,12 @@ print(is_error(json.decode(string.rep("[", 512) .. string.rep("]", 512))))
 print(err(json.decode('[[["deep"]]]', {max_depth = 2})))
 
 print("-- valid()")
-print(
-    json.valid('{"a":[1,2.5,"x",null,true]}'),
-    json.valid("{"),
-    json.valid("01"),
-    json.valid(" 1 ")
-)
+print(json.valid('{"a":[1,2.5,"x",null,true]}'), json.valid("{"), json.valid("01"),
+    json.valid(" 1 "))
 
 print("-- encode conversions")
-print(
-    json.encode(0.1),
-    json.encode(3.0),
-    json.encode(-0.0),
-    json.encode(1e300),
-    json.encode(2.5e-8)
-)
+print(json.encode(0.1), json.encode(3.0), json.encode(-0.0), json.encode(1e300),
+    json.encode(2.5e-8))
 print(json.encode(1 / 0), json.encode(0 / 0))
 local t = {}
 t[1] = "a"
@@ -98,13 +89,6 @@ print(json.encode(json.decode(once), {sort_keys = true}) == once)
 local bsrc = '{"id": 1234567890123456789012, "small": 5, "neg": -99999999999999999999, "f": 1.5}'
 local lossy = json.decode(bsrc)
 local exact = json.decode(bsrc, {bigint = true})
-print(
-    "bigint decode",
-    type(lossy.id),
-    type(exact.id),
-    exact.id,
-    type(exact.small),
-    exact.neg,
-    exact.f
-)
+print("bigint decode", type(lossy.id), type(exact.id), exact.id, type(exact.small), exact.neg,
+    exact.f)
 print("bigint encode", json.encode(exact, {sort_keys = true}))

@@ -107,10 +107,8 @@ t.describe("smtp", function()
                 ["X-Tag"] = "teste",
             },
         })
-        t.contains(
-            m,
-            "From: =?UTF-8?B?" .. encoding.base64_encode("Loja São Jorge") .. "?= <loja@x.com>"
-        )
+        t.contains(m,
+            "From: =?UTF-8?B?" .. encoding.base64_encode("Loja São Jorge") .. "?= <loja@x.com>")
         t.contains(m, "Cc: bia@x.com")
         t.contains(m, "Reply-To: sac@x.com")
         t.contains(m, "Subject: =?UTF-8?B?" .. encoding.base64_encode("Pedido nº 12") .. "?=")
@@ -185,10 +183,8 @@ t.describe("smtp", function()
         t.eq(r.rejected[0].address, "nao@x.com")
         t.contains(r.rejected[0].error, "550")
         -- the same connection, the next message
-        t.is_error(
-            c:send({from = "a@x.com", to = "nao@x.com", text = "x"}),
-            "every recipient was refused"
-        )
+        t.is_error(c:send({from = "a@x.com", to = "nao@x.com", text = "x"}),
+            "every recipient was refused")
         c:close()
         local s = <-got
         t.eq(s.cmds[0], "EHLO loja.x.com")
@@ -197,10 +193,8 @@ t.describe("smtp", function()
 
     t.it("refuses a server without STARTTLS, unless asked for plain text", function()
         local addr, got = server()
-        t.is_error(
-            smtp.send(`smtp://${addr}`, {from = "a@x.com", to = "b@x.com", text = "x"}),
-            "STARTTLS"
-        )
+        t.is_error(smtp.send(`smtp://${addr}`, {from = "a@x.com", to = "b@x.com", text = "x"}),
+            "STARTTLS")
         local s = <-got
         t.eq(s.cmds[len(s.cmds) - 1], "QUIT")
         t.is_error(smtp.send("smtp://127.0.0.1:1?tls=none", {from = "a@x.com", to = "b@x.com"}))

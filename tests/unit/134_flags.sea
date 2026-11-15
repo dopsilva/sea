@@ -61,15 +61,8 @@ flags.reset()
 local port = flags.int("port", 8080, "port")
 local host = flags.string("host", "localhost", "host")
 local pos = flags.parse(args("--port 9000 extra"))
-print(
-    port.value,
-    host.value,
-    flags.get("port"),
-    flags.is_set("host"),
-    flags.narg(),
-    flags.args()[0],
-    pos[0]
-)
+print(port.value, host.value, flags.get("port"), flags.is_set("host"), flags.narg(),
+    flags.args()[0], pos[0])
 
 print("-- -h prints the usage and exits 0; a bad flag exits 2 with the usage on stderr")
 local dir = fs.tempdir("flags-")

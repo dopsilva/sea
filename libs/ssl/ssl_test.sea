@@ -36,11 +36,8 @@ t.describe("ssl", function()
         for _, algo in ["aes-256-gcm", "chacha20-poly1305"] do
             local box = ssl.encrypt(algo, key, "senha do banco", nil, "app/db@v1")
             t.eq(len(box.iv), 12)
-            t.eq(
-                ssl.decrypt(algo, key, box.iv, box.data, box.tag, "app/db@v1"),
-                "senha do banco",
-                algo
-            )
+            t.eq(ssl.decrypt(algo, key, box.iv, box.data, box.tag, "app/db@v1"), "senha do banco",
+                algo)
             -- another record's aad, or none: refused
             t.is_nil(ssl.decrypt(algo, key, box.iv, box.data, box.tag, "app/db@v2"), algo)
             t.is_nil(ssl.decrypt(algo, key, box.iv, box.data, box.tag), algo)

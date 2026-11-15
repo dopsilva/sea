@@ -157,10 +157,7 @@ local function write_dep(name, d)
             section = string.trim(string.sub(l, 2, (string.find(l, "]") or (len(l) + 1)) - 1))
             out[] = raw
         elseif section == "dependencies"
-                and re.test(
-                    "^(" .. re.escape(name) .. "|\"" .. re.escape(name) .. "\")\\s*=",
-                    l
-                ) then
+                and re.test("^(" .. re.escape(name) .. "|\"" .. re.escape(name) .. "\")\\s*=", l) then
             if d ~= nil and not done then out[] = dep_line(d) end
             done = true
         else
@@ -378,13 +375,8 @@ install = function(d, from)
     if fresh or head_commit(dir) ~= target then
         local r = git({"-c", "advice.detachedHead=false", "checkout", "--quiet", target}, dir)
         if not r.ok then fail(name .. ": git checkout " .. target .. " failed:\n" .. r.stderr) end
-        print(string.format(
-            "  %s %s%s (%s)",
-            name,
-            d.git,
-            ref and ("@" .. ref) or "",
-            string.sub(target, 1, 12)
-        ))
+        print(string.format("  %s %s%s (%s)", name, d.git, ref and ("@" .. ref) or "",
+            string.sub(target, 1, 12)))
         changed = changed + 1
     end
     local e = {}
@@ -416,12 +408,8 @@ local function install_all()
     end
     local n = 0
     for _, _ in installed do n = n + 1 end
-    print(string.format(
-        "%d package%s, %s",
-        n,
-        n == 1 and "" or "s",
-        changed == 0 and "up to date" or (tostring(changed) .. " changed")
-    ))
+    print(string.format("%d package%s, %s", n, n == 1 and "" or "s",
+        changed == 0 and "up to date" or (tostring(changed) .. " changed")))
 end
 
 if mode == "list" then

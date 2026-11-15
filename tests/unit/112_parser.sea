@@ -15,14 +15,8 @@ print(add.type, add.op, add.col, add.left.value, add.left.raw, add.left.is_float
 local s1 = ast.stmts[1]
 print(s1.is_const, s1.values[0].value == "a\n", s1.values[0].raw)
 local fn = ast.stmts[2].values[0]
-print(
-    ast.stmts[2].type,
-    fn.is_method,
-    fn.name,
-    fn.params[0].name,
-    fn.params[2].is_vararg,
-    fn.body.end_line
-)
+print(ast.stmts[2].type, fn.is_method, fn.name, fn.params[0].name, fn.params[2].is_vararg,
+    fn.body.end_line)
 print(fn.body.stmts[0].values[0].paren, fn.body.stmts[0].values[0].op)
 
 -- errors are values: "name:line:col: message"
@@ -68,10 +62,8 @@ end)
 printf("%s", parser.format(ast))
 
 -- format source: comments, one-line blocks, aligned trailing comments
-printf(
-    "%s",
-    parser.format("local   t={a=1,b={2,3}} -- t\nif t then print( t.a ) end\n\n\nwhile x>0 do\n  x=x-1   -- dec\n  y = y+1 -- inc\nend\n")
-)
+printf("%s",
+    parser.format("local   t={a=1,b={2,3}} -- t\nif t then print( t.a ) end\n\n\nwhile x>0 do\n  x=x-1   -- dec\n  y = y+1 -- inc\nend\n"))
 
 -- format a tree built by hand: parentheses come from precedence
 print(parser.format({
@@ -94,9 +86,7 @@ print(self_ast.type, len(self_ast.stmts) > 10)
 print(parser.parse_file("tests/unit/no_such_file.sea").message)
 
 -- a chain broken before ':' or '.' keeps its lines, one level in
-printf(
-    "%s",
-    parser.format("local t = b:add(1)\n  :add(2)\n:text()\nlocal h = cfg\n.db.host\nlocal u = b:add(1):add(2)\n")
-)
+printf("%s",
+    parser.format("local t = b:add(1)\n  :add(2)\n:text()\nlocal h = cfg\n.db.host\nlocal u = b:add(1):add(2)\n"))
 -- a function passed in a broken chain keeps its body under the chain
 printf("%s", parser.format("q:a()\n:b(function(s)\ns:c()\nend)\n:d()\n"))

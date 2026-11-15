@@ -41,10 +41,8 @@ local function i16(n)
 end
 
 local function rd32(s, p)
-    local n = (string.byte(s, p) << 24) | (string.byte(s, p + 1) << 16) | (string.byte(s, p + 2) << 8) | string.byte(
-        s,
-        p + 3
-    )
+    local n = (string.byte(s, p) << 24) | (string.byte(s, p + 1) << 16) | (string.byte(s, p + 2) << 8) | string.byte(s,
+        p + 3)
     if n >= 0x80000000 then n -= 0x100000000 end
     return n
 end
@@ -130,10 +128,8 @@ end
 -- sslcert, sslkey, application_name, connect_timeout (seconds, as libpq),
 -- options; any other key is sent to the server as a session setting.
 function M.parse_url(url)
-    local m = re.match(
-        "^(postgres|postgresql|cockroachdb)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$",
-        url
-    )
+    local m = re.match("^(postgres|postgresql|cockroachdb)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$",
+        url)
     if m == nil then return error(`cockroach: bad URL '${url}'`) end
     local g = m.groups
     local cfg = {}
@@ -291,10 +287,8 @@ local function authenticate(c, cfg)
                     conn_write(c, msg("p", cfg.password .. "\0"))?
                 elseif code == 5 then
                     local inner = hash.md5(cfg.password .. cfg.user)
-                    conn_write(
-                        c,
-                        msg("p", "md5" .. hash.md5(inner .. string.sub(body, 5, 8)) .. "\0")
-                    )?
+                    conn_write(c,
+                        msg("p", "md5" .. hash.md5(inner .. string.sub(body, 5, 8)) .. "\0"))?
                 else
                     if not string.contains(body, "SCRAM-SHA-256\0") then
                         return error("cockroach: the server offers no supported SASL mechanism")
@@ -847,10 +841,8 @@ function Db.insert(db, table_name, rows, opts)
     local columns = sort.sorted(list.keys(rows[0]))
     local quoted = []
     for _, c in columns do quoted[] = M.quote_ident(c) end
-    local head = `${opts.upsert and "UPSERT" or "INSERT"} INTO ${M.quote_ident(table_name)} (${string.join(
-        quoted,
-        ", "
-    )}) VALUES `
+    local head = `${opts.upsert and "UPSERT" or "INSERT"} INTO ${M.quote_ident(table_name)} (${string.join(quoted,
+        ", ")}) VALUES `
     local tail = ""
     if opts.on_conflict ~= nil then tail ..= " ON CONFLICT " .. opts.on_conflict end
     if opts.returning ~= nil then tail ..= " RETURNING " .. opts.returning end

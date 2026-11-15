@@ -122,10 +122,8 @@ local function parse_query_string(qs)
         if len(pair) > 0 then
             local eq = string.find(pair, "=")
             if eq then
-                result[native.url_decode(string.sub(pair, 1, eq - 1))] = native.url_decode(string.sub(
-                    pair,
-                    eq + 1
-                ))
+                result[native.url_decode(string.sub(pair, 1, eq - 1))] = native.url_decode(string.sub(pair,
+                    eq + 1))
             else
                 result[native.url_decode(pair)] = true
             end
@@ -759,12 +757,8 @@ local function serve_conn(srv, c, key, remote)
         local text = render_response(resp, head.method == "HEAD", keep, native.http_date())
         if text == nil then
             print("http: invalid response header from handler; sending 500")
-            text = render_response(
-                plain(500, "Internal Server Error\n"),
-                false,
-                false,
-                native.http_date()
-            )
+            text = render_response(plain(500, "Internal Server Error\n"), false, false,
+                native.http_date())
             keep = false
         end
         local w = c_write(c, text, o.write_timeout)

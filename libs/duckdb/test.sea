@@ -45,18 +45,12 @@ print(string.sub(duckdb.version(), 1, 1))
 local db = duckdb.open()
 
 -- ---- exec, query, row, value --------------------------------------------------
-print(
-    "create",
-    db:exec("CREATE TABLE people (id INTEGER PRIMARY KEY, name VARCHAR, age INTEGER, score DOUBLE)")
-)
-print(
-    "insert",
-    db:exec("INSERT INTO people VALUES (1, 'ana', 30, 9.5), (2, 'bia', 25, NULL), (3, 'caio', 41, 7.25)")
-)
-print(
-    "multi",
-    db:exec("CREATE TABLE a (x INTEGER); INSERT INTO a VALUES (1), (2); UPDATE a SET x = x * 10")
-)
+print("create",
+    db:exec("CREATE TABLE people (id INTEGER PRIMARY KEY, name VARCHAR, age INTEGER, score DOUBLE)"))
+print("insert",
+    db:exec("INSERT INTO people VALUES (1, 'ana', 30, 9.5), (2, 'bia', 25, NULL), (3, 'caio', 41, 7.25)"))
+print("multi",
+    db:exec("CREATE TABLE a (x INTEGER); INSERT INTO a VALUES (1), (2); UPDATE a SET x = x * 10"))
 for _, r in db:query("SELECT * FROM people ORDER BY id") do print(r.id, r.name, r.age, r.score) end
 print("row", show(db:row("SELECT name, age FROM people WHERE id = 3")))
 print("no row", db:row("SELECT * FROM people WHERE id = 99"), db:value("SELECT 1 WHERE false"))
@@ -68,10 +62,8 @@ print("positional", db:value("SELECT name FROM people WHERE id = ? AND age > ?",
 print("table", db:value("SELECT name FROM people WHERE id = ? AND age > ?", {2, 18}))
 print("$1", db:value("SELECT $2 || '-' || $1", "a", "b"))
 print("named", db:value("SELECT name FROM people WHERE age = $age", {age = 41}))
-print(
-    "types",
-    show(db:row("SELECT ? AS i, ? AS f, ? AS s, ? AS b, ? AS n", 7, 2.5, "x", true, nil))
-)
+print("types",
+    show(db:row("SELECT ? AS i, ? AS f, ? AS s, ? AS b, ? AS n", 7, 2.5, "x", true, nil)))
 local tags = []
 tags[] = "red"
 tags[] = "blue"
@@ -126,38 +118,23 @@ sort.sort(ks)
 for _, k in ks do print(k, type(wide[k]), wide[k]) end
 print(db:value("SELECT ?::HUGEINT + 1", bigint.new("100000000000000000000")))
 print(db:value("SELECT ? * 2", bigint.new("123456789012345678901234567890123456789012")))
-print(
-    db:value("SELECT typeof(?)", bigint.new("123456789012345678901234567890123456789012")),
+print(db:value("SELECT typeof(?)", bigint.new("123456789012345678901234567890123456789012")),
     db:value("SELECT typeof(?)", bigint.new("100000000000000000000")),
-    db:value("SELECT typeof(?)", bigint.new(5))
-)
-print(
-    db:value("SELECT 'POINT(1 2)'::GEOMETRY").type,
-    string.join(db:value("SELECT 'POINT(1 2)'::GEOMETRY").coordinates, ",")
-)
+    db:value("SELECT typeof(?)", bigint.new(5)))
+print(db:value("SELECT 'POINT(1 2)'::GEOMETRY").type,
+    string.join(db:value("SELECT 'POINT(1 2)'::GEOMETRY").coordinates, ","))
 local g = db:value("SELECT 'POLYGON((0 0, 1 0, 1 1, 0 0))'::GEOMETRY")
 print(g.type, len(g.coordinates), len(g.coordinates[0]), g.coordinates[0][2][0])
 local gc = db:value("SELECT 'GEOMETRYCOLLECTION(POINT (1 2), MULTILINESTRING((0 0, 1 1), (2 2, 3 3)), POINT EMPTY)'::GEOMETRY")
-print(
-    gc.type,
-    gc.geometries[0].type,
-    string.join(gc.geometries[0].coordinates, ","),
-    gc.geometries[1].type,
-    gc.geometries[1].coordinates[1][1][0],
-    len(gc.geometries[2].coordinates)
-)
+print(gc.type, gc.geometries[0].type, string.join(gc.geometries[0].coordinates, ","),
+    gc.geometries[1].type, gc.geometries[1].coordinates[1][1][0], len(gc.geometries[2].coordinates))
 local v = db:value("SELECT {'a': 1, 'b': [true, NULL, false], 'c': {'d': 2.5::DOUBLE}}::VARIANT")
 print(type(v), v.a, len(v.b), v.b[0], v.b[1], v.b[2], v.c.d)
-print(
-    db:value("SELECT 42::VARIANT"),
-    db:value("SELECT NULL::VARIANT"),
+print(db:value("SELECT 42::VARIANT"), db:value("SELECT NULL::VARIANT"),
     db:value("SELECT DATE '2024-02-29'::VARIANT"),
-    db:value("SELECT 12.345::DECIMAL(10,3)::VARIANT")
-)
-print(
-    string.join(db:value("SELECT 'POINT Z (1 2 3)'::GEOMETRY").coordinates, ","),
-    db:value("SELECT 'POINT(1 2)'::GEOMETRY::VARCHAR")
-)
+    db:value("SELECT 12.345::DECIMAL(10,3)::VARIANT"))
+print(string.join(db:value("SELECT 'POINT Z (1 2 3)'::GEOMETRY").coordinates, ","),
+    db:value("SELECT 'POINT(1 2)'::GEOMETRY::VARCHAR"))
 local all = db:value([[SELECT {'i8': 1::TINYINT, 'u64': 18446744073709551615::UBIGINT, 'h': -170141183460469231731687303715884105727::HUGEINT,
   'f': 1.5::FLOAT, 'dec': -1.5::DECIMAL(5,1), 'bigdec': 12.345::DECIMAL(30,3), 's': 'olá', 'bl': '\xAA'::BLOB,
   'u': '550e8400-e29b-41d4-a716-446655440000'::UUID, 't': TIME '13:45:07.25', 'tn': TIME_NS '13:45:07.123456789',
@@ -194,11 +171,8 @@ print("float_array", type(fc.data.x), fc.data.x[4])
 
 -- ---- each ------------------------------------------------------------------------------
 local seen = []
-print(
-    "each",
-    db:each("SELECT name FROM people ORDER BY id", function(r) seen[] = r.name end),
-    string.join(seen, ",")
-)
+print("each", db:each("SELECT name FROM people ORDER BY id", function(r) seen[] = r.name end),
+    string.join(seen, ","))
 local first = nil
 print("each stop", db:each("SELECT id FROM people ORDER BY id", function(r)
     first = r.id
@@ -228,11 +202,8 @@ print("append_rows", app:append_rows(rows))
 print(err(app:append({1, 2})))
 print(err(app:append({nope = 1})))
 print("close", app:close())
-print(
-    "count",
-    db:value("SELECT count(*) FROM events"),
-    show(db:row("SELECT kind, tags FROM events WHERE id = 2"))
-)
+print("count", db:value("SELECT count(*) FROM events"),
+    show(db:row("SELECT kind, tags FROM events WHERE id = 2")))
 print("tags", show(db:value("SELECT tags FROM events WHERE id = 1")))
 print(err(db:appender("missing")))
 

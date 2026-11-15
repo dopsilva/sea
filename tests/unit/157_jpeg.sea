@@ -7,10 +7,8 @@
 
 local image = require("image")
 
-local bytes = fs.read(path.join(
-    path.dirname(os.args[0] or "tests/unit/157_jpeg.sea"),
-    "157_jpeg_card.jpg"
-))
+local bytes = fs.read(path.join(path.dirname(os.args[0] or "tests/unit/157_jpeg.sea"),
+    "157_jpeg_card.jpg"))
 if is_error(bytes) then bytes = fs.read("tests/unit/157_jpeg_card.jpg") end
 local img = image.decode(bytes)
 print("size", img.width, img.height)

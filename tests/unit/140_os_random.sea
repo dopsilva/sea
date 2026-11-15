@@ -3,18 +3,11 @@
 
 -- Test: os.urandom, os.token, os.uuid (secure random)
 print(len(os.urandom(0)), len(os.urandom(32)), os.urandom(16) ~= os.urandom(16))
-print(
-    len(os.token()),
-    len(os.token(4)),
-    re.test("^[0-9a-f]+$", os.token(64)),
-    os.token() ~= os.token()
-)
+print(len(os.token()), len(os.token(4)), re.test("^[0-9a-f]+$", os.token(64)),
+    os.token() ~= os.token())
 local u = os.uuid()
-print(
-    len(u),
-    re.test("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", u),
-    u ~= os.uuid()
-)
+print(len(u), re.test("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", u),
+    u ~= os.uuid())
 local seen = [=]
 for _ = 1, 1000 do seen[os.uuid()] = true end
 print(len(seen))

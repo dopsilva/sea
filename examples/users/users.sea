@@ -69,11 +69,8 @@ function M.hash_password(password, iterations)
     iterations = iterations or M.ITERATIONS
     local salt = M.random_hex(16)
     if is_error(salt) then return salt end
-    return "pbkdf2-sha256$" .. iterations .. "$" .. salt .. "$" .. pbkdf2(
-        password,
-        salt,
-        iterations
-    )
+    return "pbkdf2-sha256$" .. iterations .. "$" .. salt .. "$" .. pbkdf2(password, salt,
+        iterations)
 end
 
 -- users.check_password(password, stored) → bool
@@ -185,12 +182,8 @@ function Store.login(self, email, password)
             failures = 0
             locked_until = now + M.LOCK_SECONDS
         end
-        local _ = self.db:exec(
-            "UPDATE users SET failures = ?, locked_until = ? WHERE id = ?",
-            failures,
-            locked_until,
-            row.id
-        )
+        local _ = self.db:exec("UPDATE users SET failures = ?, locked_until = ? WHERE id = ?",
+            failures, locked_until, row.id)
         return error("invalid email or password")
     end
     local token = M.random_hex(32)

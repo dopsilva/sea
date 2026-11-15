@@ -444,10 +444,8 @@ function M.connect(url, opts)
     for i = 1, len(hl) - 1 do
         local colon = string.find(hl[i], ":")
         if colon then
-            hdr[string.lower(string.trim(string.sub(hl[i], 1, colon - 1)))] = string.trim(string.sub(
-                hl[i],
-                colon + 1
-            ))
+            hdr[string.lower(string.trim(string.sub(hl[i], 1, colon - 1)))] = string.trim(string.sub(hl[i],
+                colon + 1))
         end
     end
     if not header_has(hdr["upgrade"], "websocket")

@@ -97,16 +97,12 @@ local s1, n1, t1 = run_pipeline(1)
 print("  [1 worker ]  " .. n1 .. " jobs  soma=" .. s1 .. "  " .. t1 .. " ms")
 
 local s2, n2, t2 = run_pipeline(2)
-print("  [2 workers]  " .. n2 .. " jobs  soma=" .. s2 .. "  " .. t2 .. " ms  speedup=" .. fmt_speedup(
-    t1,
-    t2
-))
+print("  [2 workers]  " .. n2 .. " jobs  soma=" .. s2 .. "  " .. t2 .. " ms  speedup=" .. fmt_speedup(t1,
+    t2))
 
 local s4, n4, t4 = run_pipeline(4)
-print("  [4 workers]  " .. n4 .. " jobs  soma=" .. s4 .. "  " .. t4 .. " ms  speedup=" .. fmt_speedup(
-    t1,
-    t4
-))
+print("  [4 workers]  " .. n4 .. " jobs  soma=" .. s4 .. "  " .. t4 .. " ms  speedup=" .. fmt_speedup(t1,
+    t4))
 
 print("")
 if s1 == expected and s2 == expected and s4 == expected then

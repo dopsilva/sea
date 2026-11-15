@@ -1013,10 +1013,9 @@ local function text_runs(doc, content, resources, runs, depth)
                 end
             elseif t == "cm" and len(ops) >= 6 then
                 local n = len(ops)
-                ctm = mat_mul(
-                    [ops[n - 6], ops[n - 5], ops[n - 4], ops[n - 3], ops[n - 2], ops[n - 1]],
-                    ctm
-                )
+                ctm = mat_mul([
+                    ops[n - 6], ops[n - 5], ops[n - 4], ops[n - 3], ops[n - 2], ops[n - 1],
+                ], ctm)
             elseif t == "q" then
                 gstack[] = ctm
             elseif t == "Q" then
@@ -1162,10 +1161,8 @@ function Doc.page_images(doc, i)
                             if nc == 1 then
                                 v = string.byte(data, p)
                             elseif nc == 3 then
-                                v = (299 * string.byte(data, p) + 587 * string.byte(data, p + 1) + 114 * string.byte(
-                                    data,
-                                    p + 2
-                                )) // 1000
+                                v = (299 * string.byte(data, p) + 587 * string.byte(data, p + 1) + 114 * string.byte(data,
+                                    p + 2)) // 1000
                             else
                                 local kk = string.byte(data, p + 3)
                                 local r = 255 - math.min(255, string.byte(data, p) + kk)

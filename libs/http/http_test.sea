@@ -88,25 +88,19 @@ t.describe("http over TLS", function()
         t.eq(r.status, 200)
         t.eq(r.body, "mtls")
         -- (as files too)
-        t.eq(
-            http.get(
-                url,
-                {tls = {ca = ca, cert = path.join(dir, "cli.crt"), key = path.join(dir, "cli.key")}}
-            ).status,
-            200
-        )
+        t.eq(http.get(
+            url,
+            {tls = {ca = ca, cert = path.join(dir, "cli.crt"), key = path.join(dir, "cli.key")}}
+        ).status, 200)
         -- a key that is not PEM
-        t.eq(
-            http.get(
-                url,
-                {
-                    tls = {
-                        ca = ca,
-                        cert = fs.read(path.join(dir, "cli.crt")),
-                        key = "-----BEGIN nonsense",
-                    },
-                }).status,
-            0
-        )
+        t.eq(http.get(
+            url,
+            {
+                tls = {
+                    ca = ca,
+                    cert = fs.read(path.join(dir, "cli.crt")),
+                    key = "-----BEGIN nonsense",
+                },
+            }).status, 0)
     end)
 end)

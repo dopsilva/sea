@@ -73,8 +73,6 @@ local function try(fn)
     return err
 end
 print(string.contains(tostring(try(function() l:set_level("loud") end)), "unknown level 'loud'"))
-print(string.contains(
-    tostring(try(function() log.new({format = "xml"}) end)),
-    "unknown format 'xml'"
-))
+print(string.contains(tostring(try(function() log.new({format = "xml"}) end)),
+    "unknown format 'xml'"))
 print(string.contains(tostring(try(function() log.new({output = 3.5}) end)), "the output must be"))

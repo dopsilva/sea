@@ -98,12 +98,8 @@ end
 local mixed = []
 mixed[] = 1
 mixed[] = "a"
-print(
-    "mixed",
-    string.contains(try(function() sort.sort(mixed) end), "cannot compare"),
-    mixed[0],
-    mixed[1]
-)
+print("mixed", string.contains(try(function() sort.sort(mixed) end), "cannot compare"), mixed[0],
+    mixed[1])
 print("not an array", string.contains(try(function() sort.sort({}) end), "expected an array"))
 print("bad comparator", string.contains(try(function() sort.sort(arr("1 2"), 3) end), "comparator"))
 local victim = arr("3 1 2")

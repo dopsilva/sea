@@ -58,8 +58,9 @@ directories); without paths, stdin is formatted to stdout.
 | `--width N` | Wrap a one-line table, array, call or `and`/`or` chain that goes past column N (default 100; 0 never wraps) |
 
 Layout rules: a table or array too wide for its line gets one field per row
-(scalar array elements fill rows instead); a call too wide gets one argument per
-line with `)` on its own line; a long `and`/`or` chain breaks *before* the
+(scalar array elements fill rows instead); a call too wide has its arguments packed
+row by row up to the width (one per line, with `)` on its own line, when one is a
+function or a table); a long `and`/`or` chain breaks *before* the
 operator (other operators end the line); a broken `if`/`while` condition goes one
 level deeper than the body. Line breaks the source already has are kept.
 Consecutive one-line `local x = ...` / `x = ...` lines keep their `=` aligned

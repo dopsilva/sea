@@ -258,10 +258,10 @@ function Doc.bytes(d)
             `/Resources ${resources} /Contents ${cid} 0 R >>`)
     end
     objs[catalog - 1] = `<< /Type /Catalog /Pages ${pages} 0 R >>`
-    objs[pages - 1] = `<< /Type /Pages /Kids [${string.join(
-        list.map(kids, function(k) return k .. " 0 R" end),
-        " "
-    )}] ` ..
+    objs[pages - 1] = `<< /Type /Pages /Kids [${string.join(list.map(
+        kids,
+        function(k) return k .. " 0 R" end
+    ), " ")}] ` ..
         `/Count ${len(kids)} >>`
     local info_parts = ["/Producer " .. pdf_string(winansi(d.info.producer or "Sea pdf"))]
     if d.info.title ~= nil then info_parts[] = "/Title " .. pdf_string(winansi(d.info.title)) end

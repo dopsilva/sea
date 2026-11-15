@@ -125,9 +125,7 @@ print("")
 if len(failed) == 0 then
     print("Resultados: " .. pass .. "/" .. total .. " passaram")
 else
-    print("Resultados: " .. pass .. "/" .. total .. " passaram (" .. len(failed) .. " falha(s): " .. string.join(
-        failed,
-        ", "
-    ) .. ")")
+    print("Resultados: " .. pass .. "/" .. total .. " passaram (" .. len(failed) .. " falha(s): " .. string.join(failed,
+        ", ") .. ")")
     os.exit(1)
 end

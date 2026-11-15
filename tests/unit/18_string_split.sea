@@ -54,9 +54,6 @@ print(string.join({"x", "y", 3}, "-"), string.join({}, ","), string.join({"only"
 -- split with a limit, splitlines, format_number
 print(string.split("a=b=c", "=", 2), string.split("k: v: w", ": ", 2), string.split("x", ",", 3))
 print(string.splitlines("a\nb\r\n\nc\n"), string.splitlines(""), ("one\ntwo"):splitlines())
-print(
-    string.format_number(1234567),
-    string.format_number(-1234.567),
-    string.format_number(1234.5, 1, ".", ",")
-)
+print(string.format_number(1234567), string.format_number(-1234.567),
+    string.format_number(1234.5, 1, ".", ","))
 print(string.format_number(999), string.format_number(1e9, 0), string.format_number(0.5))

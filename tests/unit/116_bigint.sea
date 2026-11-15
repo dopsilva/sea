@@ -10,43 +10,19 @@ local a = bigint.new("123456789012345678901234567890")
 local b = bigint.new(987654321)
 print(type(a), a, b)
 print(bigint.add(a, b), bigint.sub(b, a), bigint.mul(a, a))
-print(
-    bigint.div(a, b),
-    bigint.mod(a, b),
-    bigint.div(bigint.neg(a), b),
-    bigint.mod(bigint.neg(a), b)
-)
+print(bigint.div(a, b), bigint.mod(a, b), bigint.div(bigint.neg(a), b),
+    bigint.mod(bigint.neg(a), b))
 print(bigint.div(-7, 2), bigint.mod(-7, 2), bigint.div(7, -2), bigint.mod(7, -2))
 print(bigint.pow(2, 200))
 print(bigint.pow(-1, bigint.new("1000000000000000000001")), bigint.pow(0, 0))
-print(
-    a > b,
-    a < b,
-    a == bigint.new("123456789012345678901234567890"),
-    b == 987654321,
-    b == 987654321.0,
-    b < 987654321.5,
-    b > 1e300
-)
+print(a > b, a < b, a == bigint.new("123456789012345678901234567890"), b == 987654321,
+    b == 987654321.0, b < 987654321.5, b > 1e300)
 print(bigint.new(5) <= 5, 5 >= bigint.new(5), bigint.new(5) < 0 / 0, bigint.new(-3) < -2)
-print(
-    bigint.tostring(a, 16),
-    bigint.new("ff", 16),
-    bigint.new("0x_ff"),
-    bigint.new("0b1010"),
-    bigint.new("-1_000_000")
-)
+print(bigint.tostring(a, 16), bigint.new("ff", 16), bigint.new("0x_ff"), bigint.new("0b1010"),
+    bigint.new("-1_000_000"))
 print(bigint.toint(b), bigint.toint(a), bigint.tonumber(a), tonumber(a))
-print(string.format(
-    "[%d] [%25d] [%-12d] [%+d] [%x] [%X] [%010d]",
-    a,
-    a,
-    b,
-    b,
-    a,
-    b,
-    bigint.new(-42)
-))
+print(string.format("[%d] [%25d] [%-12d] [%+d] [%x] [%X] [%010d]", a, a, b, b, a, b,
+    bigint.new(-42)))
 print("concat " .. a)
 print(bigint.new("abc").message, bigint.new(2.5).message)
 local t = {}
