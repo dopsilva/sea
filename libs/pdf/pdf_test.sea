@@ -152,7 +152,9 @@ t.describe("pdf", function()
         p:line(40, 60, 555, 60, {width = 1})
         p:rect(40, 100, 200, 40, {width = 0.8})
         p:rect(40, 150, 2, 30, {fill = true})
-        for i = 1, 40 do p:text(40, 200 + i * 12, `linha ${i} com um texto qualquer para comprimir`, {size = 9}) end
+        for i = 1, 40 do
+            p:text(40, 200 + i * 12, `linha ${i} com um texto qualquer para comprimir`, {size = 9})
+        end
         doc:page():text(72, 720, "Segunda página", {color = {0.2, 0.2, 0.2}})
         local bytes = doc:bytes()
         t.eq(string.sub(bytes, 1, 8), "%PDF-1.4")

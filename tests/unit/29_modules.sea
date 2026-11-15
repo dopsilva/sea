@@ -5,33 +5,33 @@
 
 -- Basic require and function calls
 local m = require("./29_modules_math")
-print(m.add(3, 4))         -- 7
-print(m.mul(6, 7))         -- 42
-print(m.factorial(5))      -- 120
+print(m.add(3, 4))    -- 7
+print(m.mul(6, 7))    -- 42
+print(m.factorial(5)) -- 120
 
 -- Module caching: same object returned on repeated require
 local m2 = require("./29_modules_math")
-print(m == m2)             -- true
+print(m == m2) -- true
 
 -- Module with encapsulated state (closure-based)
 local c = require("./29_modules_counter")
 c.increment()
 c.increment()
 c.increment()
-print(c.get())             -- 3
+print(c.get()) -- 3
 
 -- Require the same counter again → cached, same state
 local c2 = require("./29_modules_counter")
-print(c2.get())            -- 3  (same module instance)
+print(c2.get()) -- 3  (same module instance)
 
 -- Built-in module require still works
 local math_mod = require("math")
-print(math_mod.abs(-99))   -- 99
+print(math_mod.abs(-99)) -- 99
 
 -- An absolute path names the module file itself (no search)
 local dir = string.trim(os.exec("mktemp -d").output)
 local f = io.open(dir .. "/absmod.sea", "w")
 io.write_string(f, "return {name = \"absolute\"}\n")
 io.close(f)
-print(require(dir .. "/absmod").name)        -- absolute
+print(require(dir .. "/absmod").name) -- absolute
 local _ = os.exec("rm -rf " .. dir)

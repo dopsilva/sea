@@ -10,4 +10,6 @@ end
 
 local total = list.sum(list.values(counts))
 print(`words: ${total}, distinct: ${len(counts)}`)
-for _, kv in list.most_common(counts, 20) do printf("%-12s %7d %6.2f%%\n", kv[0], kv[1], 100 * kv[1] / total) end
+for _, kv in list.most_common(counts, 20) do
+    printf("%-12s %7d %6.2f%%\n", kv[0], kv[1], 100 * kv[1] / total)
+end

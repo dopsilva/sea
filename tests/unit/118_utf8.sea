@@ -17,13 +17,32 @@ print(utf8.upper("áéíóú àè çñ ğşı αβγς άέ привет ёё ŷ
 print(utf8.upper("ß ÿ ſ µ straße"))
 
 print("-- substrings and positions")
-print(utf8.sub(s, 1, 4), utf8.sub(s, -5), utf8.sub(s, 6, 6), "[" .. utf8.sub(s, 100) .. "]", "[" .. utf8.sub(s, 3, 2) .. "]")
+print(
+    utf8.sub(s, 1, 4),
+    utf8.sub(s, -5),
+    utf8.sub(s, 6, 6),
+    "[" .. utf8.sub(s, 100) .. "]",
+    "[" .. utf8.sub(s, 3, 2) .. "]"
+)
 print(utf8.sub(s, -100, 2), utf8.sub(s, 1) == s)
-print(utf8.offset(s, 1), utf8.offset(s, 3), utf8.offset(s, -1), utf8.offset(s, utf8.len(s) + 1), len(s) + 1, utf8.offset(s, 99))
+print(
+    utf8.offset(s, 1),
+    utf8.offset(s, 3),
+    utf8.offset(s, -1),
+    utf8.offset(s, utf8.len(s) + 1),
+    len(s) + 1,
+    utf8.offset(s, 99)
+)
 print(string.sub(s, utf8.offset(s, 14), utf8.offset(s, 17) - 1))
 
 print("-- code points and characters")
-print(utf8.codepoint("€"), utf8.codepoint(s, 2), utf8.codepoint(s, -1), utf8.codepoint(s, 100), utf8.codepoint(""))
+print(
+    utf8.codepoint("€"),
+    utf8.codepoint(s, 2),
+    utf8.codepoint(s, -1),
+    utf8.codepoint(s, 100),
+    utf8.codepoint("")
+)
 print(utf8.char(72, 0xE9, 0x1F600), utf8.char(), utf8.char(utf8.codepoints("olá")))
 local cps = utf8.codepoints("añ😀")
 print(len(cps), cps[0], cps[1], cps[2])
@@ -34,7 +53,9 @@ local function try(f)
     local function run()
         defer function()
             local e = recover()
-            if e != nil then result = string.sub(e.message, string.find(e.message, ": utf8.") + 2) end
+            if e ~= nil then
+                result = string.sub(e.message, string.find(e.message, ": utf8.") + 2)
+            end
         end
         f()
     end
@@ -47,13 +68,33 @@ print(try(function() local _ = utf8.len(42) end))
 print(try(function() local _ = utf8.sub("x", "a") end))
 
 print("-- terminal width")
-print(utf8.width("abc"), utf8.width("日本語"), utf8.width("e\u{301}"), utf8.width("😀!"), utf8.width("ｆｕｌｌ"), utf8.width("a\tb"))
+print(
+    utf8.width("abc"),
+    utf8.width("日本語"),
+    utf8.width("e\u{301}"),
+    utf8.width("😀!"),
+    utf8.width("ｆｕｌｌ"),
+    utf8.width("a\tb")
+)
 
 print("-- invalid bytes")
 local bad = "ok" .. string.char(0xFF) .. "x" .. string.char(0xC3)
-print(utf8.valid(bad), utf8.invalid(bad), utf8.len(bad), utf8.sanitize(bad), utf8.sanitize(bad, "?"))
-print(utf8.sanitize("fine") == "fine", utf8.upper(bad) == "OK" .. string.char(0xFF) .. "X" .. string.char(0xC3))
-print(utf8.valid(string.char(0xC0, 0x80)), utf8.valid(string.char(0xED, 0xA0, 0x80)), utf8.valid(string.char(0xF4, 0x90, 0x80, 0x80)))
+print(
+    utf8.valid(bad),
+    utf8.invalid(bad),
+    utf8.len(bad),
+    utf8.sanitize(bad),
+    utf8.sanitize(bad, "?")
+)
+print(
+    utf8.sanitize("fine") == "fine",
+    utf8.upper(bad) == "OK" .. string.char(0xFF) .. "X" .. string.char(0xC3)
+)
+print(
+    utf8.valid(string.char(0xC0, 0x80)),
+    utf8.valid(string.char(0xED, 0xA0, 0x80)),
+    utf8.valid(string.char(0xF4, 0x90, 0x80, 0x80))
+)
 print(string.join(utf8.chars("a" .. string.char(0xE2, 0x82) .. "b"), ","))
 
 print("-- \\u{} escapes")

@@ -62,11 +62,25 @@ local cli = flags.new("sea check", {
         "A line ending with `-- check:ignore [codes]` is not checked.",
     }, "\n"),
 })
-local disable_flag = cli:string("disable", "", "skip these checks (comma separated)", {arg = "codes"})
+local disable_flag = cli:string(
+    "disable",
+    "",
+    "skip these checks (comma separated)",
+    {arg = "codes"}
+)
 local only_flag = cli:string("only", "", "run only these checks", {arg = "codes"})
-local globals_flag = cli:list("g", "globals defined elsewhere (comma separated; may repeat)", {arg = "names"})
+local globals_flag = cli:list(
+    "g",
+    "globals defined elsewhere (comma separated; may repeat)",
+    {arg = "names"}
+)
 local all_flag = cli:bool("all", false, "also report unused parameters and loop variables")
-local format_flag = cli:string("f", "text", "output format", {arg = "format", choices = {"text", "json"}})
+local format_flag = cli:string(
+    "f",
+    "text",
+    "output format",
+    {arg = "format", choices = {"text", "json"}}
+)
 local warn_flag = cli:bool("w", false, "exit with status 0 when there are only warnings")
 local paths = cli:parse()
 
@@ -94,12 +108,14 @@ for _, p in paths do
         for _, f in fs.walk(p, {files = true}) do
             local hidden = false
             for _, part in path.parts(path.relative(p, f)) do
-                if string.starts_with(part, ".") and part ~= "." and part ~= ".." then hidden = true end
+                if string.starts_with(part, ".") and part ~= "." and part ~= ".." then
+                    hidden = true
+                end
             end
             if not hidden and path.ext(f) == ".sea" then files[] = path.normalize(f) end
         end
     elseif p == "-" then
-        files[] = p                      -- the program on standard input
+        files[] = p -- the program on standard input
     elseif fs.exists(p) then
         files[] = p
     else
@@ -158,6 +174,10 @@ for _, f in files do
     end
 end
 if format == "json" then
-    if len(json) == 0 then print("[]") else print("[\n  " .. string.join(json, ",\n  ") .. "\n]") end
+    if len(json) == 0 then
+        print("[]")
+    else
+        print("[\n  " .. string.join(json, ",\n  ") .. "\n]")
+    end
 end
 if errors > 0 or (warnings > 0 and not warn_ok) then os.exit(1) end

@@ -23,7 +23,7 @@ print("")
 
 -- ── Estado compartilhado ─────────────────────────────────────────────────────
 local mu       = sync.mutex()
-local counters = [=]    -- nome → contagem
+local counters = [=] -- nome → contagem
 local total    = 0
 
 local function incrementar(nome)
@@ -40,8 +40,8 @@ local function handler(req)
     if req.method == "GET" and req.path == "/" then
         return {
             status = 200,
-            body   = "Metrics Server\nUse POST /increment?name=X  GET /metrics\n",
-            headers = { ["Content-Type"] = "text/plain" },
+            body = "Metrics Server\nUse POST /increment?name=X  GET /metrics\n",
+            headers = {["Content-Type"] = "text/plain"},
         }
     end
 
@@ -52,8 +52,8 @@ local function handler(req)
         incrementar(nome)
         return {
             status = 200,
-            body   = '{"ok":true,"counter":"' .. nome .. '"}' .. "\n",
-            headers = { ["Content-Type"] = "application/json" },
+            body = '{"ok":true,"counter":"' .. nome .. '"}' .. "\n",
+            headers = {["Content-Type"] = "application/json"},
         }
     end
 
@@ -71,20 +71,20 @@ local function handler(req)
         local body = json.encode(obj) .. "\n"
         return {
             status = 200,
-            body   = body,
-            headers = { ["Content-Type"] = "application/json" },
+            body = body,
+            headers = {["Content-Type"] = "application/json"},
         }
     end
 
     return {
         status = 404,
-        body   = "404 Not Found\n",
-        headers = { ["Content-Type"] = "text/plain" },
+        body = "404 Not Found\n",
+        headers = {["Content-Type"] = "text/plain"},
     }
 end
 
 -- ── Servidor em segundo plano (http.listen não bloqueia o main) ─────────────
-local srv = http.listen(0, handler)       -- porta 0: qualquer porta livre
+local srv = http.listen(0, handler) -- porta 0: qualquer porta livre
 local PORT = srv.port
 print("Servidor rodando em http://localhost:" .. PORT)
 print("")
@@ -99,7 +99,7 @@ local r0 = http.get(base .. "/")
 print("GET /  → " .. r0.status .. ": " .. string.trim(string.split(r0.body, "\n")[0]))
 
 local wg = sync.waitgroup()
-local N  = 10   -- requisições por contador
+local N  = 10 -- requisições por contador
 
 -- Incrementa "login" N vezes em paralelo
 local function fire(nome, n)
@@ -110,8 +110,8 @@ local function fire(nome, n)
 end
 
 wg.add(wg, 3)
-go (function() fire("login",    N) end)()
-go (function() fire("search",   N) end)()
+go (function() fire("login", N) end)()
+go (function() fire("search", N) end)()
 go (function() fire("checkout", N) end)()
 wg.wait(wg)
 
@@ -142,4 +142,4 @@ print("  sync.mutex protege counters e total")
 print("  http.listen(port, fn) serve em segundo plano; srv.close() encerra")
 print("  json.encode(obj) serializa mapa [=] para JSON")
 
-srv.close()   -- encerra o servidor; o programa termina normalmente
+srv.close() -- encerra o servidor; o programa termina normalmente

@@ -13,7 +13,7 @@ local function pfx(password, legacy)
     if is_error(dir) then return nil end
     local cmd = `cd ${dir} && openssl req -x509 -newkey rsa:2048 -nodes -keyout k.pem -out c.pem -days 30 ` ..
         `-subj "/C=BR/O=Loja Teste/CN=LOJA TESTE LTDA:12345678000195" 2>/dev/null && ` ..
-        `openssl pkcs12 -export ${legacy and "-legacy " or ""}-inkey k.pem -in c.pem -out c.pfx -passout pass:${password} 2>/dev/null`
+            `openssl pkcs12 -export ${legacy and "-legacy " or ""}-inkey k.pem -in c.pem -out c.pfx -passout pass:${password} 2>/dev/null`
     local r = process.run(cmd)
     if is_error(r) or not r.ok then return nil end
     return {bytes = fs.read(path.join(dir, "c.pfx")), dir = dir}
@@ -36,7 +36,11 @@ t.describe("ssl", function()
         for _, algo in ["aes-256-gcm", "chacha20-poly1305"] do
             local box = ssl.encrypt(algo, key, "senha do banco", nil, "app/db@v1")
             t.eq(len(box.iv), 12)
-            t.eq(ssl.decrypt(algo, key, box.iv, box.data, box.tag, "app/db@v1"), "senha do banco", algo)
+            t.eq(
+                ssl.decrypt(algo, key, box.iv, box.data, box.tag, "app/db@v1"),
+                "senha do banco",
+                algo
+            )
             -- another record's aad, or none: refused
             t.is_nil(ssl.decrypt(algo, key, box.iv, box.data, box.tag, "app/db@v2"), algo)
             t.is_nil(ssl.decrypt(algo, key, box.iv, box.data, box.tag), algo)

@@ -7,7 +7,7 @@
 
 -- Basic: build a small array via push, read it back
 local function build()
-    local arr = []          -- arena candidate (does not escape)
+    local arr = [] -- arena candidate (does not escape)
     arr[] = 10
     arr[] = 20
     arr[] = 30
@@ -17,17 +17,17 @@ local function build()
     end
     return sum
 end
-print(build())              -- 60
+print(build()) -- 60
 
 -- Growth past initial capacity hint (8): forces heap data-buffer realloc
 local function grow()
-    local arr = []          -- arena header, heap data grows normally
+    local arr = [] -- arena header, heap data grows normally
     for i = 0, 19 do
         arr[] = i
     end
-    return len(arr) + arr[0] + arr[19]   -- 20 + 0 + 19 = 39
+    return len(arr) + arr[0] + arr[19] -- 20 + 0 + 19 = 39
 end
-print(grow())               -- 39
+print(grow()) -- 39
 
 -- Index assignment (set) on an arena array
 local function setidx()
@@ -36,9 +36,9 @@ local function setidx()
     arr[] = 2
     arr[] = 3
     arr[1] = 99
-    return arr[0] + arr[1] + arr[2]   -- 1 + 99 + 3 = 103
+    return arr[0] + arr[1] + arr[2] -- 1 + 99 + 3 = 103
 end
-print(setidx())             -- 103
+print(setidx()) -- 103
 
 -- Array holding heap objects (strings): retain/release must stay balanced
 local function strs()
@@ -52,17 +52,17 @@ local function strs()
     end
     return out
 end
-print(strs())               -- abc
+print(strs()) -- abc
 
 -- Escaping array (returned) must NOT be arena-allocated (still works correctly)
 local function makelist()
     local arr = []
     arr[] = 7
     arr[] = 8
-    return arr              -- escapes via return → heap array
+    return arr -- escapes via return → heap array
 end
 local got = makelist()
-print(got[0] + got[1])      -- 15
+print(got[0] + got[1]) -- 15
 
 -- Array captured by a closure must NOT be arena-allocated (would dangle)
 local function counter()
@@ -70,9 +70,9 @@ local function counter()
     local add = function(x) store[] = x end
     add(100)
     add(200)
-    return store[0] + store[1]   -- 300
+    return store[0] + store[1] -- 300
 end
-print(counter())            -- 300
+print(counter()) -- 300
 
 -- del on an arena array
 local function deltest()
@@ -81,6 +81,6 @@ local function deltest()
     arr[] = 2
     arr[] = 3
     del arr[1]
-    return len(arr) * 100 + arr[0] * 10 + arr[1]   -- 2*100 + 1*10 + 3 = 213
+    return len(arr) * 100 + arr[0] * 10 + arr[1] -- 2*100 + 1*10 + 3 = 213
 end
-print(deltest())            -- 213
+print(deltest()) -- 213

@@ -50,4 +50,8 @@ print(check("local s = `x\n${y +}`"))
 local node = parser.parse("local s = `a ${x} b\\n`").stmts[0].values[0]
 print(node.type, len(node.parts), node.exprs[0].name, node.raws[1])
 print(parser.format("local s=`v=${ a+1 } \\` ok`"))
-print(parser.format({type = "template", parts = ["x `q` ${", "!"], exprs = [{type = "ident", name = "v"}]}))
+print(parser.format({
+    type = "template",
+    parts = ["x `q` ${", "!"],
+    exprs = [{type = "ident", name = "v"}],
+}))

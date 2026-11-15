@@ -41,7 +41,13 @@ print(show(csv.decode("x", {sep = ";;"})))
 print(show(csv.decode(42)))
 
 print("-- encode")
-print(csv.encode({{"a", "b"}, {1, 2.5}, {true, nil}, {"x,y", "he said \"hi\""}, {"multi\nline", " pad "}}))
+print(csv.encode({
+    {"a", "b"},
+    {1, 2.5},
+    {true, nil},
+    {"x,y", "he said \"hi\""},
+    {"multi\nline", " pad "},
+}))
 local recs = []
 local r1 = {}
 r1.name = "ana"
@@ -53,7 +59,10 @@ recs[] = r1
 recs[] = r2
 print(csv.encode(recs))
 print(csv.encode(recs, {columns = {"name", "age"}, header = false}))
-print(show(csv.encode({{1, 2}}, {crlf = true, quote_all = true})), csv.encode({{"a", "b;c"}}, {sep = ";"}))
+print(
+    show(csv.encode({{1, 2}}, {crlf = true, quote_all = true})),
+    csv.encode({{"a", "b;c"}}, {sep = ";"})
+)
 print(show(csv.encode({{print}})))
 print(show(csv.encode("x")))
 print(show(csv.encode({5})))

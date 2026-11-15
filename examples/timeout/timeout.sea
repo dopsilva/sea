@@ -37,9 +37,9 @@ local function com_timeout(ms, fn)
 
     select
         case v = <-result_ch then
-            return v, false   -- valor, timed_out=false
+            return v, false -- valor, timed_out=false
         case _ = <-timeout_ch then
-            return nil, true  -- nil, timed_out=true
+            return nil, true -- nil, timed_out=true
     end
 end
 
@@ -47,7 +47,7 @@ end
 print("── Teste 1: operação < timeout ──────────────")
 local t1 = time.now()
 local val, timedout = com_timeout(500, function()
-    time.sleep(100 * time.Millisecond)   -- 100 ms (< 500 ms)
+    time.sleep(100 * time.Millisecond) -- 100 ms (< 500 ms)
     return "dados processados"
 end)
 local elapsed = time.milliseconds(time.since(t1))
@@ -62,7 +62,7 @@ print("")
 print("── Teste 2: operação > timeout ──────────────")
 local t2 = time.now()
 local val2, timedout2 = com_timeout(100, function()
-    time.sleep(500 * time.Millisecond)   -- 500 ms (> 100 ms)
+    time.sleep(500 * time.Millisecond) -- 500 ms (> 100 ms)
     return "nunca chega"
 end)
 local elapsed2 = time.milliseconds(time.since(t2))
@@ -76,7 +76,7 @@ print("")
 -- ── Teste 3: select non-blocking (default:) ───────────────────────────────────
 print("── Teste 3: select non-blocking (default:) ──")
 
-local ch = chan(0)   -- canal sem buffer
+local ch = chan(0) -- canal sem buffer
 
 -- Tenta receber sem bloquear
 select
@@ -111,9 +111,9 @@ local timeout_global = chan(1)
 for i = 1, N do
     local idx = i
     go (function()
-        local delay = (idx % 3 + 1) * 80   -- 80, 160, 240 ms ciclicamente
+        local delay = (idx % 3 + 1) * 80 -- 80, 160, 240 ms ciclicamente
         time.sleep(delay * time.Millisecond)
-        results <- { id = idx, delay = delay }
+        results <- {id = idx, delay = delay}
     end)()
 end
 

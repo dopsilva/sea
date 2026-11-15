@@ -7,59 +7,59 @@
 --         nanosecond() sub-second component
 
 -- ---- 1. Duration constants --------------------------------------------------
-print(time.Nanosecond)    -- 1
-print(time.Microsecond)   -- 1000
-print(time.Millisecond)   -- 1000000
-print(time.Second)        -- 1000000000
-print(time.Minute)        -- 60000000000
-print(time.Hour)          -- 3600000000000
+print(time.Nanosecond)  -- 1
+print(time.Microsecond) -- 1000
+print(time.Millisecond) -- 1000000
+print(time.Second)      -- 1000000000
+print(time.Minute)      -- 60000000000
+print(time.Hour)        -- 3600000000000
 
 -- ---- 2. time.unix() creates a Time; unix() and unix_nano() retrieve it ------
 local t = time.unix(1000000000, 0)
-print(t.unix(t))          -- 1000000000
+print(t.unix(t)) -- 1000000000
 
 -- unix_nano on a small timestamp (exact in float64)
 local t2 = time.unix(1, 500)
-print(t2.unix_nano(t2))   -- 1000000500
+print(t2.unix_nano(t2)) -- 1000000500
 
 -- ---- 3. add() and sub() arithmetic ------------------------------------------
 local base   = time.unix(0, 0)
 local future = base.add(base, 5 * time.Second)
-print(future.unix(future))       -- 5
-print(future.unix_nano(future))  -- 5000000000
+print(future.unix(future))      -- 5
+print(future.unix_nano(future)) -- 5000000000
 
 local diff = future.sub(future, base)
-print(diff)                      -- 5000000000
+print(diff) -- 5000000000
 
 -- ---- 4. before() / after() / equal() ----------------------------------------
 local a = time.unix(100, 0)
 local b = time.unix(200, 0)
-print(a.before(a, b))     -- true
-print(a.after(a, b))      -- false
-print(b.after(b, a))      -- true
-print(b.before(b, a))     -- false
-print(a.equal(a, a))      -- true
-print(a.equal(a, b))      -- false
+print(a.before(a, b)) -- true
+print(a.after(a, b))  -- false
+print(b.after(b, a))  -- true
+print(b.before(b, a)) -- false
+print(a.equal(a, a))  -- true
+print(a.equal(a, b))  -- false
 
 -- ---- 5. since() is positive for a past time ---------------------------------
 local past = time.unix(0, 0)
-print(time.since(past) > 0)  -- true
+print(time.since(past) > 0) -- true
 
 -- ---- 6. Duration accessor functions -----------------------------------------
 local two_sec = 2 * time.Second
-print(time.seconds(two_sec))       -- 2
-print(time.milliseconds(two_sec))  -- 2000
-print(time.microseconds(two_sec))  -- 2000000
-print(time.nanoseconds(two_sec))   -- 2000000000
+print(time.seconds(two_sec))      -- 2
+print(time.milliseconds(two_sec)) -- 2000
+print(time.microseconds(two_sec)) -- 2000000
+print(time.nanoseconds(two_sec))  -- 2000000000
 
 local ninety_min = 90 * time.Minute
-print(time.hours(ninety_min))      -- 1.5
-print(time.minutes(ninety_min))    -- 90
+print(time.hours(ninety_min))   -- 1.5
+print(time.minutes(ninety_min)) -- 90
 
 -- ---- 7. time.now() returns a Time with a positive unix timestamp -------------
 local now = time.now()
-print(now.unix(now) > 0)   -- true
+print(now.unix(now) > 0) -- true
 
 -- ---- 8. nanosecond() extracts the sub-second component ----------------------
 local t3 = time.unix(10, 123456789)
-print(t3.nanosecond(t3))   -- 123456789
+print(t3.nanosecond(t3)) -- 123456789

@@ -8,7 +8,7 @@ local PATH = "/tmp/sea_43_io.txt"
 -- ---- escrita ---------------------------------------------------------------
 
 local w = io.open(PATH, "w")
-io.write_line(w, "hello")        -- escreve com \n
+io.write_line(w, "hello") -- escreve com \n
 io.write_line(w, "world")
 io.write_string(w, "no newline") -- sem \n no fim
 io.flush(w)
@@ -29,12 +29,12 @@ io.close(r)
 local r2 = io.open(PATH)
 local all = io.read_all(r2)
 io.close(r2)
-print(len(all))   -- "hello\nworld\nno newline" = 22
+print(len(all)) -- "hello\nworld\nno newline" = 22
 
 -- ---- read_bytes ------------------------------------------------------------
 
 local r3 = io.open(PATH)
-print(io.read_bytes(r3, 5))   -- "hello"
+print(io.read_bytes(r3, 5)) -- "hello"
 io.close(r3)
 
 -- ---- scanner ---------------------------------------------------------------

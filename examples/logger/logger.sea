@@ -19,8 +19,8 @@ print("")
 
 -- ── Implementação do logger ───────────────────────────────────────────────────
 
-local LEVEL_NUM = { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3 }
-local LEVEL_PREFIX = { DEBUG = "[DBG]", INFO = "[INF]", WARN = "[WRN]", ERROR = "[ERR]" }
+local LEVEL_NUM = {DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3}
+local LEVEL_PREFIX = {DEBUG = "[DBG]", INFO = "[INF]", WARN = "[WRN]", ERROR = "[ERR]"}
 
 -- make_logger(modulo, nivel_minimo)
 --   modulo       = nome do subsistema (ex: "http", "db")
@@ -38,8 +38,8 @@ local function make_logger(modulo, nivel_minimo)
 
     return {
         debug = function(msg) log("DEBUG", msg) end,
-        info  = function(msg) log("INFO",  msg) end,
-        warn  = function(msg) log("WARN",  msg) end,
+        info = function(msg) log("INFO", msg) end,
+        warn = function(msg) log("WARN", msg) end,
         error = function(msg) log("ERROR", msg) end,
     }
 end
@@ -65,7 +65,7 @@ print("")
 -- ── 3. Múltiplos loggers por subsistema ───────────────────────────────────────
 print("── 3. Múltiplos subsistemas ─────────────────")
 local log_http = make_logger("http", "INFO")
-local log_db   = make_logger("db",   "DEBUG")
+local log_db   = make_logger("db", "DEBUG")
 local log_auth = make_logger("auth", "WARN")
 
 log_http.info("GET /api/users 200 OK")
@@ -118,9 +118,9 @@ local function make_request_logger(modulo)
 end
 
 local reqlog = make_request_logger("http")
-reqlog("GET",  "/",           200, 12)
-reqlog("POST", "/api/login",  201, 45)
-reqlog("GET",  "/api/data",   404, 3)
+reqlog("GET", "/", 200, 12)
+reqlog("POST", "/api/login", 201, 45)
+reqlog("GET", "/api/data", 404, 3)
 reqlog("POST", "/api/action", 500, 102)
 print("")
 

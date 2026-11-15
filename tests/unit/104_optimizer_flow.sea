@@ -6,7 +6,7 @@
 -- materialized in one branch, a constant or int-ness learned in `then` leaking
 -- into `else`, and a type change in a loop body ignored at the next iteration.
 
-local flag = len(os.args) > 5      -- false at run time, unknown to the compiler
+local flag = len(os.args) > 5 -- false at run time, unknown to the compiler
 
 -- deferred copy, assigned in a branch that does not run
 local m = 1

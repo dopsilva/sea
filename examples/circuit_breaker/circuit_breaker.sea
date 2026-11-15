@@ -37,12 +37,12 @@ local function novo_cb(threshold, timeout_ms)
                 estado = HALF_OPEN
                 print("  [CB] OPEN → HALF_OPEN (timeout expirou)")
             else
-                return { ok = false, err = "circuito ABERTO — rejeitado" }
+                return {ok = false, err = "circuito ABERTO — rejeitado"}
             end
         end
 
         local current = estado
-        local res = fn()   -- resultado: { ok, valor } ou { ok=false, err }
+        local res = fn() -- resultado: { ok, valor } ou { ok=false, err }
 
         if res.ok then
             if current == HALF_OPEN then
@@ -59,7 +59,7 @@ local function novo_cb(threshold, timeout_ms)
                 estado    = OPEN
                 aberto_em = time.now()
                 local razao = current == HALF_OPEN and "HALF_OPEN falhou"
-                              or "threshold=" .. threshold .. " atingido"
+                    or "threshold=" .. threshold .. " atingido"
                 print("  [CB] → OPEN (" .. razao .. ")")
             end
             return res
@@ -70,7 +70,7 @@ local function novo_cb(threshold, timeout_ms)
         return estado .. " (falhas=" .. falhas .. ")"
     end
 
-    return { tentar = tentar, status = status }
+    return {tentar = tentar, status = status}
 end
 
 -- Serviço simulado
@@ -79,9 +79,9 @@ local function servico(falhar)
     chamadas = chamadas + 1
     time.sleep(10 * time.Millisecond)
     if falhar then
-        return { ok = false, err = "serviço indisponível" }
+        return {ok = false, err = "serviço indisponível"}
     end
-    return { ok = true, valor = "resp #" .. chamadas }
+    return {ok = true, valor = "resp #" .. chamadas}
 end
 
 local cb = novo_cb(3, 200)

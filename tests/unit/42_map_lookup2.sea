@@ -6,25 +6,25 @@
 -- 1. local form on [=] map
 local m = [=]
 m["a"] = 1
-m["b"] = nil  -- nil value: ok must be true (key exists)
+m["b"] = nil -- nil value: ok must be true (key exists)
 
 local v1, ok1 = m["a"]
-assert(v1  == 1,    "map: existing key value")
+assert(v1 == 1, "map: existing key value")
 assert(ok1 == true, "map: existing key ok")
 
 local v2, ok2 = m["missing"]
-assert(v2  == nil,   "map: missing key value")
+assert(v2 == nil, "map: missing key value")
 assert(ok2 == false, "map: missing key ok")
 
 -- 2. assignment form
 local val, ok
 val, ok = m["b"]
-assert(val == nil,  "map: nil-value key value")
-assert(ok  == true, "map: nil-value key ok (key exists)")
+assert(val == nil, "map: nil-value key value")
+assert(ok == true, "map: nil-value key ok (key exists)")
 
 val, ok = m["nope"]
-assert(val == nil,   "map: missing key assign value")
-assert(ok  == false, "map: missing key assign ok")
+assert(val == nil, "map: missing key assign value")
+assert(ok == false, "map: missing key assign ok")
 
 -- 3. integer keys
 local n = [=]
@@ -32,21 +32,21 @@ n[0] = "zero"
 n[1] = "one"
 
 local nv, nok = n[0]
-assert(nv  == "zero", "int key value")
-assert(nok == true,   "int key ok")
+assert(nv == "zero", "int key value")
+assert(nok == true, "int key ok")
 
 local nv2, nok2 = n[99]
-assert(nv2  == nil,   "int missing value")
+assert(nv2 == nil, "int missing value")
 assert(nok2 == false, "int missing ok")
 
 -- 4. struct / table literal
 local t = {x = 10, y = 20}
 local tv, tok = t["x"]
-assert(tv  == 10,   "struct key value")
+assert(tv == 10, "struct key value")
 assert(tok == true, "struct key ok")
 
 local tv2, tok2 = t["z"]
-assert(tv2  == nil,   "struct missing value")
+assert(tv2 == nil, "struct missing value")
 assert(tok2 == false, "struct missing ok")
 
 -- 5. dynamic TABLE_MAP (empty literal → dynamic table)
@@ -54,11 +54,11 @@ local d = {}
 d["p"] = 42
 
 local dv, dok = d["p"]
-assert(dv  == 42,   "table map value")
+assert(dv == 42, "table map value")
 assert(dok == true, "table map ok")
 
 local dv2, dok2 = d["q"]
-assert(dv2  == nil,   "table map missing value")
+assert(dv2 == nil, "table map missing value")
 assert(dok2 == false, "table map missing ok")
 
 -- 6. delete then lookup
@@ -66,7 +66,7 @@ local del_m = [=]
 del_m["x"] = 99
 del del_m["x"]
 local dv3, dok3 = del_m["x"]
-assert(dv3  == nil,   "after del: value")
+assert(dv3 == nil, "after del: value")
 assert(dok3 == false, "after del: ok")
 
 print("PASS: two-value lookup")

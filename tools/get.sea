@@ -59,7 +59,9 @@ if mode == "install" and len(args) > 0 then mode = "add" end
 
 local root = fs.cwd()
 while not fs.isfile(path.join(root, "sea.toml")) do
-    if root == "/" then fail("no sea.toml here or above (create one with `sea new`, or write [package] name = \"...\")") end
+    if root == "/" then
+        fail("no sea.toml here or above (create one with `sea new`, or write [package] name = \"...\")")
+    end
     root = path.dirname(root)
 end
 local manifest = path.join(root, "sea.toml")
@@ -116,7 +118,9 @@ local function read_deps(file)
             else
                 return nil, file .. ":" .. tostring(n) .. ": the value of " .. name .. " must be a string or { git = ... } / { path = ... }"
             end
-            if d.git == nil and d.path == nil then return nil, file .. ":" .. tostring(n) .. ": " .. name .. " needs git or path" end
+            if d.git == nil and d.path == nil then
+                return nil, file .. ":" .. tostring(n) .. ": " .. name .. " needs git or path"
+            end
             d.name = name
             deps[name] = d
             order[] = name
@@ -152,7 +156,11 @@ local function write_dep(name, d)
             if section == "dependencies" and dep_end < 0 then dep_end = len(out) end
             section = string.trim(string.sub(l, 2, (string.find(l, "]") or (len(l) + 1)) - 1))
             out[] = raw
-        elseif section == "dependencies" and re.test("^(" .. re.escape(name) .. "|\"" .. re.escape(name) .. "\")\\s*=", l) then
+        elseif section == "dependencies"
+                and re.test(
+                    "^(" .. re.escape(name) .. "|\"" .. re.escape(name) .. "\")\\s*=",
+                    l
+                ) then
             if d ~= nil and not done then out[] = dep_line(d) end
             done = true
         else
@@ -280,7 +288,8 @@ local function build_native(dir, name)
     if fs.isfile(path.join(dir, "Makefile")) then
         local r = process.run({"make", "-s", "-C", dir})
         if is_error(r) or not r.ok then
-            io.write_err("sea get: " .. name .. ": make failed\n" .. (is_error(r) and r.message or (r.stdout .. r.stderr)))
+            io.write_err("sea get: " .. name .. ": make failed\n" .. (is_error(r) and r.message
+                or (r.stdout .. r.stderr)))
             os.exit(1)
         end
     end
@@ -291,8 +300,11 @@ install = function(d, from)
     local prev = installed[name]
     if prev ~= nil then
         if (prev.git or prev.path) ~= (d.git or d.path) or ref_of(prev) ~= ref_of(d) then
-            io.write_err(string.format("sea get: warning: %s is wanted as %s%s by %s; keeping %s%s\n", name, d.git or d.path,
-                ref_of(d) and ("@" .. ref_of(d)) or "", from, prev.git or prev.path, ref_of(prev) and ("@" .. ref_of(prev)) or ""))
+            io.write_err(string.format("sea get: warning: %s is wanted as %s%s by %s; keeping %s%s\n", name, d.git
+                or d.path,
+                ref_of(d) and ("@" .. ref_of(d)) or "", from, prev.git or prev.path, ref_of(prev)
+                    and ("@" .. ref_of(prev))
+                    or ""))
         end
         return
     end
@@ -301,12 +313,15 @@ install = function(d, from)
     fs.mkdir(modules, {parents = true})
 
     if d.path ~= nil then
-        local target = path.isabs(d.path) and d.path or path.join(from == "sea.toml" and root or from, d.path)
+        local target = path.isabs(d.path) and d.path
+            or path.join(from == "sea.toml" and root or from, d.path)
         target = path.normalize(path.abs(target))
         if not fs.isdir(target) then fail(name .. ": " .. target .. " is not a directory") end
         local cur = fs.readlink(dir)
         if is_error(cur) or cur ~= target then
-            if fs.exists(dir) or not is_error(fs.lstat(dir)) then fs.remove(dir, {recursive = true}) end
+            if fs.exists(dir) or not is_error(fs.lstat(dir)) then
+                fs.remove(dir, {recursive = true})
+            end
             local s = fs.symlink(target, dir)
             if is_error(s) then fail(s.message) end
             print("  " .. name .. " -> " .. target)
@@ -319,7 +334,8 @@ install = function(d, from)
     local ref = ref_of(d)
     local locked = lock[name]
     local want = nil -- the commit to have, when known
-    if locked ~= nil and locked.git == d.git and locked.ref == ref and not (update_all or updating[name]) then
+    if locked ~= nil and locked.git == d.git and locked.ref == ref
+            and not (update_all or updating[name]) then
         want = locked.commit
     end
     local have = fs.isdir(path.join(dir, ".git")) and head_commit(dir) or nil
@@ -354,13 +370,21 @@ install = function(d, from)
                     if r.ok then target = string.trim(r.stdout) end
                 end
             end
-            if target == nil then fail(name .. ": no tag, branch or commit '" .. ref .. "' in " .. d.git) end
+            if target == nil then
+                fail(name .. ": no tag, branch or commit '" .. ref .. "' in " .. d.git)
+            end
         end
     end
     if fresh or head_commit(dir) ~= target then
         local r = git({"-c", "advice.detachedHead=false", "checkout", "--quiet", target}, dir)
         if not r.ok then fail(name .. ": git checkout " .. target .. " failed:\n" .. r.stderr) end
-        print(string.format("  %s %s%s (%s)", name, d.git, ref and ("@" .. ref) or "", string.sub(target, 1, 12)))
+        print(string.format(
+            "  %s %s%s (%s)",
+            name,
+            d.git,
+            ref and ("@" .. ref) or "",
+            string.sub(target, 1, 12)
+        ))
         changed = changed + 1
     end
     local e = {}
@@ -392,14 +416,20 @@ local function install_all()
     end
     local n = 0
     for _, _ in installed do n = n + 1 end
-    print(string.format("%d package%s, %s", n, n == 1 and "" or "s", changed == 0 and "up to date" or (tostring(changed) .. " changed")))
+    print(string.format(
+        "%d package%s, %s",
+        n,
+        n == 1 and "" or "s",
+        changed == 0 and "up to date" or (tostring(changed) .. " changed")
+    ))
 end
 
 if mode == "list" then
     for _, n in order do
         local d = deps[n]
         local l = lock[n]
-        local where = d.git ~= nil and (d.git .. (ref_of(d) and ("@" .. ref_of(d)) or "")) or ("path " .. d.path)
+        local where = d.git ~= nil and (d.git .. (ref_of(d) and ("@" .. ref_of(d)) or ""))
+            or ("path " .. d.path)
         local commit = l ~= nil and ("  " .. string.sub(l.commit, 1, 12)) or ""
         local present = fs.exists(path.join(modules, n)) and "" or "  (not installed)"
         print(n .. "  " .. where .. commit .. present)
@@ -442,7 +472,9 @@ elseif mode == "add" or mode == "add_path" then
         d.name = args[0] or path.basename(path.normalize(path.abs(local_path)))
     end
     if string.starts_with(d.name, "sea_") and args[1] == nil then d.name = string.sub(d.name, 5) end
-    if not re.test("^[A-Za-z_][A-Za-z0-9_]*$", d.name) then fail("'" .. d.name .. "' is not a valid package name; give one: sea get URL name") end
+    if not re.test("^[A-Za-z_][A-Za-z0-9_]*$", d.name) then
+        fail("'" .. d.name .. "' is not a valid package name; give one: sea get URL name")
+    end
     write_dep(d.name, d)
     if deps[d.name] == nil then order[] = d.name end
     deps[d.name] = d

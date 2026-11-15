@@ -5,28 +5,28 @@ local N = 100
 
 local a = []
 local b = []
-for i = 0, N-1 do
+for i = 0, N - 1 do
     a[] = []
     b[] = []
-    for j = 0, N-1 do
+    for j = 0, N - 1 do
         a[i][] = (i * N + j + 1) % 100
         b[i][] = (j * N + i + 1) % 100
     end
 end
 
 local c = []
-for i = 0, N-1 do
+for i = 0, N - 1 do
     c[] = []
-    for j = 0, N-1 do c[i][] = 0 end
+    for j = 0, N - 1 do c[i][] = 0 end
 end
 
 for iter = 1, 50 do
-    for i = 0, N-1 do
+    for i = 0, N - 1 do
         local ai = a[i]
         local ci = c[i]
-        for j = 0, N-1 do
+        for j = 0, N - 1 do
             local s = 0
-            for k = 0, N-1 do
+            for k = 0, N - 1 do
                 s = s + ai[k] * b[k][j]
             end
             ci[j] = s
@@ -35,8 +35,8 @@ for iter = 1, 50 do
 end
 
 local sum = 0
-for i = 0, N-1 do
-    for j = 0, N-1 do
+for i = 0, N - 1 do
+    for j = 0, N - 1 do
         sum = sum + c[i][j]
     end
 end

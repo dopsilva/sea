@@ -436,9 +436,9 @@ end
 
 local function fast_words(buf, pos, at_eof)
     local m = WORD:match(buf, pos)
-    if m == nil then return len(buf) - pos + 1, nil end   -- only spaces: drop them
+    if m == nil then return len(buf) - pos + 1, nil end -- only spaces: drop them
     if m.stop < len(buf) or at_eof then return m.stop - pos + 1, m.text end
-    return m.start - pos, nil   -- the word may go on in the next piece
+    return m.start - pos, nil -- the word may go on in the next piece
 end
 
 local function fast_bytes(buf, pos, at_eof)

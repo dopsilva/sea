@@ -28,7 +28,8 @@ local _ = db:exec([[
         ms UInt32,
         bytes UInt64
     ) ENGINE = MergeTree ORDER BY (path, at)
-]])
+]]
+)
 
 local t0 = time.now()
 local s = db:exec([[
@@ -40,7 +41,8 @@ local s = db:exec([[
         10 + intHash32(number * 7) % (path = '/docs' ? 900 : 300) AS ms,
         1000 + intHash64(number) % 100000 AS bytes
     FROM numbers({n:UInt64})
-]], {n = 1000000})
+]],
+    {n = 1000000})
 print(`generated ${s.written_rows} rows in ${string.format("%.2f", time.since(t0) / 1e9)} s`)
 
 -- reports, run in parallel: each is one HTTP request
@@ -65,7 +67,9 @@ end
 wg:wait()
 
 print("-- by path")
-for _, r in results.by_path do print(string.pad_right(r.path, 10), r.views, `p95 ${r.p95_ms} ms`) end
+for _, r in results.by_path do
+    print(string.pad_right(r.path, 10), r.views, `p95 ${r.p95_ms} ms`)
+end
 print("-- by country")
 for _, r in results.by_country do print(r.country, r.views, r.traffic) end
 print("-- slower than 450 ms:", results.slow[0].slow)

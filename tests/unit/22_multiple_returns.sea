@@ -7,7 +7,7 @@ local function swap(a, b)
 end
 
 local x, y = swap(1, 2)
-print(x, y)   -- 2	1
+print(x, y) -- 2	1
 
 -- Note: when used as sole argument to another call, only first return is used
 -- (multi-return expansion in call args is not implemented)
@@ -15,30 +15,30 @@ print(x, y)   -- 2	1
 
 -- only first value used when in non-tail position
 local a = swap(10, 20)
-print(a)    -- 20
+print(a) -- 20
 
 -- function returning 3 values
 local function triple(x)
-    return x, x*2, x*3
+    return x, x * 2, x * 3
 end
 
 local p, q, r = triple(5)
-print(p, q, r)   -- 5	10	15
+print(p, q, r) -- 5	10	15
 
 -- too few names: extras discarded
 local s, t = triple(7)
-print(s, t)      -- 7	14
+print(s, t) -- 7	14
 
 -- too many names: rest are nil
 local u, v, w, z = swap(1, 2)
-print(u, v, w, z)  -- 2	1	nil	nil
+print(u, v, w, z) -- 2	1	nil	nil
 
 -- in assignment
 local m, n = 0, 0
 m, n = swap(100, 200)
-print(m, n)  -- 200	100
+print(m, n) -- 200	100
 
 -- call in table constructor (only first value used)
 local tbl = {swap(1, 2), 99}
-print(tbl[0])  -- 2
-print(tbl[1])  -- 99
+print(tbl[0]) -- 2
+print(tbl[1]) -- 99

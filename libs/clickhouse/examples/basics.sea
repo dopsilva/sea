@@ -27,7 +27,8 @@ local _ = db:exec([[
         tags Array(String),
         amount Nullable(Decimal(12, 2))
     ) ENGINE = MergeTree ORDER BY (kind, at)
-]])
+]]
+)
 
 -- rows go as JSONEachRow; Times are sent as text, missing columns get defaults
 local now = time.parse("2026-10-21 09:00:00", nil, "UTC")
@@ -44,12 +45,18 @@ print("written rows:", s.written_rows)
 -- them by type, so nothing is pasted into the SQL
 print("-- purchases over 10:")
 for _, e in db:query("SELECT at, user_id, props['item'] AS item, amount FROM events " ..
-    "WHERE kind = {kind:String} AND amount > {min:Decimal(12, 2)} ORDER BY at", {kind = "purchase", min = 10}) do
+    "WHERE kind = {kind:String} AND amount > {min:Decimal(12, 2)} ORDER BY at", {
+    kind = "purchase",
+    min = 10,
+}) do
     print(e.at, e.user_id, e.item, e.amount)
 end
 
 print("users with a tag in the list:",
-    db:value("SELECT uniqExact(user_id) FROM events WHERE hasAny(tags, {wanted:Array(String)})", {wanted = ["ios", "android"]}))
+    db:value(
+        "SELECT uniqExact(user_id) FROM events WHERE hasAny(tags, {wanted:Array(String)})",
+        {wanted = ["ios", "android"]}
+    ))
 
 -- one row / one value
 local top = db:row("SELECT user_id, sum(amount) AS spent FROM events GROUP BY user_id ORDER BY spent DESC LIMIT 1")

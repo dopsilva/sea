@@ -161,7 +161,9 @@ for _, sz in [ [1, 3, 2], [5, 7, 11], [9, 300, 19] ] do
     local dw2 = zeros(nin * nout)
     local dx1 = zeros(T * nin)
     local dx2 = zeros(T * nin)
-    for t = 0, T - 1 do tensor.matvec_back(gm, 1 + t * nout, xm, 2 + t * nin, wm, dw1, nin, nout, dx1, t * nin) end
+    for t = 0, T - 1 do
+        tensor.matvec_back(gm, 1 + t * nout, xm, 2 + t * nin, wm, dw1, nin, nout, dx1, t * nin)
+    end
     tensor.matmul_back(gm, 1, xm, 2, wm, dw2, T, nin, nout, dx2, 0)
     print(`matmul ${T}x${nin}x${nout}`, close(o1, o2), close(dw1, dw2), close(dx1, dx2))
 end
@@ -219,7 +221,15 @@ do
     local cw64, cw32, cx64, cx32 = zeros(nin * nout), z32(nin * nout), zeros(nin), z32(nin)
     tensor.matvec_cols_back(G, 0, X, 0, W, cw64, nin, nout, cols2, 2, cx64, 0)
     tensor.matvec_cols_back(g32, 0, x32, 0, w32, cw32, nin, nout, cols2, 2, cx32, 0)
-    print("f32 matvec", near32(v64, v32), near32(mw64, mw32), near32(mx64, mx32), near32(c64, c32), near32(cw64, cw32), near32(cx64, cx32))
+    print(
+        "f32 matvec",
+        near32(v64, v32),
+        near32(mw64, mw32),
+        near32(mx64, mx32),
+        near32(c64, c32),
+        near32(cw64, cw32),
+        near32(cx64, cx32)
+    )
 
     local y64, y32 = zeros(nin), z32(nin)
     local r64 = tensor.rmsnorm(X, 0, y64, 0, nin)
@@ -240,7 +250,15 @@ do
     tensor.copy(s32, 0, g32, 0, nout)
     tensor.softmax(s64, 0, nout)
     tensor.softmax(s32, 0, nout)
-    print("f32 norm/act", math.abs(r64 - r32) < 1e-5, near32(y64, y32), near32(rb64, rb32), near32(re64, re32), near32(rd64, rd32), near32(s64, s32))
+    print(
+        "f32 norm/act",
+        math.abs(r64 - r32) < 1e-5,
+        near32(y64, y32),
+        near32(rb64, rb32),
+        near32(re64, re32),
+        near32(rd64, rd32),
+        near32(s64, s32)
+    )
 
     local At, Ac, Ah, Ab = 7, 8, 2, 9
     local q, k, v, dy = rnd(At * Ac, 7), rnd(At * Ac, 8), rnd(At * Ac, 9), rnd(At * Ac, 10)
@@ -252,15 +270,46 @@ do
     local dq32, dk32, dv32 = z32(At * Ac), z32(At * Ac), z32(At * Ac)
     tensor.attention_back(q, k, v, att64, dy, dq64, dk64, dv64, At, Ac, Ah, Ab)
     tensor.attention_back(f32(q), f32(k), f32(v), att32, f32(dy), dq32, dk32, dv32, At, Ac, Ah, Ab)
-    print("f32 attention", near32(ay64, ay32), near32(att64, att32), near32(dq64, dq32), near32(dk64, dk32), near32(dv64, dv32))
+    print(
+        "f32 attention",
+        near32(ay64, ay32),
+        near32(att64, att32),
+        near32(dq64, dq32),
+        near32(dk64, dk32),
+        near32(dv64, dv32)
+    )
 
     local aw64 = zeros(nout)
     tensor.copy(aw64, 0, W, 0, nout)
     local aw32 = f32(aw64)
     local am64, am32, av64, av32 = zeros(nout), z32(nout), zeros(nout), z32(nout)
     for step = 1, 3 do
-        tensor.adam(aw64, G, am64, av64, nout, 0.01, 0.9, 0.95, 1 - 0.9 ^ step, 1 - 0.95 ^ step, 1e-8)
-        tensor.adam(aw32, g32, am32, av32, nout, 0.01, 0.9, 0.95, 1 - 0.9 ^ step, 1 - 0.95 ^ step, 1e-8)
+        tensor.adam(
+            aw64,
+            G,
+            am64,
+            av64,
+            nout,
+            0.01,
+            0.9,
+            0.95,
+            1 - 0.9 ^ step,
+            1 - 0.95 ^ step,
+            1e-8
+        )
+        tensor.adam(
+            aw32,
+            g32,
+            am32,
+            av32,
+            nout,
+            0.01,
+            0.9,
+            0.95,
+            1 - 0.9 ^ step,
+            1 - 0.95 ^ step,
+            1e-8
+        )
     end
     local vs = f32(fa("1 2 3 4"))
     tensor.scale(vs, 1, 2, 0.5)
@@ -302,7 +351,12 @@ for _, mk in [ident, f32] do
     for _, sz in [ [64, 300, 200], [1000, 300, 20] ] do
         local one = product(mk, sz[0], sz[1], sz[2], 1)
         local many = product(mk, sz[0], sz[1], sz[2], 4)
-        print(`threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`, same(one[0], many[0]), same(one[1], many[1]), same(one[2], many[2]))
+        print(
+            `threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`,
+            same(one[0], many[0]),
+            same(one[1], many[1]),
+            same(one[2], many[2])
+        )
     end
 end
 -- 8 goroutines at once: one gets the pool, the others run on their own threads
@@ -311,7 +365,7 @@ do
     tensor.threads(4)
     local results = chan(8)
     for _ = 1, 8 do
-        go function()
+        go (function()
             local ok = true
             for _ = 1, 5 do
                 local x, w = rnd(64 * 300, 11), rnd(300 * 200, 12)
@@ -320,7 +374,7 @@ do
                 ok = ok and same(o, want[0])
             end
             results <- ok
-        end()
+        end)()
     end
     local all = true
     for _ = 1, 8 do all = all and <-results end
@@ -335,7 +389,7 @@ do
     local nrows, ncols = 5, 7
     local src = rnd(nrows * ncols, 21)
     local cl = int_array()
-    for _, c in [9, 3, 0, 6, 3] do cl[] = c end    -- cols[0] is skipped by coff = 1
+    for _, c in [9, 3, 0, 6, 3] do cl[] = c end -- cols[0] is skipped by coff = 1
     local coff, nc = 1, 4
     for _, mk in [ident, f32] do
         local s = mk(src)
@@ -365,11 +419,21 @@ end
 -- sumsq: Σ a², in double for both types
 do
     local v = fa("1 2 3 4 5")
-    print("sumsq", tensor.sumsq(v), tensor.sumsq(v, 1, 3), tensor.sumsq(f32(v)), tensor.sumsq(f32(v), 4))
+    print(
+        "sumsq",
+        tensor.sumsq(v),
+        tensor.sumsq(v, 1, 3),
+        tensor.sumsq(f32(v)),
+        tensor.sumsq(f32(v), 4)
+    )
     local big = rnd(100003, 31)
     local want = 0.0
     for i = 0, len(big) - 1 do want += big[i] * big[i] end
-    print("sumsq big", math.abs(tensor.sumsq(big) - want) < 1e-9 * want, math.abs(tensor.sumsq(f32(big)) - want) < 1e-5 * want)
+    print(
+        "sumsq big",
+        math.abs(tensor.sumsq(big) - want) < 1e-9 * want,
+        math.abs(tensor.sumsq(f32(big)) - want) < 1e-5 * want
+    )
 end
 
 -- attention_step: one new position against a KV cache gives row T-1 of attention
@@ -419,7 +483,11 @@ do
         for _, sz in [ [128, 512, 2048], [2048, 600, 24] ] do
             local one = back(mk, sz[0], sz[1], sz[2], 1)
             local many = back(mk, sz[0], sz[1], sz[2], 4)
-            print(`matmul_back threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`, same(one[0], many[0]), same(one[1], many[1]))
+            print(
+                `matmul_back threads ${type(one[0])} ${sz[0]}x${sz[1]}x${sz[2]}`,
+                same(one[0], many[0]),
+                same(one[1], many[1])
+            )
         end
     end
     tensor.threads(default_threads)
@@ -550,7 +618,13 @@ do
         if lg[V + k] ~= 0 then gok = false end
     end
     local loss32 = tensor.cross_entropy(g32, 0, tg, 0, 3, V, 0.5)
-    print("cross_entropy", math.abs(loss - want) < 1e-12, gok, math.abs(loss32 - want) < 1e-5 * want, near32(lg, g32))
+    print(
+        "cross_entropy",
+        math.abs(loss - want) < 1e-12,
+        gok,
+        math.abs(loss32 - want) < 1e-5 * want,
+        near32(lg, g32)
+    )
     local bad = try(function()
         local t2 = int_array()
         t2[] = V
@@ -563,7 +637,10 @@ end
 do
     for _, mk in [ident, f32] do
         local T, C, H = 96, 64, 4
-        local q, k, v, dy = mk(rnd(T * C, 81)), mk(rnd(T * C, 82)), mk(rnd(T * C, 83)), mk(rnd(T * C, 84))
+        local q, k, v, dy = mk(rnd(T * C, 81)), mk(rnd(T * C, 82)), mk(rnd(T * C, 83)), mk(rnd(
+            T * C,
+            84
+        ))
         local function run(nt)
             tensor.threads(nt)
             local att, y = mk(zeros(H * T * T)), mk(zeros(T * C))
@@ -579,7 +656,10 @@ do
         end
         local one = run(1)
         local four = run(4)
-        print(`attention threads ${type(one[0])}`, same(one[0], four[0]), same(one[1], four[1]), same(one[2], four[2]),
+        print(`attention threads ${type(one[0])}`, same(one[0], four[0]), same(one[1], four[1]), same(
+            one[2],
+            four[2]
+        ),
             same(one[3], four[3]), same(one[4], four[4]), one[5] == four[5])
     end
     tensor.threads(default_threads)

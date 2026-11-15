@@ -21,9 +21,9 @@ print("── 1. Bytes e caracteres ──────────────�
 
 local s = "Sea"
 print("  'Sea': len=" .. len(s))
-print("  byte(1)=" .. string.byte(s, 1) ..   -- 83 = 'S'
-      "  byte(2)=" .. string.byte(s, 2) ..   -- 101 = 'e'
-      "  byte(3)=" .. string.byte(s, 3))      -- 97 = 'a'
+print("  byte(1)=" .. string.byte(s, 1) .. -- 83 = 'S'
+    "  byte(2)=" .. string.byte(s, 2) ..   -- 101 = 'e'
+        "  byte(3)=" .. string.byte(s, 3)) -- 97 = 'a'
 
 -- Reconstrói a string de bytes
 local chars = []
@@ -37,9 +37,9 @@ local function rot13(str)
     local out = []
     for i = 1, len(str) do
         local b = string.byte(str, i)
-        if b >= 65 and b <= 90 then        -- A-Z
+        if b >= 65 and b <= 90 then -- A-Z
             b = (b - 65 + 13) % 26 + 65
-        elseif b >= 97 and b <= 122 then   -- a-z
+        elseif b >= 97 and b <= 122 then -- a-z
             b = (b - 97 + 13) % 26 + 97
         end
         out[] = string.char(b)
@@ -49,26 +49,26 @@ end
 
 local msg = "Hello, Sea!"
 print("  ROT13('" .. msg .. "') = " .. rot13(msg))
-print("  ROT13 duplo    = " .. rot13(rot13(msg)))   -- volta ao original
+print("  ROT13 duplo    = " .. rot13(rot13(msg))) -- volta ao original
 print("")
 
 -- ── 2. string.format ──────────────────────────────────────────────────────────
 print("── 2. string.format ─────────────────────────")
 
 print("  %d  : " .. string.format("%d", 42))
-print("  %05d: " .. string.format("%05d", 42))          -- 00042
-print("  %+d : " .. string.format("%+d", 42))           -- +42
-print("  %x  : " .. string.format("%x", 255))           -- ff
-print("  %X  : " .. string.format("%X", 255))           -- FF
-print("  %08x: " .. string.format("%08x", 255))         -- 000000ff
-print("  %f  : " .. string.format("%f", math.pi))       -- 3.141593
-print("  %.2f: " .. string.format("%.2f", math.pi))     -- 3.14
-print("  %e  : " .. string.format("%e", 12345.678))     -- 1.234568e+04
-print("  %g  : " .. string.format("%g", 0.000123))      -- 0.000123
-print("  %g  : " .. string.format("%g", 1234567.0))     -- 1.23457e+06
+print("  %05d: " .. string.format("%05d", 42))      -- 00042
+print("  %+d : " .. string.format("%+d", 42))       -- +42
+print("  %x  : " .. string.format("%x", 255))       -- ff
+print("  %X  : " .. string.format("%X", 255))       -- FF
+print("  %08x: " .. string.format("%08x", 255))     -- 000000ff
+print("  %f  : " .. string.format("%f", math.pi))   -- 3.141593
+print("  %.2f: " .. string.format("%.2f", math.pi)) -- 3.14
+print("  %e  : " .. string.format("%e", 12345.678)) -- 1.234568e+04
+print("  %g  : " .. string.format("%g", 0.000123))  -- 0.000123
+print("  %g  : " .. string.format("%g", 1234567.0)) -- 1.23457e+06
 print("  %s  : " .. string.format("'%s'", "ola"))
-print("  %10s: " .. string.format("%10s", "dir"))       -- alinhado à direita
-print("  %%  : " .. string.format("100%%"))             -- 100%
+print("  %10s: " .. string.format("%10s", "dir")) -- alinhado à direita
+print("  %%  : " .. string.format("100%%"))       -- 100%
 print("")
 
 -- Formatação de tabela
@@ -76,9 +76,9 @@ local function fmt_linha(nome, valor, pct)
     return string.format("  %-12s %8d  %6.1f%%", nome, valor, pct)
 end
 print("  Relatório:")
-print(fmt_linha("vendas",   15230, 62.4))
-print(fmt_linha("devol.",    1850,  7.6))
-print(fmt_linha("estoque",  7420,  30.0))
+print(fmt_linha("vendas", 15230, 62.4))
+print(fmt_linha("devol.", 1850, 7.6))
+print(fmt_linha("estoque", 7420, 30.0))
 print("")
 
 -- ── 3. Padding e alinhamento ──────────────────────────────────────────────────
@@ -89,11 +89,11 @@ for i = 0, len(palavras) - 1 do
     local w = palavras[i]
     print("  |" ..
         string.pad_left(w, 10) ..
-        "|" ..
-        string.pad_center(w, 12) ..
-        "|" ..
-        string.pad_right(w, 10) ..
-        "|")
+            "|" ..
+                string.pad_center(w, 12) ..
+                    "|" ..
+                        string.pad_right(w, 10) ..
+                            "|")
 end
 print("")
 

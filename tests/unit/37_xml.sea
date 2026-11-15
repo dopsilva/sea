@@ -19,21 +19,21 @@ end
 -- ---- Basic element ----------------------------------------------------------
 
 local root = xml.parse("<root/>")
-check("self-close tag",  root.tag,  "root")
+check("self-close tag", root.tag, "root")
 check("self-close text", root.text, "")
 
 -- ---- Text content -----------------------------------------------------------
 
 local leaf = xml.parse("<name>Alice</name>")
-check("leaf tag",  leaf.tag,  "name")
+check("leaf tag", leaf.tag, "name")
 check("leaf text", leaf.text, "Alice")
 
 -- ---- Attributes -------------------------------------------------------------
 
 local elem = xml.parse('<item id="42" active="true"/>')
-check("attr id",     xml.attr(elem, "id"),     "42")
+check("attr id", xml.attr(elem, "id"), "42")
 check("attr active", xml.attr(elem, "active"), "true")
-check("attr miss",   xml.attr(elem, "missing"), nil)
+check("attr miss", xml.attr(elem, "missing"), nil)
 
 -- ---- Nested elements --------------------------------------------------------
 
@@ -46,21 +46,21 @@ check("find first", xml.text(first_a), "1")
 check("find missing", xml.find(doc, "c"), nil)
 
 local all_a = xml.findall(doc, "a")
-check("findall len",  len(all_a), 2)
-check("findall[0]",   xml.text(all_a[0]), "1")
-check("findall[1]",   xml.text(all_a[1]), "3")
+check("findall len", len(all_a), 2)
+check("findall[0]", xml.text(all_a[0]), "1")
+check("findall[1]", xml.text(all_a[1]), "3")
 
 -- ---- XML declaration & comments skipped ------------------------------------
 
 local decl = xml.parse('<?xml version="1.0"?><!-- comment --><config><port>8080</port></config>')
-check("decl tag",  decl.tag, "config")
+check("decl tag", decl.tag, "config")
 local port = xml.find(decl, "port")
 check("decl child", xml.text(port), "8080")
 
 -- ---- DOCTYPE skipped --------------------------------------------------------
 
 local dt = xml.parse('<!DOCTYPE html><html><body>hi</body></html>')
-check("doctype tag",  dt.tag, "html")
+check("doctype tag", dt.tag, "html")
 check("doctype child", xml.text(xml.find(dt, "body")), "hi")
 
 -- ---- Entity decoding --------------------------------------------------------
@@ -83,12 +83,12 @@ check("multi port", xml.text(xml.find(cfg, "port")), "9000")
 
 local feed = xml.parse('<feed><item id="1" type="news"><title>Hello</title></item><item id="2" type="blog"><title>World</title></item></feed>')
 local items = xml.findall(feed, "item")
-check("feed len",      len(items), 2)
-check("feed attr 0",   xml.attr(items[0], "id"),   "1")
-check("feed attr 1",   xml.attr(items[1], "id"),   "2")
-check("feed type 0",   xml.attr(items[0], "type"), "news")
+check("feed len", len(items), 2)
+check("feed attr 0", xml.attr(items[0], "id"), "1")
+check("feed attr 1", xml.attr(items[1], "id"), "2")
+check("feed type 0", xml.attr(items[0], "type"), "news")
 local titles = xml.findall(items[0], "title")
-check("feed title",    xml.text(titles[0]),        "Hello")
+check("feed title", xml.text(titles[0]), "Hello")
 
 -- ---- Encode -----------------------------------------------------------------
 
@@ -103,16 +103,16 @@ check("encode self-close", xml.encode(sc), "<br/>")
 
 local orig = xml.parse('<root><child id="x">text</child></root>')
 local rt   = xml.parse(xml.encode(orig))
-check("roundtrip tag",    rt.tag, "root")
+check("roundtrip tag", rt.tag, "root")
 local rtch = xml.find(rt, "child")
-check("roundtrip child",  xml.text(rtch),        "text")
-check("roundtrip attr",   xml.attr(rtch, "id"),  "x")
+check("roundtrip child", xml.text(rtch), "text")
+check("roundtrip attr", xml.attr(rtch, "id"), "x")
 
 -- ---- Error cases ------------------------------------------------------------
 
-check("parse empty",   is_error(xml.parse("")),        true)
+check("parse empty", is_error(xml.parse("")), true)
 check("parse garbage", is_error(xml.parse("not xml")), true)
-check("parse unclosed",is_error(xml.parse("<a>")),     true)
+check("parse unclosed", is_error(xml.parse("<a>")), true)
 check("encode non-node", is_error(xml.encode("string")), true)
 
 -- ---- Summary ----------------------------------------------------------------

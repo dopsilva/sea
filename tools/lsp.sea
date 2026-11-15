@@ -147,7 +147,11 @@ local function json_str(s)
     s = string.replace(s, "\n", "\\n")
     s = string.replace(s, "\r", "\\r")
     s = string.replace(s, "\t", "\\t")
-    s = re.gsub("[\\x00-\\x1f]", s, function(m) return string.format("\\u%04x", string.byte(m.text)) end)
+    s = re.gsub(
+        "[\\x00-\\x1f]",
+        s,
+        function(m) return string.format("\\u%04x", string.byte(m.text)) end
+    )
     return "\"" .. s .. "\""
 end
 
@@ -220,11 +224,19 @@ local file_globals = {}      -- path → table of names
 local function uri_to_path(uri)
     if not string.starts_with(uri, "file://") then return uri end
     local p = string.sub(uri, 8)
-    return re.gsub("%([0-9A-Fa-f]{2})", p, function(m) return string.char(tonumber(string.sub(m.text, 2), 16)) end)
+    return re.gsub(
+        "%([0-9A-Fa-f]{2})",
+        p,
+        function(m) return string.char(tonumber(string.sub(m.text, 2), 16)) end
+    )
 end
 
 local function path_to_uri(p)
-    return "file://" .. re.gsub("[^A-Za-z0-9/._~-]", p, function(m) return string.format("%%%02X", string.byte(m.text)) end)
+    return "file://" .. re.gsub(
+        "[^A-Za-z0-9/._~-]",
+        p,
+        function(m) return string.format("%%%02X", string.byte(m.text)) end
+    )
 end
 
 local function refresh_globals()
@@ -380,7 +392,9 @@ local function declarations(ast, src_lines)
             if p == nil then return from or 1 end
             local before = p > 1 and string.sub(text, p - 1, p - 1) or " "
             local after = string.sub(text, p + len(name), p + len(name))
-            if not re.test("[A-Za-z0-9_]", before) and not re.test("[A-Za-z0-9_]", after) then return p end
+            if not re.test("[A-Za-z0-9_]", before) and not re.test("[A-Za-z0-9_]", after) then
+                return p
+            end
             c = p + 1
         end
     end
@@ -409,7 +423,15 @@ local function declarations(ast, src_lines)
             for i, nm in n.names do
                 local v = n.values[i]
                 local kind = (v ~= nil and v.type == "func") and "function" or "local"
-                add(nm, nil, kind, n.line, col_of(n.line, nm, n.col), v ~= nil and v.type == "func" and v.body.end_line or n.line, v)
+                add(
+                    nm,
+                    nil,
+                    kind,
+                    n.line,
+                    col_of(n.line, nm, n.col),
+                    v ~= nil and v.type == "func" and v.body.end_line or n.line,
+                    v
+                )
             end
         elseif t == "assign" then
             for i, tg in n.targets do
@@ -417,20 +439,44 @@ local function declarations(ast, src_lines)
                 local fn = v ~= nil and v.type == "func"
                 local endl = fn and v.body.end_line or n.line
                 if tg.type == "ident" then
-                    add(tg.name, nil, fn and "function" or "global", n.line, col_of(n.line, tg.name, n.col), endl, v)
+                    add(
+                        tg.name,
+                        nil,
+                        fn and "function" or "global",
+                        n.line,
+                        col_of(n.line, tg.name, n.col),
+                        endl,
+                        v
+                    )
                 elseif tg.type == "field" and tg.object.type == "ident" then
-                    local kind = fn and ((v.is_method or (len(v.params) > 0 and v.params[0].name == "self")) and "method" or "function") or "field"
-                    add(tg.field, tg.object.name, kind, n.line, col_of(n.line, tg.field, n.col), endl, v)
+                    local kind = fn
+                        and ((v.is_method or (len(v.params) > 0 and v.params[0].name == "self"))
+                            and "method"
+                            or "function")
+                        or "field"
+                    add(
+                        tg.field,
+                        tg.object.name,
+                        kind,
+                        n.line,
+                        col_of(n.line, tg.field, n.col),
+                        endl,
+                        v
+                    )
                 end
             end
         elseif t == "func" then
             for _, p in n.params do
-                if not p.is_vararg then add(p.name, nil, "param", n.line, col_of(n.line, p.name, n.col), n.line, nil) end
+                if not p.is_vararg then
+                    add(p.name, nil, "param", n.line, col_of(n.line, p.name, n.col), n.line, nil)
+                end
             end
         elseif t == "for_num" then
             add(n.var, nil, "local", n.line, col_of(n.line, n.var, n.col), n.line, nil)
         elseif t == "for_in" then
-            for _, nm in n.vars do add(nm, nil, "local", n.line, col_of(n.line, nm, n.col), n.line, nil) end
+            for _, nm in n.vars do
+                add(nm, nil, "local", n.line, col_of(n.line, nm, n.col), n.line, nil)
+            end
         end
     end)
     return out
@@ -439,7 +485,9 @@ end
 -- The table a module returns (return M at the top level), or nil
 local function returned_table(ast)
     for _, s in ast.stmts do
-        if s.type == "return" and len(s.values) == 1 and s.values[0].type == "ident" then return s.values[0].name end
+        if s.type == "return" and len(s.values) == 1 and s.values[0].type == "ident" then
+            return s.values[0].name
+        end
     end
     return nil
 end
@@ -547,11 +595,17 @@ end
 local function nearest(decls, name, line)
     local best = nil
     for _, d in decls do
-        if d.name == name and d.owner == nil and d.line <= line and (best == nil or d.line >= best.line) then best = d end
+        if d.name == name and d.owner == nil and d.line <= line
+                and (best == nil or d.line >= best.line) then
+            best = d
+        end
     end
     if best == nil then
         for _, d in decls do
-            if d.name == name and d.owner == nil and (d.kind == "function" or d.kind == "global") then best = d end
+            if d.name == name and d.owner == nil
+                    and (d.kind == "function" or d.kind == "global") then
+                best = d
+            end
         end
     end
     return best
@@ -562,7 +616,9 @@ local function required_module(info, obj, line, dir)
     local d = nearest(info.decls, obj, line)
     if d == nil or d.value == nil then return nil end
     local v = d.value
-    if v.type == "call" and v.callee.type == "ident" and v.callee.name == "require" and len(v.args) == 1 and v.args[0].type == "string" then
+    if v.type == "call" and v.callee.type == "ident" and v.callee.name == "require"
+            and len(v.args) == 1
+            and v.args[0].type == "string" then
         local f = module_file(v.args[0].value, dir)
         if f ~= nil then return file_info(f), v.args[0].value end
     end
@@ -670,7 +726,8 @@ local function hover(params)
             sort.sort(keys)
             text = "```sea\n" .. r.builtin .. "\n```\nbuilt-in module: " .. string.join(keys, ", ")
         else
-            text = "```sea\n" .. r.builtin .. "\n```\nbuilt-in " .. (t == "function" and "function" or t)
+            text = "```sea\n" .. r.builtin .. "\n```\nbuilt-in " .. (t == "function" and "function"
+                or t)
         end
     else
         local x = r.decl
@@ -687,13 +744,16 @@ local function hover(params)
             end
             sig = "function " .. name .. "(" .. string.join(ps, ", ") .. ")"
         else
-            sig = (x.kind == "param" and "parameter " or (x.kind == "global" and "global " or (x.kind == "field" and "field " or "local "))) ..
+            sig = (x.kind == "param" and "parameter "
+                or (x.kind == "global" and "global " or (x.kind == "field" and "field " or "local "))) ..
                 r.display
         end
         text = "```sea\n" .. sig .. "\n```"
         local doc = doc_comment(r.info.ast, x.line)
         if doc ~= nil then text = text .. "\n" .. doc end
-        if r.info.path ~= d.path then text = text .. "\n\n*" .. path.basename(r.info.path) .. ":" .. tostring(x.line) .. "*" end
+        if r.info.path ~= d.path then
+            text = text .. "\n\n*" .. path.basename(r.info.path) .. ":" .. tostring(x.line) .. "*"
+        end
     end
     local res = {}
     local contents = {}
@@ -752,12 +812,20 @@ local function completion(params)
                 local owner = returned_table(req.ast)
                 for _, x in req.decls do
                     if x.owner == owner then
-                        item(x.name, x.params ~= nil and 3 or 5, path.stem(modname) .. "." .. x.name .. (x.params ~= nil and ("(" .. string.join(x.params, ", ") .. ")") or ""))
+                        item(
+                            x.name,
+                            x.params ~= nil and 3 or 5,
+                            path.stem(modname) .. "." .. x.name .. (x.params ~= nil
+                                and ("(" .. string.join(x.params, ", ") .. ")")
+                                or "")
+                        )
                     end
                 end
             end
             for _, x in info.decls do
-                if x.owner == obj then item(x.name, x.params ~= nil and 3 or 5, obj .. "." .. x.name) end
+                if x.owner == obj then
+                    item(x.name, x.params ~= nil and 3 or 5, obj .. "." .. x.name)
+                end
             end
         end
         return items
@@ -765,7 +833,9 @@ local function completion(params)
     if info ~= nil then
         for _, x in info.decls do
             if x.owner == nil and x.line <= line then
-                local detail = x.params ~= nil and (x.name .. "(" .. string.join(x.params, ", ") .. ")") or x.kind
+                local detail = x.params ~= nil
+                    and (x.name .. "(" .. string.join(x.params, ", ") .. ")")
+                    or x.kind
                 item(x.name, x.params ~= nil and 3 or 6, detail)
             end
         end
@@ -791,8 +861,11 @@ local function symbols(params)
         for _, x in decls do
             if x.line == s.line and x.kind ~= "param" then
                 local sym = {}
-                sym.name = x.owner ~= nil and (x.owner .. (x.kind == "method" and ":" or ".") .. x.name) or x.name
-                sym.kind = x.kind == "method" and 6 or (x.params ~= nil and 12 or (x.kind == "field" and 8 or 13))
+                sym.name = x.owner ~= nil
+                    and (x.owner .. (x.kind == "method" and ":" or ".") .. x.name)
+                    or x.name
+                sym.kind = x.kind == "method" and 6
+                    or (x.params ~= nil and 12 or (x.kind == "field" and 8 or 13))
                 local last = d.lines[x.end_line - 1] or ""
                 sym.range = lsp_range(d.lines, s.line, 1, x.end_line, len(last) + 1)
                 sym.selectionRange = lsp_range(d.lines, x.line, x.col, x.line, x.col + len(x.name))
@@ -809,7 +882,10 @@ local function formatting(params)
     if d == nil then return nil end
     local opts = {}
     opts.name = d.path
-    if params.options ~= nil and params.options.tabSize ~= nil and params.options.insertSpaces ~= false then opts.indent = params.options.tabSize end
+    if params.options ~= nil and params.options.tabSize ~= nil
+            and params.options.insertSpaces ~= false then
+        opts.indent = params.options.tabSize
+    end
     local out = parser.format(d.text, opts)
     if is_error(out) or out == d.text then return [] end
     local edit = {}
@@ -880,7 +956,11 @@ local function on_notification(method, params)
     elseif method == "textDocument/didChange" then
         local changes = params.contentChanges
         if changes ~= nil and len(changes) > 0 then
-            set_doc(params.textDocument.uri, changes[len(changes) - 1].text, params.textDocument.version)
+            set_doc(
+                params.textDocument.uri,
+                changes[len(changes) - 1].text,
+                params.textDocument.version
+            )
             publish(params.textDocument.uri)
         end
     elseif method == "textDocument/didSave" then

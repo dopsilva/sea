@@ -14,18 +14,18 @@ router.use(function(req, next)
 end)
 router.get("/", function(req) return http.text("home") end)
 router.get("/users/:id", function(req)
-    return http.json({ id = req.params["id"], q = req.query["q"] })
+    return http.json({id = req.params["id"], q = req.query["q"]})
 end)
 router.post("/echo", function(req)
     return http.text(req.method .. ":" .. req.body .. ":" .. (req.headers["content-type"] or ""))
 end)
 router.put("/data", function(req)
     local v = req:json()
-    return http.json({ sum = v.a + v.b }, 201)
+    return http.json({sum = v.a + v.b}, 201)
 end)
 router.get("/cookie", function(req)
     local r = http.text("got " .. tostring(req.cookies["session"]))
-    http.set_cookie(r, "session", "abc", { path = "/", http_only = true })
+    http.set_cookie(r, "session", "abc", {path = "/", http_only = true})
     return r
 end)
 router.get("/go", function(req) return http.redirect("/") end)
@@ -41,20 +41,20 @@ local errors = []
 local function on_error(e, req)
     errors[] = req.path .. " " .. (is_error(e) and "runtime error" or tostring(e))
 end
-local srv = http.listen(0, router, { read_timeout = 2000, on_error = on_error })
+local srv = http.listen(0, router, {read_timeout = 2000, on_error = on_error})
 local base = "http://127.0.0.1:" .. srv.port
 
 local r = http.get(base .. "/")
 print("get:", r.status, r.body, r.headers["x-served-by"], r.ok)
-local u = http.get(base .. "/users/a%20b", { query = { q = "x&y" } })
+local u = http.get(base .. "/users/a%20b", {query = {q = "x&y"}})
 print("params+query:", u:json().id, u:json().q)
 print("post:", http.post(base .. "/echo", "hi", "text/plain").body)
-local p = http.put(base .. "/data", nil, nil, { json = { a = 2, b = 3 } })
+local p = http.put(base .. "/data", nil, nil, {json = {a = 2, b = 3}})
 print("put json:", p.status, p:json().sum)
-local c = http.get(base .. "/cookie", { headers = { Cookie = "session=xyz" } })
+local c = http.get(base .. "/cookie", {headers = {Cookie = "session=xyz"}})
 print("cookies:", c.body, c.headers["set-cookie"])
 print("redirect:", http.get(base .. "/go").body)
-print("no redirect:", http.get(base .. "/go", { follow_redirects = false }).status)
+print("no redirect:", http.get(base .. "/go", {follow_redirects = false}).status)
 print("405:", http.request("DELETE", base .. "/data").status)
 print("404:", http.get(base .. "/missing").status)
 local h = http.head(base .. "/big")
@@ -65,7 +65,7 @@ print("runtime error -> 500:", http.get(base .. "/crash").status)
 print("panic -> 500:", http.get(base .. "/panic").status)
 print("errors seen:", errors[0], errors[1])
 print("server still up:", http.get(base .. "/").body)
-print("bad header rejected:", http.get(base .. "/", { headers = { X = "a\r\nb: c" } }).status)
+print("bad header rejected:", http.get(base .. "/", {headers = {X = "a\r\nb: c"}}).status)
 
 -- concurrent clients (keep-alive pool)
 local results = chan(20)
@@ -83,7 +83,7 @@ for i = 1, 20 do total = total + <-results end
 print("concurrent:", total)
 
 -- helpers
-print("query:", http.build_query({ b = "x y", a = 1 }), http.parse_query("/p?k=a%26b&f").k)
+print("query:", http.build_query({b = "x y", a = 1}), http.parse_query("/p?k=a%26b&f").k)
 local pu = http.parse_url("https://[::1]:8443/a/b?c=1#frag")
 print("parse_url:", pu.host, pu.port, pu.path, pu.query)
 print("encode:", http.url_encode("a b/c"), http.url_decode("a+b%2Fc"))
@@ -91,17 +91,17 @@ print("status:", http.status_text(429))
 
 srv.close()
 srv.wait()
-print("closed:", http.get(base .. "/", { timeout = 500 }).status)
+print("closed:", http.get(base .. "/", {timeout = 500}).status)
 
 -- gzip: server compresses for clients that accept it; client decodes
 local big = string.rep("compress me ", 500)
-local gsrv = http.listen(0, function(req) return http.text(big) end, { gzip = true })
+local gsrv = http.listen(0, function(req) return http.text(big) end, {gzip = true})
 local gbase = "http://127.0.0.1:" .. gsrv.port
 local g = http.get(gbase .. "/")
 print("gzip auto:", len(g.body) == len(big), g.uncompressed, g.headers["vary"])
-local graw = http.get(gbase .. "/", { headers = { ["Accept-Encoding"] = "gzip" } })
+local graw = http.get(gbase .. "/", {headers = {["Accept-Encoding"] = "gzip"}})
 print("gzip raw:", graw.headers["content-encoding"], len(graw.body) < len(big))
-print("gzip refused:", len(http.get(gbase .. "/", { decompress = false }).body))
+print("gzip refused:", len(http.get(gbase .. "/", {decompress = false}).body))
 gsrv.close()
 gsrv.wait()
 
@@ -121,20 +121,35 @@ end)
 local sbase = "http://127.0.0.1:" .. ssrv.port
 local pieces = []
 local total = 0
-local sr = http.get(sbase .. "/", {on_data = function(p)
-    pieces[] = p
-    total += len(p)
-end})
-print("stream:", sr.status, sr.headers["transfer-encoding"], sr.body == "", total, string.sub(pieces[0], 1, 7))
+local sr = http.get(sbase .. "/", {
+    on_data = function(p)
+        pieces[] = p
+        total += len(p)
+    end,
+})
+print(
+    "stream:",
+    sr.status,
+    sr.headers["transfer-encoding"],
+    sr.body == "",
+    total,
+    string.sub(pieces[0], 1, 7)
+)
 local seen = 0
-http.get(sbase .. "/", {on_data = function(p)
-    seen += 1
-    return false -- stop after the first piece
-end})
+http.get(sbase .. "/", {
+    on_data = function(p)
+        seen += 1
+        return false -- stop after the first piece
+    end,
+})
 print("stream stop:", seen)
 local fr = http.get(sbase .. "/fail", {on_data = function(p) panic("not for errors") end})
 print("stream error body:", fr.status, fr.body)
-print("stream again:", http.get(sbase .. "/").body == string.rep("x", 70000) and "bad" or len(http.get(sbase .. "/").body))
+print(
+    "stream again:",
+    http.get(sbase .. "/").body == string.rep("x", 70000) and "bad"
+        or len(http.get(sbase .. "/").body)
+)
 ssrv.close()
 ssrv.wait()
 
@@ -143,10 +158,13 @@ ssrv.wait()
 local srouter = http.router()
 srouter.use(function(req, next) return next(req) end)
 srouter.get("/events", function(req)
-    return {status = 200, headers = {["Content-Type"] = "text/event-stream"}, stream = function(write)
-        write("event: a\n\n")
-        write("event: b\n\n")
-    end}
+    return {
+        status = 200, headers = {["Content-Type"] = "text/event-stream"},
+        stream = function(write)
+            write("event: a\n\n")
+            write("event: b\n\n")
+        end,
+    }
 end)
 local rsrv = http.listen(0, srouter)
 local rr = http.get("http://127.0.0.1:" .. rsrv.port .. "/events")
@@ -164,7 +182,7 @@ end, {idle_timeout = 150})
 local ibase = "http://127.0.0.1:" .. isrv.port .. "/"
 local idone = chan(3)
 for i = 1, 3 do
-    go function() idone <- http.get(ibase).status end()
+    go (function() idone <- http.get(ibase).status end)()
 end
 local istatus = []
 for i = 1, 3 do istatus[] = <-idone end
@@ -176,7 +194,11 @@ isrv.wait()
 
 -- behind a balancer (proxy_protocol): the PROXY v1 line gives the client's
 -- address; without it the connection is refused
-local psrv = http.listen(0, function(req) return http.text(req.remote_addr) end, {proxy_protocol = true})
+local psrv = http.listen(
+    0,
+    function(req) return http.text(req.remote_addr) end,
+    {proxy_protocol = true}
+)
 local function raw(port, data)
     local fd = net.connect("127.0.0.1", port, 2000)
     net.write(fd, data)
@@ -193,7 +215,10 @@ end
 local req = "GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"
 print("proxy v4:", raw(psrv.port, "PROXY TCP4 203.0.113.7 10.0.0.1 51000 80\r\n" .. req))
 print("proxy v6:", raw(psrv.port, "PROXY TCP6 2001:db8::7 2001:db8::1 51000 80\r\n" .. req))
-print("proxy unknown:", string.starts_with(raw(psrv.port, "PROXY UNKNOWN\r\n" .. req), "127.0.0.1:"))
+print(
+    "proxy unknown:",
+    string.starts_with(raw(psrv.port, "PROXY UNKNOWN\r\n" .. req), "127.0.0.1:")
+)
 print("proxy missing:", json.encode(raw(psrv.port, req)))
 print("proxy bad:", json.encode(raw(psrv.port, "PROXY TCP4 evil 10.0.0.1 1 80\r\n" .. req)))
 psrv.close()

@@ -27,7 +27,7 @@ while true do
     j = j + 1
     if j == 3 then break end
 end
-print(j)    -- 3
+print(j) -- 3
 
 -- numeric for
 for k = 1, 5 do
@@ -47,4 +47,4 @@ for n = 1, 100 do
     if n > 5 then break end
     sum = sum + n
 end
-print(sum)  -- 15
+print(sum) -- 15

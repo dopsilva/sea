@@ -75,4 +75,14 @@ print(check("local x = 1\nx += "))
 print(parser.format("x+=1\nt.a ..= 'x'\nt[f()] //= 2"))
 local node = parser.parse("t.n += y").stmts[0]
 print(node.type, node.op, node.targets[0].type, node.values[0].name)
-print(parser.format({type = "block", stmts = [{type = "assign", op = "..", targets = [{type = "ident", name = "s"}], values = [{type = "string", value = "x"}]}]}))
+print(parser.format({
+    type = "block",
+    stmts = [
+        {
+            type = "assign",
+            op = "..",
+            targets = [{type = "ident", name = "s"}],
+            values = [{type = "string", value = "x"}],
+        },
+    ],
+}))

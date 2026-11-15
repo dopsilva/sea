@@ -104,14 +104,24 @@ if len(paths) == 0 then paths[] = "." end
 
 local any_header = mode == "check" and license == nil
 if mode ~= "remove" and not any_header then
-    if license == nil then fail("which license? -l MIT, -l Apache-2.0, -l BSD-3-Clause, ... (an SPDX identifier)") end
-    if not re.test("^[A-Za-z0-9.+-]+( (AND|OR|WITH) [A-Za-z0-9.+-]+)*$", license) then fail("'" .. license .. "' is not an SPDX license expression") end
-    if not re.test("^[0-9]{4}(-[0-9]{4})?$", year) then fail("-y takes a year or a range (2025-2026)") end
+    if license == nil then
+        fail("which license? -l MIT, -l Apache-2.0, -l BSD-3-Clause, ... (an SPDX identifier)")
+    end
+    if not re.test("^[A-Za-z0-9.+-]+( (AND|OR|WITH) [A-Za-z0-9.+-]+)*$", license) then
+        fail("'" .. license .. "' is not an SPDX license expression")
+    end
+    if not re.test("^[0-9]{4}(-[0-9]{4})?$", year) then
+        fail("-y takes a year or a range (2025-2026)")
+    end
     if holder == nil then
         local r = process.run({"git", "config", "user.name"})
-        if not is_error(r) and r.ok and string.trim(r.stdout) ~= "" then holder = string.trim(r.stdout) end
+        if not is_error(r) and r.ok and string.trim(r.stdout) ~= "" then
+            holder = string.trim(r.stdout)
+        end
     end
-    if holder == nil then fail("who holds the copyright? -c NAME (git config user.name is not set)") end
+    if holder == nil then
+        fail("who holds the copyright? -c NAME (git config user.name is not set)")
+    end
 end
 
 -- ---- comment styles ----
@@ -122,7 +132,9 @@ local function style_of(f)
     local ext = path.ext(f)
     if ext == ".c" or ext == ".h" then return "block" end
     if ext == ".sea" then return "dash" end
-    if ext == ".sh" or base == "Makefile" or base == "GNUmakefile" or ext == ".mk" then return "hash" end
+    if ext == ".sh" or base == "Makefile" or base == "GNUmakefile" or ext == ".mk" then
+        return "hash"
+    end
     return nil
 end
 
@@ -175,7 +187,9 @@ local function top_comment(src, style)
         local nl = string.find(src, "\n", p) or (len(src) + 1)
         local line = string.sub(src, p, nl - 1)
         local t = string.trim(line)
-        if not string.starts_with(t, mark) or (style == "hash" and string.starts_with(t, "#!")) then break end
+        if not string.starts_with(t, mark) or (style == "hash" and string.starts_with(t, "#!")) then
+            break
+        end
         if style == "dash" and string.starts_with(t, "--[[") then break end
         p = nl + 1
     end
@@ -194,7 +208,9 @@ end
 -- ---- the files ----
 
 local SKIP_DIRS = {}
-for _, d in {"bin", "obj", "obj-jit", "gen", "sea_modules", "vendor", "node_modules"} do SKIP_DIRS[d] = true end
+for _, d in {"bin", "obj", "obj-jit", "gen", "sea_modules", "vendor", "node_modules"} do
+    SKIP_DIRS[d] = true
+end
 
 local function excluded(f)
     for _, x in excludes do
@@ -211,9 +227,14 @@ for _, p in paths do
             local parts = path.parts(path.relative(p, f))
             for k = 0, len(parts) - 2 do
                 local part = parts[k]
-                if (string.starts_with(part, ".") and part ~= "." and part ~= "..") or SKIP_DIRS[part] then skip = true end
+                if (string.starts_with(part, ".") and part ~= "." and part ~= "..")
+                        or SKIP_DIRS[part] then
+                    skip = true
+                end
             end
-            if not skip and style_of(f) ~= nil and not excluded(f) then files[] = path.normalize(f) end
+            if not skip and style_of(f) ~= nil and not excluded(f) then
+                files[] = path.normalize(f)
+            end
         end
     elseif fs.isfile(p) then
         if style_of(p) == nil then fail(p .. ": unknown file type (C, Sea, shell or Makefile)") end
@@ -277,7 +298,9 @@ for _, f in files do
     end
 end
 
-for _, f in skipped do io.write_err("license: skipped " .. f .. " (it has another copyright notice; -force to add anyway)\n") end
+for _, f in skipped do
+    io.write_err("license: skipped " .. f .. " (it has another copyright notice; -force to add anyway)\n")
+end
 
 -- ---- LICENSE ----
 

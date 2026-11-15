@@ -17,9 +17,9 @@ skip["end_line"] = true
 
 local function same(a, b, path)
     local ta, tb = type(a), type(b)
-    if ta != tb then return path .. ": type " .. ta .. " vs " .. tb end
+    if ta ~= tb then return path .. ": type " .. ta .. " vs " .. tb end
     if ta == "array" then
-        if len(a) != len(b) then return path .. ": len " .. len(a) .. " vs " .. len(b) end
+        if len(a) ~= len(b) then return path .. ": len " .. len(a) .. " vs " .. len(b) end
         for i, v in a do
             local d = same(v, b[i], path .. "[" .. i .. "]")
             if d then return d end
@@ -34,11 +34,13 @@ local function same(a, b, path)
             end
         end
         for k, v in b do
-            if not skip[k] and a[k] == nil and v != nil then return path .. "." .. k .. ": missing" end
+            if not skip[k] and a[k] == nil and v ~= nil then
+                return path .. "." .. k .. ": missing"
+            end
         end
         return nil
     end
-    if a != b then return path .. ": " .. tostring(a) .. " vs " .. tostring(b) end
+    if a ~= b then return path .. ": " .. tostring(a) .. " vs " .. tostring(b) end
     return nil
 end
 
@@ -65,7 +67,7 @@ for i = 1, len(os.args) - 1 do
                 if d then
                     print("FAIL " .. f .. ": ast differs at " .. d)
                     bad = bad + 1
-                elseif out2 != out then
+                elseif out2 ~= out then
                     print("FAIL " .. f .. ": not idempotent")
                     bad = bad + 1
                 end

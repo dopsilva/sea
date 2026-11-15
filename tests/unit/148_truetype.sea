@@ -26,11 +26,11 @@ local function simple(pts)
 end
 
 local glyphs = [
-    "",                                                                  -- 0 .notdef: empty
+    "", -- 0 .notdef: empty
     simple([ [100, 0, true], [100, 700, true], [600, 700, true], [600, 0, true] ]),
     be16(0xFFFF) .. be16(0) .. be16(0) .. be16(1000) .. be16(1000) .. be16(3) .. be16(1) .. be16(200) .. be16(0),
     simple([ [300, 0, false], [0, 250, false], [300, 500, false], [600, 250, false] ]),
-    "",                                                                  -- 4 space
+    "", -- 4 space
 ]
 local glyf = ""
 local loca = ""
@@ -40,8 +40,8 @@ for _, g in glyphs do
 end
 loca ..= be32(len(glyf))
 local hmtx = be16(500) .. be16(0) .. be16(700) .. be16(100) .. be16(900) .. be16(100) .. be16(600) .. be16(0) .. be16(300) .. be16(0)
-local head = be32(0x10000) .. be32(0) .. be32(0) .. be32(0x5F0F3CF5) .. be16(0) .. be16(1000)
-    .. string.rep("\0", 16) .. be16(0) .. be16(0) .. be16(1000) .. be16(1000) .. be16(0) .. be16(8) .. be16(2) .. be16(1) .. be16(0)
+local head = be32(0x10000) .. be32(0) .. be32(0) .. be32(0x5F0F3CF5) .. be16(0) .. be16(1000) ..
+    string.rep("\0", 16) .. be16(0) .. be16(0) .. be16(1000) .. be16(1000) .. be16(0) .. be16(8) .. be16(2) .. be16(1) .. be16(0)
 local hhea = be32(0x10000) .. be16(800) .. be16(0xFFFF - 199) .. be16(0) .. string.rep("\0", 24) .. be16(5)
 local maxp = be32(0x5000) .. be16(5)
 -- cmap format 4: A-B → 1-2, o → 3, space → 4, and the closing 0xFFFF segment
@@ -55,7 +55,15 @@ for _, s in segs do sub ..= be16(0) end
 sub = be16(4) .. be16(14 + len(sub)) .. be16(0) .. be16(len(segs) * 2) .. be16(8) .. be16(2) .. be16(0) .. sub
 local cmap = be16(0) .. be16(1) .. be16(3) .. be16(1) .. be32(12) .. sub
 
-local tables = [ ["cmap", cmap], ["glyf", glyf], ["head", head], ["hhea", hhea], ["hmtx", hmtx], ["loca", loca], ["maxp", maxp] ]
+local tables = [
+    ["cmap", cmap],
+    ["glyf", glyf],
+    ["head", head],
+    ["hhea", hhea],
+    ["hmtx", hmtx],
+    ["loca", loca],
+    ["maxp", maxp],
+]
 local font_bytes = be32(0x10000) .. be16(len(tables)) .. be16(0) .. be16(0) .. be16(0)
 local offset = 12 + 16 * len(tables)
 local body = ""
@@ -69,7 +77,13 @@ font_bytes ..= body
 print("-- parse")
 local f = tt.parse(font_bytes)
 print(f.units_per_em, f.num_glyphs, f.ascender, f.descender)
-print(f:glyph_index(65), f:glyph_index(66), f:glyph_index(111), f:glyph_index(32), f:glyph_index(90))
+print(
+    f:glyph_index(65),
+    f:glyph_index(66),
+    f:glyph_index(111),
+    f:glyph_index(32),
+    f:glyph_index(90)
+)
 print(f:advance(1), f:advance(2), f:advance(4))
 local a = f:outline(1)
 print(len(a), len(a[0]), a[0][2].x, a[0][2].y, a[0][2].on)

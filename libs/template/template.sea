@@ -129,7 +129,7 @@ local function tokenize(src, otag, ctag)
             end
             local ind = string.join(indent, "")
             for i = line_start, len(toks) - 1 do
-                if toks[i].kind != "text" then toks[i].indent = ind end
+                if toks[i].kind ~= "text" then toks[i].indent = ind end
             end
         end
         line_start = len(toks)
@@ -176,13 +176,17 @@ local function tokenize(src, otag, ctag)
         if kind == "var" then
             t.name = string.trim(inner)
         elseif kind == "delim" then
-            if string.sub(inner, len(inner)) != "=" then return fail(src, t0, "a set-delimiter tag must end with '='") end
+            if string.sub(inner, len(inner)) ~= "=" then
+                return fail(src, t0, "a set-delimiter tag must end with '='")
+            end
             local spec = string.trim(string.sub(inner, 2, len(inner) - 1))
             local parts = re.split("\\s+", spec)
-            if len(parts) != 2 or re.test("=", spec) then return fail(src, t0, "invalid set-delimiter tag") end
+            if len(parts) ~= 2 or re.test("=", spec) then
+                return fail(src, t0, "invalid set-delimiter tag")
+            end
             otag = parts[0]
             ctag = parts[1]
-        elseif kind != "comment" then
+        elseif kind ~= "comment" then
             t.name = string.trim(string.sub(inner, 2))
         end
         if t.name == "" then return fail(src, t0, "a tag without a name") end
@@ -202,9 +206,9 @@ local function build(src, toks)
         if t.removed then
             -- whitespace of a standalone line
         elseif t.kind == "text" then
-            if t.text != "" then
+            if t.text ~= "" then
                 local last = len(cur) > 0 and cur[len(cur) - 1] or nil
-                if last != nil and last.kind == "text" then
+                if last ~= nil and last.kind == "text" then
                     local merged = new_token("text")
                     merged.text = last.text .. t.text
                     cur[len(cur) - 1] = merged
@@ -221,25 +225,31 @@ local function build(src, toks)
             stack[] = frame
             cur = t.children
         elseif t.kind == "close" then
-            if len(stack) == 0 then return fail(src, t.start, "closing tag '" .. t.name .. "' without an open section") end
+            if len(stack) == 0 then
+                return fail(src, t.start, "closing tag '" .. t.name .. "' without an open section")
+            end
             local top = stack[len(stack) - 1]
-            if top.tok.name != t.name then
-                return fail(src, t.start, "closing tag '" .. t.name .. "' does not match '" .. top.tok.name .. "'")
+            if top.tok.name ~= t.name then
+                return fail(
+                    src,
+                    t.start,
+                    "closing tag '" .. t.name .. "' does not match '" .. top.tok.name .. "'"
+                )
             end
             top.tok.raw = string.sub(src, top.tok.after, t.start - 1)
-            if top.tok.kind == "block" and top.tok.indent != nil then
+            if top.tok.kind == "block" and top.tok.indent ~= nil then
                 -- a standalone block: the indentation of its content's first line
                 local first = top.tok.children[0]
-                if first != nil and first.kind == "text" then
+                if first ~= nil and first.kind == "text" then
                     local m = re.match("^[ \t]*", first.text)
-                    if m.text != "" or len(first.text) > 0 then top.tok.def_indent = m.text end
+                    if m.text ~= "" or len(first.text) > 0 then top.tok.def_indent = m.text end
                 end
             end
             cur = top.parent
             local rest = []
             for i = 0, len(stack) - 2 do rest[] = stack[i] end
             stack = rest
-        elseif t.kind != "comment" and t.kind != "delim" then
+        elseif t.kind ~= "comment" and t.kind ~= "delim" then
             cur[] = t
         end
     end
@@ -267,11 +277,11 @@ end
 local function is_list(v)
     local ty = type(v)
     if ty == "array" or ty == "int_array" or ty == "float_array" then return true end
-    if ty != "table" then return false end
+    if ty ~= "table" then return false end
     local n = len(v)
     if n == 0 then return false end
     for k, _ in v do
-        if type(k) != "int" or k < 0 or k >= n then return false end
+        if type(k) ~= "int" or k < 0 or k >= n then return false end
     end
     return true
 end
@@ -288,9 +298,9 @@ local function lookup(ctx, name)
     local parts = string.split(name, ".")
     local v = nil
     local c = ctx
-    while c != nil do
+    while c ~= nil do
         local x = field(c.value, parts[0])
-        if x != nil then
+        if x ~= nil then
             v = x
             break
         end
@@ -346,9 +356,11 @@ local function reindent(text, strip, add)
     local i = 1
     while i <= len(text) do
         local nl = string.find(text, "\n", i)
-        local line = nl != nil and string.sub(text, i, nl) or string.sub(text, i)
-        if strip != "" and string.starts_with(line, strip) then line = string.sub(line, len(strip) + 1) end
-        if line != "\n" and line != "" then line = add .. line end
+        local line = nl ~= nil and string.sub(text, i, nl) or string.sub(text, i)
+        if strip ~= "" and string.starts_with(line, strip) then
+            line = string.sub(line, len(strip) + 1)
+        end
+        if line ~= "\n" and line ~= "" then line = add .. line end
         out[] = line
         if nl == nil then break end
         i = nl + 1
@@ -362,11 +374,11 @@ local function partial_source(R, name)
     local src = nil
     if type(p) == "function" then
         src = p(name)
-    elseif p != nil then
+    elseif p ~= nil then
         src = field(p, name)
     end
-    if type(src) == "table" and src.source != nil then src = src.source end
-    if type(src) != "string" then return nil end
+    if type(src) == "table" and src.source ~= nil then src = src.source end
+    if type(src) ~= "string" then return nil end
     return src
 end
 
@@ -385,7 +397,7 @@ local function partial_name(t, ctx)
     local name = t.name
     if string.starts_with(name, "*") then
         local dyn = lookup(ctx, string.trim(string.sub(name, 2)))
-        if type(dyn) != "string" then return nil end
+        if type(dyn) ~= "string" then return nil end
         return dyn
     end
     return name
@@ -426,44 +438,50 @@ render_nodes = function(R, nodes, ctx, out)
             if falsy(v) then render_nodes(R, t.children, ctx, out) end
         elseif k == "partial" then
             local name = partial_name(t, ctx)
-            local src = name != nil and partial_source(R, name) or nil
-            if src != nil then
+            local src = name ~= nil and partial_source(R, name) or nil
+            if src ~= nil then
                 R.depth = R.depth + 1
-                if R.depth > R.max_depth then panic("template: partials nested too deeply (recursion?)") end
+                if R.depth > R.max_depth then
+                    panic("template: partials nested too deeply (recursion?)")
+                end
                 render_nodes(R, compiled(R, name, src, t.indent), ctx, out)
                 R.depth = R.depth - 1
             end
         elseif k == "block" then
             -- block indentation is removed where it is defined and added where
             -- it is expanded (when the expanding tag is standalone)
-            local over = R.blocks != nil and R.blocks[t.name] or nil
+            local over = R.blocks ~= nil and R.blocks[t.name] or nil
             local def = over or t
             local part = []
             render_nodes(R, def.children, ctx, part)
             local text = string.join(part, "")
             local site = nil
-            if t.indent != nil then site = t.def_indent or t.indent end
-            if def.def_indent != nil or site != nil then
+            if t.indent ~= nil then site = t.def_indent or t.indent end
+            if def.def_indent ~= nil or site ~= nil then
                 text = reindent(text, def.def_indent or "", site or "")
-                if site != nil and text != "" and not string.ends_with(text, "\n") then text = text .. "\n" end
+                if site ~= nil and text ~= "" and not string.ends_with(text, "\n") then
+                    text = text .. "\n"
+                end
             end
             out[] = text
         elseif k == "parent" then
             local name = partial_name(t, ctx)
-            local src = name != nil and partial_source(R, name) or nil
-            if src != nil then
+            local src = name ~= nil and partial_source(R, name) or nil
+            if src ~= nil then
                 -- the blocks this tag defines, under the ones from further out
                 local blocks = [=]
                 for _, c in t.children do
                     if c.kind == "block" then blocks[c.name] = c end
                 end
-                if R.blocks != nil then
+                if R.blocks ~= nil then
                     for bname, b in R.blocks do blocks[bname] = b end
                 end
                 local saved = R.blocks
                 R.blocks = blocks
                 R.depth = R.depth + 1
-                if R.depth > R.max_depth then panic("template: partials nested too deeply (recursion?)") end
+                if R.depth > R.max_depth then
+                    panic("template: partials nested too deeply (recursion?)")
+                end
                 render_nodes(R, compiled(R, name, src, t.indent), ctx, out)
                 R.depth = R.depth - 1
                 R.blocks = saved
@@ -486,12 +504,12 @@ local function run(tpl, data, partials)
     local function go_render()
         defer function()
             local e = recover()
-            if e != nil then failed = e end
+            if e ~= nil then failed = e end
         end
         render_nodes(R, tpl.nodes, push(nil, data), out)
     end
     go_render()
-    if failed != nil then
+    if failed ~= nil then
         if is_error(failed) then return failed end
         return error(tostring(failed))
     end
@@ -507,10 +525,12 @@ end
 -- HTML), delimiters ({open, close} to start with, default {"{{", "}}"}),
 -- max_depth (nested partials, default 100)
 function M.compile(src, opts)
-    if type(src) != "string" then return error("template.compile: template source (string) expected") end
+    if type(src) ~= "string" then
+        return error("template.compile: template source (string) expected")
+    end
     local otag = "{{"
     local ctag = "}}"
-    if opts != nil and opts.delimiters != nil then
+    if opts ~= nil and opts.delimiters ~= nil then
         otag = opts.delimiters[0]
         ctag = opts.delimiters[1]
     end
@@ -521,10 +541,13 @@ function M.compile(src, opts)
     tpl.nodes = nodes
     tpl.escape = M.escape
     tpl.max_depth = 100
-    if opts != nil then
-        if opts.escape == false then tpl.escape = nil
-        elseif type(opts.escape) == "function" then tpl.escape = opts.escape end
-        if opts.max_depth != nil then tpl.max_depth = opts.max_depth end
+    if opts ~= nil then
+        if opts.escape == false then
+            tpl.escape = nil
+        elseif type(opts.escape) == "function" then
+            tpl.escape = opts.escape
+        end
+        if opts.max_depth ~= nil then tpl.max_depth = opts.max_depth end
     end
     tpl.render = tpl_render
     return tpl

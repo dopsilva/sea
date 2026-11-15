@@ -26,6 +26,6 @@ print("")
 print("--- same request via http.request ---")
 local r2 = http.request("POST", url, body, ct, {
     ["X-Custom-Header"] = "sea-vm",
-    ["Accept"]          = "application/json",
+    Accept = "application/json",
 })
 print("Status: " .. r2.status)

@@ -19,10 +19,10 @@ end
 -- a CA and a certificate for 127.0.0.1 it signed
 local function make_certs()
     if not sh("command -v openssl >/dev/null") then return false end
-    return sh("openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 2 -subj '/CN=test CA' 2>/dev/null") and
-        sh("openssl req -x509 -newkey rsa:2048 -nodes -keyout other.key -out other.crt -days 2 -subj '/CN=other CA' 2>/dev/null") and
-        sh("openssl req -newkey rsa:2048 -nodes -keyout srv.key -out srv.csr -subj '/CN=127.0.0.1' 2>/dev/null") and
-        sh("printf 'subjectAltName=IP:127.0.0.1\\n' > san.ext && openssl x509 -req -in srv.csr -CA ca.crt -CAkey ca.key " ..
+    return sh("openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 2 -subj '/CN=test CA' 2>/dev/null")
+        and sh("openssl req -x509 -newkey rsa:2048 -nodes -keyout other.key -out other.crt -days 2 -subj '/CN=other CA' 2>/dev/null")
+        and sh("openssl req -newkey rsa:2048 -nodes -keyout srv.key -out srv.csr -subj '/CN=127.0.0.1' 2>/dev/null")
+        and sh("printf 'subjectAltName=IP:127.0.0.1\\n' > san.ext && openssl x509 -req -in srv.csr -CA ca.crt -CAkey ca.key " ..
             "-CAcreateserial -out srv.crt -days 2 -extfile san.ext 2>/dev/null")
 end
 
@@ -39,7 +39,10 @@ t.describe("http over TLS", function()
             return
         end
         local srv = t.no_error(http.listen(0, function(req) return {status = 200, body = "olá"} end,
-            {host = "127.0.0.1", tls = {cert = path.join(dir, "srv.crt"), key = path.join(dir, "srv.key")}}))
+            {
+                host = "127.0.0.1",
+                tls = {cert = path.join(dir, "srv.crt"), key = path.join(dir, "srv.key")},
+            }))
         defer srv.close()
         local url = `https://127.0.0.1:${srv.port}/`
         local ok = http.get(url, {tls = {ca = path.join(dir, "ca.crt")}})
@@ -53,24 +56,57 @@ t.describe("http over TLS", function()
     end)
 
     t.it("presents a client certificate given as PEM text (mutual TLS)", function()
-        if not make_certs() or not sh("openssl req -newkey rsa:2048 -nodes -keyout cli.key -out cli.csr -subj '/CN=client' 2>/dev/null") or
-            not sh("openssl x509 -req -in cli.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out cli.crt -days 2 2>/dev/null") then
+        if not make_certs()
+                or not sh("openssl req -newkey rsa:2048 -nodes -keyout cli.key -out cli.csr -subj '/CN=client' 2>/dev/null")
+                or not sh("openssl x509 -req -in cli.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out cli.crt -days 2 2>/dev/null") then
             print("  (no openssl command: skipped)")
             return
         end
         -- the server asks for a client certificate signed by the CA
         local srv = t.no_error(http.listen(0, function(req) return {status = 200, body = "mtls"} end,
-            {host = "127.0.0.1", tls = {cert = path.join(dir, "srv.crt"), key = path.join(dir, "srv.key"), ca = path.join(dir, "ca.crt")}}))
+            {
+                host = "127.0.0.1",
+                tls = {
+                    cert = path.join(dir, "srv.crt"),
+                    key = path.join(dir, "srv.key"),
+                    ca = path.join(dir, "ca.crt"),
+                },
+            }))
         defer srv.close()
         local url = `https://127.0.0.1:${srv.port}/`
         local ca = path.join(dir, "ca.crt")
         t.eq(http.get(url, {tls = {ca = ca}}).status, 0)
-        local r = http.get(url, {tls = {ca = ca, cert = fs.read(path.join(dir, "cli.crt")), key = fs.read(path.join(dir, "cli.key"))}})
+        local r = http.get(
+            url,
+            {
+                tls = {
+                    ca = ca,
+                    cert = fs.read(path.join(dir, "cli.crt")),
+                    key = fs.read(path.join(dir, "cli.key")),
+                },
+            })
         t.eq(r.status, 200)
         t.eq(r.body, "mtls")
         -- (as files too)
-        t.eq(http.get(url, {tls = {ca = ca, cert = path.join(dir, "cli.crt"), key = path.join(dir, "cli.key")}}).status, 200)
+        t.eq(
+            http.get(
+                url,
+                {tls = {ca = ca, cert = path.join(dir, "cli.crt"), key = path.join(dir, "cli.key")}}
+            ).status,
+            200
+        )
         -- a key that is not PEM
-        t.eq(http.get(url, {tls = {ca = ca, cert = fs.read(path.join(dir, "cli.crt")), key = "-----BEGIN nonsense"}}).status, 0)
+        t.eq(
+            http.get(
+                url,
+                {
+                    tls = {
+                        ca = ca,
+                        cert = fs.read(path.join(dir, "cli.crt")),
+                        key = "-----BEGIN nonsense",
+                    },
+                }).status,
+            0
+        )
     end)
 end)

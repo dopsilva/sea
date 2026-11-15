@@ -5,7 +5,7 @@ local function qsort(arr, lo, hi)
     if lo >= hi then return end
     local pivot = arr[hi]
     local i = lo - 1
-    for j = lo, hi-1 do
+    for j = lo, hi - 1 do
         if arr[j] <= pivot then
             i = i + 1
             local tmp = arr[i]
@@ -32,7 +32,7 @@ end
 qsort(nums, 0, N - 1)
 
 local sum = 0
-for i = 0, N-1 do
+for i = 0, N - 1 do
     sum = sum + nums[i]
 end
 print(sum)

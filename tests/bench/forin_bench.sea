@@ -6,13 +6,13 @@ local ITERS = 500
 
 -- Prepara containers
 local m = [=]
-for i = 0, N-1 do m[i] = i * 2 end
+for i = 0, N - 1 do m[i] = i * 2 end
 
 local tb = {}
-for i = 0, N-1 do tb[i] = i * 2 end
+for i = 0, N - 1 do tb[i] = i * 2 end
 
 local a = {}
-for i = 0, N-1 do a[i] = i * 2 end
+for i = 0, N - 1 do a[i] = i * 2 end
 
 local function bench(label, fn)
     local t0 = time.now()
@@ -24,7 +24,7 @@ end
 
 bench("forin_map", function()
     local sum = 0
-    for _ = 0, ITERS-1 do
+    for _ = 0, ITERS - 1 do
         for k, v in m do sum = sum + v end
     end
     io.write("")
@@ -32,7 +32,7 @@ end)
 
 bench("forin_table", function()
     local sum = 0
-    for _ = 0, ITERS-1 do
+    for _ = 0, ITERS - 1 do
         for k, v in tb do sum = sum + v end
     end
     io.write("")
@@ -40,7 +40,7 @@ end)
 
 bench("forin_array", function()
     local sum = 0
-    for _ = 0, ITERS-1 do
+    for _ = 0, ITERS - 1 do
         for i, v in a do sum = sum + v end
     end
     io.write("")

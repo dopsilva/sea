@@ -8,19 +8,19 @@ do
     local x = 2
     do
         local x = 3
-        print(x)  -- 3
+        print(x) -- 3
     end
-    print(x)  -- 2
+    print(x) -- 2
 end
-print(x)  -- 1
+print(x) -- 1
 
 -- if creates a new scope
 local y = 10
 if true then
     local y = 20
-    print(y)  -- 20
+    print(y) -- 20
 end
-print(y)  -- 10
+print(y) -- 10
 
 -- for loop scope
 local z = 0
@@ -31,17 +31,17 @@ end
 -- 10
 -- 20
 -- 30
-print(z)  -- 0
+print(z) -- 0
 
 -- shadowing function parameter
 local function shadow(a)
     local a = a + 100
     return a
 end
-print(shadow(5))   -- 105
+print(shadow(5)) -- 105
 
 -- closure captures by reference
 local val = 1
 local function get() return val end
 val = 2
-print(get())  -- 2
+print(get()) -- 2

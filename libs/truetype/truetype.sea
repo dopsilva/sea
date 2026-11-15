@@ -30,13 +30,20 @@ local function f2dot14(s, o) return s16(s, o) / 16384.0 end
 function M.parse(bytes)
     if type(bytes) ~= "string" or len(bytes) < 12 then return error("truetype: not a font") end
     local version = u32(bytes, 0)
-    if version == 0x4F54544F then return error("truetype: CFF (OpenType PostScript) outlines are not supported") end
-    if version ~= 0x00010000 and version ~= 0x74727565 then return error("truetype: not a TrueType font") end
+    if version == 0x4F54544F then
+        return error("truetype: CFF (OpenType PostScript) outlines are not supported")
+    end
+    if version ~= 0x00010000 and version ~= 0x74727565 then
+        return error("truetype: not a TrueType font")
+    end
     local tables = [=]
     local n = u16(bytes, 4)
     for i = 0, n - 1 do
         local rec = 12 + i * 16
-        tables[string.sub(bytes, rec + 1, rec + 4)] = {offset = u32(bytes, rec + 8), length = u32(bytes, rec + 12)}
+        tables[string.sub(bytes, rec + 1, rec + 4)] = {
+            offset = u32(bytes, rec + 8),
+            length = u32(bytes, rec + 12),
+        }
     end
     for _, tag in ["head", "maxp", "hhea", "hmtx", "loca", "glyf", "cmap"] do
         if tables[tag] == nil then return error(`truetype: missing table '${tag}'`) end
@@ -67,9 +74,13 @@ function M.parse(bytes)
         local sub = cmap + u32(bytes, rec + 4)
         local format = u16(bytes, sub)
         local rank = -1
-        if format == 12 and (platform == 3 or platform == 0) then rank = 3
-        elseif format == 4 and platform == 3 and encoding == 1 then rank = 2
-        elseif format == 4 and platform == 0 then rank = 1 end
+        if format == 12 and (platform == 3 or platform == 0) then
+            rank = 3
+        elseif format == 4 and platform == 3 and encoding == 1 then
+            rank = 2
+        elseif format == 4 and platform == 0 then
+            rank = 1
+        end
         if rank > best then
             best = rank
             f.cmap = sub
@@ -103,8 +114,10 @@ function Font.glyph_index(self, cp)
             local g = sub + 16 + mid * 12
             local first = u32(s, g)
             local last = u32(s, g + 4)
-            if cp < first then hi = mid - 1
-            elseif cp > last then lo = mid + 1
+            if cp < first then
+                hi = mid - 1
+            elseif cp > last then
+                lo = mid + 1
             else
                 gid = u32(s, g + 8) + (cp - first)
                 break
@@ -173,7 +186,7 @@ function Font.outline(self, gid, depth)
         for i = 0, nc - 1 do ends[] = u16(s, g + 10 + i * 2) end
         local npts = nc > 0 and ends[nc - 1] + 1 or 0
         local p = g + 10 + nc * 2
-        p += 2 + u16(s, p)                     -- skip the instructions
+        p += 2 + u16(s, p) -- skip the instructions
         local flags = []
         while len(flags) < npts do
             local fl = u8(s, p)
@@ -458,7 +471,9 @@ end
 function Font.text_width(self, text, size)
     local sc = self:scale(size)
     local wsum = 0.0
-    for _, ch in utf8.chars(text) do wsum += self:advance(self:glyph_index(utf8.codepoint(ch))) * sc end
+    for _, ch in utf8.chars(text) do
+        wsum += self:advance(self:glyph_index(utf8.codepoint(ch))) * sc
+    end
     return wsum
 end
 
@@ -480,7 +495,15 @@ function Font.draw(self, img, text, x, baseline, size, ink)
                 minx = math.min(minx, e[0], e[2])
                 maxx = math.max(maxx, e[0], e[2])
             end
-            fill(img, edges, ink, math.floor(minx) - 1, baseline - m.ascent - 2, math.ceil(maxx) + 1, baseline + m.descent + 2)
+            fill(
+                img,
+                edges,
+                ink,
+                math.floor(minx) - 1,
+                baseline - m.ascent - 2,
+                math.ceil(maxx) + 1,
+                baseline + m.descent + 2
+            )
         end
         pen += self:advance(gid) * sc
     end

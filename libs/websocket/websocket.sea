@@ -116,7 +116,7 @@ local function next_frame(self, timeout)
             if is_error(chunk) then return chunk end
             if chunk == "" then return nil end
             self.buf = self.buf .. chunk
-        elseif f.close != nil then
+        elseif f.close ~= nil then
             return fail(self, f.close, f.reason)
         else
             self.buf = string.sub(self.buf, f.size + 1)
@@ -127,8 +127,8 @@ end
 
 local function valid_close_code(code)
     if code >= 3000 and code <= 4999 then return true end
-    return code == 1000 or code == 1001 or code == 1002 or code == 1003 or
-           (code >= 1007 and code <= 1011)
+    return code == 1000 or code == 1001 or code == 1002 or code == 1003
+        or (code >= 1007 and code <= 1011)
 end
 
 -- conn:receive([timeout_ms]) → message (string) | nil when the connection is
@@ -139,7 +139,7 @@ function Conn.receive(self, timeout)
     local parts = []
     local op = nil
     local total = 0
-    local pending = ""          -- bytes of a character split across text fragments
+    local pending = "" -- bytes of a character split across text fragments
     while true do
         local f = next_frame(self, timeout)
         if f == nil then
@@ -162,21 +162,25 @@ function Conn.receive(self, timeout)
                 code = string.byte(d, 1) * 256 + string.byte(d, 2)
                 reason = string.sub(d, 3)
                 if not valid_close_code(code) then return fail(self, 1002, "invalid close code") end
-                if not utf8.valid(reason) then return fail(self, 1007, "close reason is not UTF-8") end
+                if not utf8.valid(reason) then
+                    return fail(self, 1007, "close reason is not UTF-8")
+                end
             end
             self.close_code = code
             self.close_reason = reason
             if not self.close_sent then
                 self.close_sent = true
-                write_frame(self, OP_CLOSE, close_payload(code != 1005 and code or nil, nil))
+                write_frame(self, OP_CLOSE, close_payload(code ~= 1005 and code or nil, nil))
             end
             shutdown(self)
             return nil
         else
             if o == OP_CONT then
-                if op == nil then return fail(self, 1002, "continuation frame without a message") end
+                if op == nil then
+                    return fail(self, 1002, "continuation frame without a message")
+                end
             else
-                if op != nil then return fail(self, 1002, "new message inside a fragmented one") end
+                if op ~= nil then return fail(self, 1002, "new message inside a fragmented one") end
                 op = o
             end
             total = total + len(f.data)
@@ -186,7 +190,9 @@ function Conn.receive(self, timeout)
                 -- fail fast: each fragment must continue valid UTF-8
                 local chunk = pending .. f.data
                 local tail = native.utf8_tail(chunk)
-                if tail < 0 or (f.fin and tail > 0) then return fail(self, 1007, "text message is not UTF-8") end
+                if tail < 0 or (f.fin and tail > 0) then
+                    return fail(self, 1007, "text message is not UTF-8")
+                end
                 pending = tail > 0 and string.sub(chunk, len(chunk) - tail + 1) or ""
             end
             if f.fin then
@@ -202,8 +208,8 @@ end
 -- UTF-8), or a binary one with binary = true (or {binary = true})
 function Conn.send(self, data, binary)
     if self.closed or self.close_sent then return error("websocket: the connection is closed") end
-    if type(data) != "string" then data = tostring(data) end
-    local bin = binary == true or (type(binary) != "bool" and opt(binary, "binary", false))
+    if type(data) ~= "string" then data = tostring(data) end
+    local bin = binary == true or (type(binary) ~= "bool" and opt(binary, "binary", false))
     if not bin and not utf8.valid(data) then
         return error("websocket: a text message must be UTF-8 (send it as binary)")
     end
@@ -281,7 +287,8 @@ end
 -- ws.is_upgrade(req) → bool: the request asks for a WebSocket
 function M.is_upgrade(req)
     local h = req.headers
-    return h ~= nil and header_has(h["upgrade"], "websocket") and header_has(h["connection"], "upgrade")
+    return h ~= nil and header_has(h["upgrade"], "websocket")
+        and header_has(h["connection"], "upgrade")
 end
 
 -- ws.upgrade(req, fn [, opts]) → response: return it from an http handler.
@@ -292,17 +299,21 @@ end
 -- A request that is not a valid WebSocket handshake gets a 400 (or 426).
 function M.upgrade(req, fn, opts)
     local h = req.headers or [=]
-    if req.method != "GET" then return bad_request("WebSocket handshake must be a GET", 400) end
-    if not M.is_upgrade(req) then return bad_request("expected a WebSocket upgrade request", 400) end
-    if h["sec-websocket-version"] != "13" then return bad_request("unsupported WebSocket version", 426) end
+    if req.method ~= "GET" then return bad_request("WebSocket handshake must be a GET", 400) end
+    if not M.is_upgrade(req) then
+        return bad_request("expected a WebSocket upgrade request", 400)
+    end
+    if h["sec-websocket-version"] ~= "13" then
+        return bad_request("unsupported WebSocket version", 426)
+    end
     local key = h["sec-websocket-key"]
-    if key == nil or len(encoding.base64_decode(key) or "") != 16 then
+    if key == nil or len(encoding.base64_decode(key) or "") ~= 16 then
         return bad_request("missing or invalid Sec-WebSocket-Key", 400)
     end
     local chosen = nil
     local offered = h["sec-websocket-protocol"]
     local wanted = opt(opts, "protocols", nil)
-    if offered != nil and wanted != nil then
+    if offered ~= nil and wanted ~= nil then
         for _, p in string.split(offered, ",") do
             local name = string.trim(p)
             if chosen == nil then
@@ -315,7 +326,7 @@ function M.upgrade(req, fn, opts)
     local headers = [=]
     headers["Upgrade"] = "websocket"
     headers["Sec-WebSocket-Accept"] = M.accept_key(key)
-    if chosen != nil then headers["Sec-WebSocket-Protocol"] = chosen end
+    if chosen ~= nil then headers["Sec-WebSocket-Protocol"] = chosen end
     local r = [=]
     r["status"] = 101
     r["headers"] = headers
@@ -379,7 +390,7 @@ function M.connect(url, opts)
     local key = encoding.base64_encode(native.random(16))
     local hostport = u.host
     if string.contains(hostport, ":") then hostport = "[" .. hostport .. "]" end
-    if (u.scheme == "ws" and u.port != "80") or (u.scheme == "wss" and u.port != "443") then
+    if (u.scheme == "ws" and u.port ~= "80") or (u.scheme == "wss" and u.port ~= "443") then
         hostport = hostport .. ":" .. u.port
     end
     local lines = []
@@ -390,13 +401,13 @@ function M.connect(url, opts)
     lines[] = "Sec-WebSocket-Key: " .. key
     lines[] = "Sec-WebSocket-Version: 13"
     local protocols = opt(opts, "protocols", nil)
-    if protocols != nil and len(protocols) > 0 then
+    if protocols ~= nil and len(protocols) > 0 then
         local names = []
         for _, p in protocols do names[] = p end
         lines[] = "Sec-WebSocket-Protocol: " .. string.join(names, ", ")
     end
     local extra = opt(opts, "headers", nil)
-    if extra != nil then
+    if extra ~= nil then
         for k, v in extra do lines[] = tostring(k) .. ": " .. tostring(v) end
     end
     local w = s.write(string.join(lines, "\r\n") .. "\r\n\r\n", timeout)
@@ -411,7 +422,8 @@ function M.connect(url, opts)
         local chunk = s.read(16384, timeout)
         if is_error(chunk) or chunk == "" then
             s.shutdown()
-            return error("websocket.connect: " .. (is_error(chunk) and chunk.message or "connection closed during the handshake"))
+            return error("websocket.connect: " .. (is_error(chunk) and chunk.message
+                or "connection closed during the handshake"))
         end
         buf = buf .. chunk
         head_end = string.find(buf, "\r\n\r\n")
@@ -424,7 +436,7 @@ function M.connect(url, opts)
     local rest = string.sub(buf, head_end + 4)
     local hl = string.split(head, "\r\n")
     local status = re.match("^HTTP/1\\.[01] (\\d{3})", hl[0])
-    if status == nil or status.groups[1] != "101" then
+    if status == nil or status.groups[1] ~= "101" then
         s.shutdown()
         return error("websocket.connect: the server did not switch protocols: " .. hl[0])
     end
@@ -432,18 +444,22 @@ function M.connect(url, opts)
     for i = 1, len(hl) - 1 do
         local colon = string.find(hl[i], ":")
         if colon then
-            hdr[string.lower(string.trim(string.sub(hl[i], 1, colon - 1)))] = string.trim(string.sub(hl[i], colon + 1))
+            hdr[string.lower(string.trim(string.sub(hl[i], 1, colon - 1)))] = string.trim(string.sub(
+                hl[i],
+                colon + 1
+            ))
         end
     end
-    if not header_has(hdr["upgrade"], "websocket") or not header_has(hdr["connection"], "upgrade") or
-       hdr["sec-websocket-accept"] != M.accept_key(key) then
+    if not header_has(hdr["upgrade"], "websocket")
+            or not header_has(hdr["connection"], "upgrade")
+            or hdr["sec-websocket-accept"] ~= M.accept_key(key) then
         s.shutdown()
         return error("websocket.connect: invalid handshake response (Upgrade/Connection/Sec-WebSocket-Accept)")
     end
     local proto = hdr["sec-websocket-protocol"]
-    if proto != nil then
+    if proto ~= nil then
         local offered = false
-        if protocols != nil then
+        if protocols ~= nil then
             for _, p in protocols do
                 if p == proto then offered = true end
             end

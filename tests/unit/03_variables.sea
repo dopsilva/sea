@@ -4,24 +4,24 @@
 -- Test: variables and assignment
 local x = 10
 local y = 20
-print(x)          -- 10
-print(y)          -- 20
+print(x) -- 10
+print(y) -- 20
 
 x = x + y
-print(x)          -- 30
+print(x) -- 30
 
 -- multiple assignment
 local a, b = 1, 2
-print(a, b)       -- 1	2
+print(a, b) -- 1	2
 
 -- swap
 a, b = b, a
-print(a, b)       -- 2	1
+print(a, b) -- 2	1
 
 -- nil default
 local c
-print(c)          -- nil
+print(c) -- nil
 
 -- global variable
 g = 99
-print(g)          -- 99
+print(g) -- 99

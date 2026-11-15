@@ -2,16 +2,16 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 
 -- Test: string.format
-print(string.format("%d", 42))          -- 42
-print(string.format("%d + %d = %d", 1, 2, 3))  -- 1 + 2 = 3
-print(string.format("%05d", 42))        -- 00042
-print(string.format("%-10s|", "hi"))    -- hi        |
-print(string.format("%s", "hello"))     -- hello
-print(string.format("%f", 3.14))        -- 3.140000
-print(string.format("%.2f", 3.14159))  -- 3.14
-print(string.format("%e", 12345.0))    -- 1.234500e+04
-print(string.format("%x", 255))        -- ff
-print(string.format("%X", 255))        -- FF
-print(string.format("%08x", 255))      -- 000000ff
-print(string.format("%c", 65))         -- A
-print(string.format("%%"))             -- %
+print(string.format("%d", 42))                -- 42
+print(string.format("%d + %d = %d", 1, 2, 3)) -- 1 + 2 = 3
+print(string.format("%05d", 42))              -- 00042
+print(string.format("%-10s|", "hi"))          -- hi        |
+print(string.format("%s", "hello"))           -- hello
+print(string.format("%f", 3.14))              -- 3.140000
+print(string.format("%.2f", 3.14159))         -- 3.14
+print(string.format("%e", 12345.0))           -- 1.234500e+04
+print(string.format("%x", 255))               -- ff
+print(string.format("%X", 255))               -- FF
+print(string.format("%08x", 255))             -- 000000ff
+print(string.format("%c", 65))                -- A
+print(string.format("%%"))                    -- %

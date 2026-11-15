@@ -3,47 +3,47 @@
 
 -- Test: tables (maps)
 -- table literal with string keys → struct (fixed layout)
-local t = {x=1, y=2, z=3}
-print(t.x)       -- 1
-print(t.y)       -- 2
-print(t["z"])    -- 3
+local t = {x = 1, y = 2, z = 3}
+print(t.x)    -- 1
+print(t.y)    -- 2
+print(t["z"]) -- 3
 
 -- update existing fields on struct
 t.x = 10
 t["z"] = 30
-print(t.x)       -- 10
-print(t.z)       -- 30
+print(t.x) -- 10
+print(t.z) -- 30
 
 -- table literal with integer keys (0-indexed)
 local arr = {10, 20, 30}
-print(arr[0])    -- 10
-print(arr[1])    -- 20
-print(arr[2])    -- 30
+print(arr[0]) -- 10
+print(arr[1]) -- 20
+print(arr[2]) -- 30
 
 -- nested structs
 local nested = {inner = {a = 7, b = 8}}
-print(nested.inner.a)  -- 7
-print(nested.inner.b)  -- 8
+print(nested.inner.a) -- 7
+print(nested.inner.b) -- 8
 
 -- [=] built-in for dynamic tables
 local m = [=]
 m["hello"] = "world"
-print(m["hello"])  -- world
+print(m["hello"]) -- world
 
 -- dynamic table can have new fields added
 local dyn = [=]
 dyn.x = 1
 dyn.y = 2
 dyn.z = 99
-print(dyn.z)     -- 99
+print(dyn.z) -- 99
 
 -- for-in over struct
-local counts = {a=1, b=2, c=3}
+local counts = {a = 1, b = 2, c = 3}
 local total = 0
 for k, v in counts do
     total = total + v
 end
-print(total)  -- 6
+print(total) -- 6
 
 -- len of struct
-print(len({a=1, b=2, c=3}))  -- 3
+print(len({a = 1, b = 2, c = 3})) -- 3

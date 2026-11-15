@@ -25,7 +25,7 @@ local M = {}
 
 -- loaded here, while require resolves paths relative to this file (a require
 -- inside a handler would resolve them relative to the running script)
-local json_lib = require("json")   -- built into sea
+local json_lib = require("json") -- built into sea
 local function json_mod()
     if json_lib == nil then panic("http: libs/json is not built (make -C libs/json)") end
     return json_lib
@@ -99,7 +99,9 @@ function M.build_query(t)
     for _, k in sorted_keys(t) do
         local v = t[k]
         if type(v) == "array" then
-            for _, item in v do parts[] = native.url_encode(k) .. "=" .. native.url_encode(tostring(item)) end
+            for _, item in v do
+                parts[] = native.url_encode(k) .. "=" .. native.url_encode(tostring(item))
+            end
         elseif v == true then
             parts[] = native.url_encode(k)
         elseif v ~= nil and v ~= false then
@@ -120,7 +122,10 @@ local function parse_query_string(qs)
         if len(pair) > 0 then
             local eq = string.find(pair, "=")
             if eq then
-                result[native.url_decode(string.sub(pair, 1, eq - 1))] = native.url_decode(string.sub(pair, eq + 1))
+                result[native.url_decode(string.sub(pair, 1, eq - 1))] = native.url_decode(string.sub(
+                    pair,
+                    eq + 1
+                ))
             else
                 result[native.url_decode(pair)] = true
             end
@@ -165,13 +170,15 @@ function M.parse_url(url)
     if target == "" then target = "/" end
     if string.sub(target, 1, 1) == "?" then target = "/" .. target end
     local at = string.find(authority, "@")
-    if at then authority = string.sub(authority, at + 1) end      -- userinfo is ignored
+    if at then authority = string.sub(authority, at + 1) end -- userinfo is ignored
     local host, port
-    if string.sub(authority, 1, 1) == "[" then                       -- IPv6 literal
+    if string.sub(authority, 1, 1) == "[" then -- IPv6 literal
         local close = string.find(authority, "]")
         if not close then return nil end
         host = string.sub(authority, 2, close - 1)
-        if string.sub(authority, close + 1, close + 1) == ":" then port = string.sub(authority, close + 2) end
+        if string.sub(authority, close + 1, close + 1) == ":" then
+            port = string.sub(authority, close + 2)
+        end
     else
         local colon = string.find(authority, ":")
         if colon then
@@ -192,7 +199,7 @@ function M.parse_url(url)
         path = string.sub(target, 1, qpos - 1)
         query = string.sub(target, qpos + 1)
     end
-    return { scheme = scheme, host = host, port = port, path = path, query = query, target = target }
+    return {scheme = scheme, host = host, port = port, path = path, query = query, target = target}
 end
 
 -- Resolve a redirect Location against the URL it came from.
@@ -312,8 +319,8 @@ local function render_response(resp, head_only, keep_alive, date)
             local name = tostring(k)
             local lname = string.lower(name)
             if not native.valid_token(name) then return nil end
-            if lname ~= "content-length" and lname ~= "connection" and lname ~= "date" and
-               lname ~= "transfer-encoding" then
+            if lname ~= "content-length" and lname ~= "connection" and lname ~= "date"
+                    and lname ~= "transfer-encoding" then
                 if lname == "content-type" then has_ct = true end
                 if not add_header_lines(out, name, v) then return nil end
             end
@@ -398,7 +405,7 @@ function M.json(value, status, headers)
     end
     h["Content-Type"] = "application/json"
     local body = json_mod().encode(value)
-    if is_error(body) then panic(body) end   -- a cycle, a function...: the server sends a 500
+    if is_error(body) then panic(body) end -- a cycle, a function...: the server sends a 500
     local r = [=]
     r["status"] = status or 200
     r["body"] = body
@@ -459,16 +466,16 @@ end
 -- ---- Server: requests ----------------------------------------------------------------
 
 local DEFAULTS = {
-    read_timeout = 30000,      -- ms to receive a whole request once it starts
-    idle_timeout = 60000,      -- ms a keep-alive connection may wait for the next one
-    write_timeout = 30000,     -- ms per response write
+    read_timeout = 30000,  -- ms to receive a whole request once it starts
+    idle_timeout = 60000,  -- ms a keep-alive connection may wait for the next one
+    write_timeout = 30000, -- ms per response write
     max_header_bytes = 65536,
     max_body_bytes = 10485760, -- 10 MB
     max_requests = 1000,       -- per connection
     keep_alive = true,
     log = false,
-    gzip = false,              -- true (bodies >= 1 KB) or a minimum size in bytes
-    proxy_protocol = false,    -- true: every connection starts with a PROXY protocol v1 line
+    gzip = false,           -- true (bodies >= 1 KB) or a minimum size in bytes
+    proxy_protocol = false, -- true: every connection starts with a PROXY protocol v1 line
 }
 
 local function opt(o, k)
@@ -559,7 +566,7 @@ local function call_handler(handler, req, on_error)
         else
             local m = is_error(failed) and failed.message or tostring(failed)
             print("http: handler failed on " .. req.method .. " " .. req.target .. ": " .. m ..
-                  "; sending 500")
+                "; sending 500")
         end
         return plain(500, "Internal Server Error\n")
     end
@@ -577,8 +584,8 @@ local function accepts_gzip(ae)
             local q = semi and string.find(item, "q=0", semi)
             if not q then return true end
             local rest = string.sub(item, q + 3)
-            if string.trim(rest) ~= "" and string.trim(rest) ~= ".0" and
-               string.trim(rest) ~= ".00" and string.trim(rest) ~= ".000" then
+            if string.trim(rest) ~= "" and string.trim(rest) ~= ".0"
+                    and string.trim(rest) ~= ".00" and string.trim(rest) ~= ".000" then
                 return true
             end
         end
@@ -587,9 +594,9 @@ local function accepts_gzip(ae)
 end
 
 local function compressible(ctype)
-    return string.find(ctype, "text/", 1) == 1 or string.find(ctype, "json", 1) ~= nil or
-           string.find(ctype, "javascript", 1) ~= nil or string.find(ctype, "xml", 1) ~= nil or
-           string.find(ctype, "svg", 1) ~= nil
+    return string.find(ctype, "text/", 1) == 1 or string.find(ctype, "json", 1) ~= nil
+        or string.find(ctype, "javascript", 1) ~= nil or string.find(ctype, "xml", 1) ~= nil
+        or string.find(ctype, "svg", 1) ~= nil
 end
 
 -- Compress resp's body in place when the client accepts gzip and it is worth it.
@@ -605,7 +612,7 @@ local function maybe_gzip(resp, req_headers, min_size)
     if resp.headers then
         for k, v in resp.headers do
             local lk = string.lower(tostring(k))
-            if lk == "content-encoding" then return end      -- already encoded
+            if lk == "content-encoding" then return end -- already encoded
             if lk == "content-type" then ctype = string.lower(tostring(v)) end
             if lk == "vary" then vary = tostring(v) else h[k] = v end
         end
@@ -664,7 +671,7 @@ end
 -- comes after it).
 local function read_proxy_line(fd, timeout)
     local line = ""
-    while len(line) < 108 do                -- the spec's longest v1 line is 107 bytes
+    while len(line) < 108 do -- the spec's longest v1 line is 107 bytes
         local ch = net.read(fd, 1, timeout)
         if is_error(ch) or ch == "" then return error("proxy protocol: no header") end
         line = line .. ch
@@ -674,14 +681,22 @@ local function read_proxy_line(fd, timeout)
     local p = string.split(string.sub(line, 1, -3), " ")
     if p[0] ~= "PROXY" then return error("proxy protocol: not a PROXY header") end
     if p[1] == "UNKNOWN" then return nil end
-    if (p[1] ~= "TCP4" and p[1] ~= "TCP6") or len(p) ~= 6 then return error("proxy protocol: bad header") end
+    if (p[1] ~= "TCP4" and p[1] ~= "TCP6") or len(p) ~= 6 then
+        return error("proxy protocol: bad header")
+    end
     local port = tonumber(p[4])
-    if type(port) ~= "int" or port < 0 or port > 65535 then return error("proxy protocol: bad port") end
+    if type(port) ~= "int" or port < 0 or port > 65535 then
+        return error("proxy protocol: bad port")
+    end
     if p[1] == "TCP4" then
-        if re.match("^\\d{1,3}(\\.\\d{1,3}){3}$", p[2]) == nil then return error("proxy protocol: bad address") end
+        if re.match("^\\d{1,3}(\\.\\d{1,3}){3}$", p[2]) == nil then
+            return error("proxy protocol: bad address")
+        end
         return p[2] .. ":" .. p[4]
     end
-    if re.match("^[0-9a-fA-F:.]+$", p[2]) == nil then return error("proxy protocol: bad address") end
+    if re.match("^[0-9a-fA-F:.]+$", p[2]) == nil then
+        return error("proxy protocol: bad address")
+    end
     return "[" .. p[2] .. "]:" .. p[4]
 end
 
@@ -739,18 +754,23 @@ local function serve_conn(srv, c, key, remote)
             maybe_gzip(resp, head.headers, type(o.gzip) == "int" and o.gzip or 1024)
         end
         served = served + 1
-        local keep = head.keep_alive and o.keep_alive and not srv.stopping and
-                     served < o.max_requests and resp.close ~= true
+        local keep = head.keep_alive and o.keep_alive and not srv.stopping
+            and served < o.max_requests and resp.close ~= true
         local text = render_response(resp, head.method == "HEAD", keep, native.http_date())
         if text == nil then
             print("http: invalid response header from handler; sending 500")
-            text = render_response(plain(500, "Internal Server Error\n"), false, false, native.http_date())
+            text = render_response(
+                plain(500, "Internal Server Error\n"),
+                false,
+                false,
+                native.http_date()
+            )
             keep = false
         end
         local w = c_write(c, text, o.write_timeout)
         if o.log then
             print(head.method .. " " .. head.target .. " " .. resp.status .. " " ..
-                  (time.since(t0) // time.Millisecond) .. "ms")
+                (time.since(t0) // time.Millisecond) .. "ms")
         end
         if resp.stream and not is_error(w) and head.method ~= "HEAD" then
             if not run_stream(resp.stream, c, o.write_timeout, req, srv.on_error) then return end
@@ -781,7 +801,9 @@ end
 --       it; or the minimum size in bytes)
 function M.listen(port, handler, opts)
     if type(handler) == "table" or type(handler) == "map" then handler = handler.handle end
-    if type(handler) ~= "function" then return error("http.listen: handler must be a function or a router") end
+    if type(handler) ~= "function" then
+        return error("http.listen: handler must be a function or a router")
+    end
     local o = [=]
     for k, v in DEFAULTS do o[k] = opt(opts, k) end
     local lfd = net.listen(port or 0, opts and opts.host)
@@ -823,7 +845,7 @@ function M.listen(port, handler, opts)
     end
     srv["wait"] = function()
         local v = <-done
-        done <- v                  -- let other waiters through too
+        done <- v -- let other waiters through too
     end
 
     go (function()
@@ -835,7 +857,7 @@ function M.listen(port, handler, opts)
                     net.close(lfd)
                     break
                 end
-                time.sleep(10 * time.Millisecond)   -- e.g. out of file descriptors
+                time.sleep(10 * time.Millisecond) -- e.g. out of file descriptors
             else
                 next_key = next_key + 1
                 local key = next_key
@@ -856,9 +878,9 @@ function M.listen(port, handler, opts)
                     if ctx then
                         local h = ssl.handshake_server(ctx, fd, o.read_timeout)
                         if is_error(h) then return end
-                        c = { fd = fd, handle = h, tls = true, used = 0 }
+                        c = {fd = fd, handle = h, tls = true, used = 0}
                     else
-                        c = { fd = fd, handle = 0, tls = false, used = 0 }
+                        c = {fd = fd, handle = 0, tls = false, used = 0}
                     end
                     local st = [=]
                     st["conn"] = c
@@ -902,7 +924,7 @@ end
 local pool = [=]
 local pool_mu = sync.mutex()
 local POOL_IDLE = 8
-local POOL_MAX_AGE = 30000      -- ms an idle connection is trusted for
+local POOL_MAX_AGE = 30000 -- ms an idle connection is trusted for
 
 local function pool_get(key)
     pool_mu.acquire(pool_mu)
@@ -964,11 +986,11 @@ local function dial(u, o, timeout)
         if o.verify == false then topts["verify"] = false end
         local h = ssl.dial(u.host, u.port, topts)
         if is_error(h) then return h end
-        return { fd = 0, handle = h, tls = true, used = 0 }
+        return {fd = 0, handle = h, tls = true, used = 0}
     end
     local fd = net.connect(u.host, u.port, timeout)
     if is_error(fd) then return fd end
-    return { fd = fd, handle = 0, tls = false, used = 0 }
+    return {fd = fd, handle = 0, tls = false, used = 0}
 end
 
 -- Read one response. Returns resp, reusable — or nil, message, got_any_bytes.
@@ -1055,7 +1077,7 @@ local function read_response(c, method, timeout, max_body, on_data)
             buf = buf .. chunk
         elseif h.error then
             return nil, h.message, true
-        elseif h.status < 200 then              -- 100 Continue, 103 Early Hints
+        elseif h.status < 200 then -- 100 Continue, 103 Early Hints
             buf = string.sub(buf, h.head_len + 1)
         else
             head = h
@@ -1140,11 +1162,13 @@ local function do_request(method, url, o, redirects_left)
     if o.headers then
         for k, v in o.headers do
             local name = tostring(k)
-            if not native.valid_token(name) then return make_error("invalid header name: " .. name, url) end
+            if not native.valid_token(name) then
+                return make_error("invalid header name: " .. name, url)
+            end
             local lname = string.lower(name)
             has[lname] = true
-            if lname ~= "host" and lname ~= "content-length" and lname ~= "connection" and
-               lname ~= "transfer-encoding" then
+            if lname ~= "host" and lname ~= "content-length" and lname ~= "connection"
+                    and lname ~= "transfer-encoding" then
                 if not add_header_lines(lines, name, v) then
                     return make_error("invalid value for header " .. name, url)
                 end
@@ -1176,7 +1200,8 @@ local function do_request(method, url, o, redirects_left)
 
     -- a pooled connection is reused only with the same TLS settings: another
     -- CA, client certificate or host check must not ride on it
-    local key = u.scheme .. "://" .. u.host .. ":" .. u.port .. (o.verify == false and "/noverify" or "")
+    local key = u.scheme .. "://" .. u.host .. ":" .. u.port .. (o.verify == false and "/noverify"
+        or "")
     if u.scheme == "https" and o.tls then
         local parts = []
         for _, k in sort.sorted(list.keys(o.tls)) do
@@ -1237,15 +1262,17 @@ local function do_request(method, url, o, redirects_left)
 
     -- redirects
     local status = resp.status
-    if redirects_left > 0 and (status == 301 or status == 302 or status == 303 or
-                               status == 307 or status == 308) then
+    if redirects_left > 0 and (status == 301 or status == 302 or status == 303
+            or status == 307 or status == 308) then
         local loc = resp.headers["location"]
         if loc then
             local next_url = resolve_url(url, loc)
             local o2 = [=]
             for k, v in o do o2[k] = v end
             local next_method = method
-            if status == 303 or ((status == 301 or status == 302) and method ~= "GET" and method ~= "HEAD") then
+            if status == 303
+                    or ((status == 301 or status == 302) and method ~= "GET"
+                        and method ~= "HEAD") then
                 next_method = "GET"
                 o2["body"] = nil
                 o2["json"] = nil
@@ -1253,7 +1280,8 @@ local function do_request(method, url, o, redirects_left)
             end
             -- credentials never follow a redirect to another host
             local nu = M.parse_url(next_url)
-            if nu and (nu.host ~= u.host or nu.port ~= u.port or nu.scheme ~= u.scheme) and o.headers then
+            if nu and (nu.host ~= u.host or nu.port ~= u.port or nu.scheme ~= u.scheme)
+                    and o.headers then
                 local h2 = [=]
                 for k, v in o.headers do
                     local lk = string.lower(tostring(k))
@@ -1329,8 +1357,8 @@ local function with_body(method, url, body, ct, opts)
 end
 
 -- http.post(url, body [, content_type [, opts]]) / http.put / http.patch → response
-function M.post(url, body, ct, opts)  return with_body("POST", url, body, ct, opts) end
-function M.put(url, body, ct, opts)   return with_body("PUT", url, body, ct, opts) end
+function M.post(url, body, ct, opts) return with_body("POST", url, body, ct, opts) end
+function M.put(url, body, ct, opts) return with_body("PUT", url, body, ct, opts) end
 function M.patch(url, body, ct, opts) return with_body("PATCH", url, body, ct, opts) end
 
 -- ---- Static files ---------------------------------------------------------------------
@@ -1373,7 +1401,7 @@ function M.static(dir, opts)
         local file = dir .. path
         local data = os.readfile(file)
         if data == nil then
-            data = os.readfile(file .. "/" .. index)          -- a directory
+            data = os.readfile(file .. "/" .. index) -- a directory
             if data == nil then return plain(404, "Not Found\n") end
             file = file .. "/" .. index
         end
@@ -1469,7 +1497,7 @@ local function mutable_resp(resp)
     r["body"]    = resp.body or ""
     r["headers"] = hdrs
     r["close"]   = resp.close
-    r["stream"]  = resp.stream    -- streaming and protocol upgrades survive too
+    r["stream"]  = resp.stream -- streaming and protocol upgrades survive too
     r["upgrade"] = resp.upgrade
     return r
 end
@@ -1508,18 +1536,18 @@ function M.router()
             mws = mws_or_fn
             fn  = handler_or_nil
         end
-        routes[] = { method = method, parts = split_path(pattern), mws = mws, handler = fn }
+        routes[] = {method = method, parts = split_path(pattern), mws = mws, handler = fn}
     end
 
     function R.use(mw) global_mws[] = mw end
 
-    function R.get(path, a, b)    add("GET",    path, a, b) end
-    function R.post(path, a, b)   add("POST",   path, a, b) end
-    function R.put(path, a, b)    add("PUT",    path, a, b) end
+    function R.get(path, a, b) add("GET", path, a, b) end
+    function R.post(path, a, b) add("POST", path, a, b) end
+    function R.put(path, a, b) add("PUT", path, a, b) end
     function R.delete(path, a, b) add("DELETE", path, a, b) end
-    function R.patch(path, a, b)  add("PATCH",  path, a, b) end
-    function R.head(path, a, b)   add("HEAD",   path, a, b) end
-    function R.any(path, a, b)    add("*",      path, a, b) end
+    function R.patch(path, a, b) add("PATCH", path, a, b) end
+    function R.head(path, a, b) add("HEAD", path, a, b) end
+    function R.any(path, a, b) add("*", path, a, b) end
 
     function R.group(prefix, extra_mws)
         local G = {}
@@ -1534,16 +1562,16 @@ function M.router()
             end
             local all_mws = []
             for i = 0, len(extra_mws) - 1 do all_mws[] = extra_mws[i] end
-            for i = 0, len(mws) - 1      do all_mws[] = mws[i] end
+            for i = 0, len(mws) - 1 do all_mws[] = mws[i] end
             add(method, prefix .. path, all_mws, fn)
         end
-        function G.get(path, a, b)    gadd("GET",    path, a, b) end
-        function G.post(path, a, b)   gadd("POST",   path, a, b) end
-        function G.put(path, a, b)    gadd("PUT",    path, a, b) end
+        function G.get(path, a, b) gadd("GET", path, a, b) end
+        function G.post(path, a, b) gadd("POST", path, a, b) end
+        function G.put(path, a, b) gadd("PUT", path, a, b) end
         function G.delete(path, a, b) gadd("DELETE", path, a, b) end
-        function G.patch(path, a, b)  gadd("PATCH",  path, a, b) end
-        function G.head(path, a, b)   gadd("HEAD",   path, a, b) end
-        function G.any(path, a, b)    gadd("*",      path, a, b) end
+        function G.patch(path, a, b) gadd("PATCH", path, a, b) end
+        function G.head(path, a, b) gadd("HEAD", path, a, b) end
+        function G.any(path, a, b) gadd("*", path, a, b) end
         return G
     end
 
@@ -1554,7 +1582,7 @@ function M.router()
         local rparts = split_path(path)
 
         local allowed = []
-        local fallback = nil      -- GET route for a HEAD request
+        local fallback = nil -- GET route for a HEAD request
         for i = 0, len(routes) - 1 do
             local route = routes[i]
             local params = match_route(route.parts, rparts)
@@ -1564,7 +1592,7 @@ function M.router()
                     return R.dispatch(route, params, req)
                 end
                 if m == "GET" and req.method == "HEAD" and fallback == nil then
-                    fallback = { route = route, params = params }
+                    fallback = {route = route, params = params}
                 end
                 allowed[] = m
             end
@@ -1587,7 +1615,7 @@ function M.router()
         r2["params"] = params
         local all_mws = []
         for j = 0, len(global_mws) - 1 do all_mws[] = global_mws[j] end
-        for j = 0, len(route.mws) - 1  do all_mws[] = route.mws[j] end
+        for j = 0, len(route.mws) - 1 do all_mws[] = route.mws[j] end
         return run_chain(all_mws, route.handler, r2)
     end
 

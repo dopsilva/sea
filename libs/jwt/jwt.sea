@@ -20,14 +20,14 @@
 --   local header, payload = jwt.decode(token)
 
 local native = require("jwt_native")
-local json   = require("json")   -- built into sea
+local json   = require("json") -- built into sea
 
 local M = {}
 
 -- ---- helpers internos ------------------------------------------------------
 
-local function b64(s)    return native.base64url_encode(s) end
-local function unb64(s)  return native.base64url_decode(s) end
+local function b64(s) return native.base64url_encode(s) end
+local function unb64(s) return native.base64url_decode(s) end
 
 local function is_rsa(alg)
     return alg == "RS256"
@@ -63,7 +63,7 @@ function M.sign(claims, key, opts)
     local alg = (opts and opts.alg) or "HS256"
 
     -- header
-    local header = json.encode({ alg = alg, typ = "JWT" })
+    local header = json.encode({alg = alg, typ = "JWT"})
     if is_error(header) then return nil end
 
     -- monta payload
@@ -85,7 +85,7 @@ function M.sign(claims, key, opts)
     end
 
     local payload_json = json.encode(payload)
-    if is_error(payload_json) then return nil end   -- e.g. a cycle in the claims
+    if is_error(payload_json) then return nil end -- e.g. a cycle in the claims
 
     local h64 = b64(header)
     local p64 = b64(payload_json)
@@ -140,7 +140,8 @@ function M.verify(token, key, opts)
     -- valida exp
     local check_exp = not opts or opts.verify_exp ~= false
     if check_exp and claims.exp then
-        local ct = time.now(); local ct_sec = ct.unix(ct)
+        local ct = time.now()
+        local ct_sec = ct.unix(ct)
         if ct_sec > claims.exp then
             return nil, "token expirado"
         end
@@ -148,7 +149,8 @@ function M.verify(token, key, opts)
 
     -- valida nbf (not before)
     if claims.nbf then
-        local ct = time.now(); local ct_sec = ct.unix(ct)
+        local ct = time.now()
+        local ct_sec = ct.unix(ct)
         if ct_sec < claims.nbf then
             return nil, "token ainda não válido"
         end

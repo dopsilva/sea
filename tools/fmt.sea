@@ -72,7 +72,9 @@ for _, p in paths do
         for _, f in fs.walk(p, {files = true}) do
             local hidden = false
             for _, part in path.parts(path.relative(p, f)) do
-                if string.starts_with(part, ".") and part ~= "." and part ~= ".." then hidden = true end
+                if string.starts_with(part, ".") and part ~= "." and part ~= ".." then
+                    hidden = true
+                end
             end
             if not hidden and path.ext(f) == ".sea" then files[] = path.normalize(f) end
         end

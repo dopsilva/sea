@@ -334,14 +334,14 @@ end
 -- opts: {cn, org, country, state, city, email, san=<array>, days=365, is_ca=false}
 -- san must be a Sea array literal: local s = []; s[] = "example.com"
 function M.cert_self_signed(key, opts)
-    return native.cert_self_signed(key, opts or {days=365})
+    return native.cert_self_signed(key, opts or {days = 365})
 end
 
 -- ssl.cert_sign(csr, ca_key, ca_cert, opts) → cert|nil
 -- Sign a CSR with a CA key and certificate.
 -- opts: {days=365, serial=1}
 function M.cert_sign(csr, ca_key, ca_cert, opts)
-    return native.cert_sign(csr, ca_key, ca_cert, opts or {days=365, serial=1})
+    return native.cert_sign(csr, ca_key, ca_cert, opts or {days = 365, serial = 1})
 end
 
 -- ---- Keys -----------------------------------------------------------------
@@ -351,7 +351,7 @@ end
 -- opts: {type="rsa"|"ec", bits=2048, curve="P-256"|"P-384"|"P-521"}
 -- Free with ssl.key_free() when done.
 function M.keygen(opts)
-    return native.key_generate(opts or {type="rsa", bits=2048})
+    return native.key_generate(opts or {type = "rsa", bits = 2048})
 end
 
 -- ssl.key_load(path, [password]) → key|nil

@@ -20,7 +20,12 @@ print(string.join(lines, "\n"))
 
 -- JSON, logger fields and with
 lines = []
-local j = log.new({format = "json", output = function(s) lines[] = s end, fields = {service = "api"}, time = false})
+local j = log.new({
+    format = "json",
+    output = function(s) lines[] = s end,
+    fields = {service = "api"},
+    time = false,
+})
 local rl = j:with({request = 42})
 rl:info("done", {status = 200, err = error("x"), f = print, ratio = 0.5, ok = true})
 rl:debug("no")
@@ -68,5 +73,8 @@ local function try(fn)
     return err
 end
 print(string.contains(tostring(try(function() l:set_level("loud") end)), "unknown level 'loud'"))
-print(string.contains(tostring(try(function() log.new({format = "xml"}) end)), "unknown format 'xml'"))
+print(string.contains(
+    tostring(try(function() log.new({format = "xml"}) end)),
+    "unknown format 'xml'"
+))
 print(string.contains(tostring(try(function() log.new({output = 3.5}) end)), "the output must be"))

@@ -5,13 +5,21 @@
 
 print("-- run")
 local r = process.run({"echo", "hello", "world"})
-print(r.code, r.ok, "[" .. r.stdout .. "]", "[" .. r.stderr .. "]", r.timed_out, r.signal, r.pid > 0)
+print(
+    r.code,
+    r.ok,
+    "[" .. r.stdout .. "]",
+    "[" .. r.stderr .. "]",
+    r.timed_out,
+    r.signal,
+    r.pid > 0
+)
 r = process.run("echo out; echo err 1>&2; exit 3")
 print(r.code, r.ok, string.trim(r.stdout), string.trim(r.stderr))
 r = process.run({"printf", "%s|%s", "a b", 42})
 print(r.stdout)
 print(process.run({"cat"}, {stdin = "fed through stdin\n"}).stdout)
-print(process.run({"cat"}).stdout == "")                       -- stdin defaults to /dev/null
+print(process.run({"cat"}).stdout == "") -- stdin defaults to /dev/null
 r = process.run({"sh", "-c", "echo $FOO $NUM; pwd"}, {env = {FOO = "bar", NUM = 42}, cwd = "/"})
 print(string.replace(r.stdout, "\n", " "))
 r = process.run({"sh", "-c", "echo [${HOME-unset}]"}, {env = {HOME = false}})
@@ -56,10 +64,10 @@ print(process.pid() > 0, process.kill(process.pid(), 0), process.signals.INT, pr
 print("-- goroutines keep running while children are waited on")
 local ch = chan(3)
 for i = 1, 3 do
-    go function()
+    go (function()
         local rr = process.run({"sh", "-c", "sleep 0.3; echo " .. i})
         ch <- string.trim(rr.stdout)
-    end()
+    end)()
 end
 local t0 = time.now()
 local got = []
@@ -74,7 +82,8 @@ fs.write(script, [==[
 local h = io.stdin()
 print(io.read_line(h), io.read_bytes(h, 3), io.read_all(h))
 io.close(h)
-]==])
+]==]
+)
 local r = process.run({fs.realpath("./bin/sea"), script}, {stdin = "first line\nabcrest\n"})
 io.write(r.stdout)
 fs.remove(script)

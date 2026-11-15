@@ -8,11 +8,11 @@
 
 local flags = require("../flags")
 
-local host    = flags.string("host",    "localhost", "endereço do servidor")
-local port    = flags.int("port",       8080,        "porta do servidor")
-local verbose = flags.bool("verbose",   false,       "habilitar saída detalhada")
-local rate    = flags.number("rate",    1.0,         "taxa de requisições por segundo")
-local output  = flags.string("output",  "stdout",    "arquivo de saída")
+local host    = flags.string("host", "localhost", "endereço do servidor")
+local port    = flags.int("port", 8080, "porta do servidor")
+local verbose = flags.bool("verbose", false, "habilitar saída detalhada")
+local rate    = flags.number("rate", 1.0, "taxa de requisições por segundo")
+local output  = flags.string("output", "stdout", "arquivo de saída")
 
 flags.parse()
 
@@ -25,8 +25,8 @@ print("")
 
 -- flags explicitamente passadas
 print("flags definidas:")
-if flags.is_set("host")    then print("  -host foi passado") end
-if flags.is_set("port")    then print("  -port foi passado") end
+if flags.is_set("host") then print("  -host foi passado") end
+if flags.is_set("port") then print("  -port foi passado") end
 if flags.is_set("verbose") then print("  -verbose foi passado") end
 print("")
 

@@ -15,10 +15,10 @@ end
 local c1 = make_counter(0)
 local c2 = make_counter(10)
 
-assert(c1() == 1,  "c1 call 1")
-assert(c1() == 2,  "c1 call 2")
+assert(c1() == 1, "c1 call 1")
+assert(c1() == 2, "c1 call 2")
 assert(c2() == 11, "c2 call 1 (independent state)")
-assert(c1() == 3,  "c1 call 3")
+assert(c1() == 3, "c1 call 3")
 assert(c2() == 12, "c2 call 2")
 
 -- 2. Shared upvalue between two closures (getter/setter pattern)
@@ -44,7 +44,7 @@ assert(get_a() == 42, "a unaffected by set_b")
 -- 3. Closure captures loop variable (each iteration has own var via 'local')
 local funcs = []
 for i = 1, 5 do
-    local captured = i   -- each iteration creates a new local
+    local captured = i -- each iteration creates a new local
     funcs[] = function() return captured end
 end
 assert(funcs[0]() == 1, "closure captures loop 1")
@@ -63,11 +63,11 @@ local function level1(x)
 end
 
 local add_1_2 = level1(1)(2)
-assert(add_1_2(3)  == 6,  "1+2+3 = 6")
+assert(add_1_2(3) == 6, "1+2+3 = 6")
 assert(add_1_2(10) == 13, "1+2+10 = 13")
 
 local add_5_7 = level1(5)(7)
-assert(add_5_7(1)  == 13, "5+7+1 = 13")
+assert(add_5_7(1) == 13, "5+7+1 = 13")
 
 -- 5. Closure that mutates upvalue, read from another closure
 local function make_accumulator()

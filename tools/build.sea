@@ -27,8 +27,17 @@ local cli = flags.new("sea build", {
     about = "Makes a standalone executable: this sea binary with the program and the\n" ..
         "modules it requires (followed from require(\"...\") calls) appended.",
 })
-local out_flag = cli:string("o", "", "the executable (default: the package or file name)", {arg = "file"})
-local include_flag = cli:list("i", "also include this module (for a computed require; may repeat)", {arg = "path"})
+local out_flag = cli:string(
+    "o",
+    "",
+    "the executable (default: the package or file name)",
+    {arg = "file"}
+)
+local include_flag = cli:list(
+    "i",
+    "also include this module (for a computed require; may repeat)",
+    {arg = "path"}
+)
 local verbose_flag = cli:bool("v", false, "list the files included")
 local positional = cli:parse()
 
@@ -167,7 +176,12 @@ local function follow(abs)
                 if not builtin[name] then
                     local found = resolve(name, dir)
                     if found == nil then
-                        io.write_err(string.format("sea build: %s:%d: module '%s' not found\n", show(abs), n.line, name))
+                        io.write_err(string.format(
+                            "sea build: %s:%d: module '%s' not found\n",
+                            show(abs),
+                            n.line,
+                            name
+                        ))
                         problems = problems + 1
                     elseif add(found) and path.ext(found) == ".sea" then
                         follow(found)
@@ -197,7 +211,9 @@ if problems > 0 then os.exit(1) end
 -- Paths in the bundle are relative to the deepest directory holding them all
 local root = path.dirname(main_abs)
 for _, f in files do
-    while not string.starts_with(f, root == "/" and "/" or (root .. "/")) do root = path.dirname(root) end
+    while not string.starts_with(f, root == "/" and "/" or (root .. "/")) do
+        root = path.dirname(root)
+    end
 end
 
 local payload = []
@@ -224,7 +240,9 @@ if is_error(exe) then
     os.exit(1)
 end
 local tail = string.sub(exe, len(exe) - 27)
-if string.sub(tail, 21) == "SEABNDL1" then exe = string.sub(exe, 1, tonumber(string.sub(tail, 1, 20))) end
+if string.sub(tail, 21) == "SEABNDL1" then
+    exe = string.sub(exe, 1, tonumber(string.sub(tail, 1, 20)))
+end
 
 local body = string.join(payload, "")
 local trailer = string.format("%020d", len(exe)) .. "SEABNDL1"

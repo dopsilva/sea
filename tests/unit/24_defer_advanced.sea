@@ -15,10 +15,10 @@ local function multi_defer()
 end
 
 multi_defer()
-assert(log[0] == "body",   "body should be first")
-assert(log[1] == "third",  "third deferred runs first (LIFO)")
+assert(log[0] == "body", "body should be first")
+assert(log[1] == "third", "third deferred runs first (LIFO)")
 assert(log[2] == "second", "second deferred runs second")
-assert(log[3] == "first",  "first deferred runs last")
+assert(log[3] == "first", "first deferred runs last")
 
 -- 2. Defer executes even on early return
 local cleaned = false
@@ -58,10 +58,10 @@ end
 
 outer()
 assert(seq[0] == "outer-before", "outer-before")
-assert(seq[1] == "inner-body",   "inner-body")
-assert(seq[2] == "inner-defer",  "inner-defer runs before returning to outer")
-assert(seq[3] == "outer-after",  "outer-after")
-assert(seq[4] == "outer-defer",  "outer-defer runs last")
+assert(seq[1] == "inner-body", "inner-body")
+assert(seq[2] == "inner-defer", "inner-defer runs before returning to outer")
+assert(seq[3] == "outer-after", "outer-after")
+assert(seq[4] == "outer-defer", "outer-defer runs last")
 
 -- 4. Defer captures upvalue by reference (closure semantics)
 local captured_val = 0
@@ -71,7 +71,7 @@ local function defer_closure()
     defer (function()
         captured_val = x
     end)()
-    x = 99   -- mutate x after defer registration
+    x = 99 -- mutate x after defer registration
 end
 
 defer_closure()

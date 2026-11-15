@@ -70,10 +70,14 @@ show(yaml.decode([==[
   c
    more
   d
-]==]))
+]==]
+))
 
 print("-- schemas")
-show(yaml.decode("[yes, No, on, OFF, 0777, 0b101, 1_000, 190:20:30, 1.5e3, 6.8523015e+5]", {schema = "1.1"}))
+show(yaml.decode(
+    "[yes, No, on, OFF, 0777, 0b101, 1_000, 190:20:30, 1.5e3, 6.8523015e+5]",
+    {schema = "1.1"}
+))
 show(yaml.decode("%YAML 1.1\n---\n[yes, 017]"))
 show(yaml.decode("[null, true, 12, 1.5, 0x1F, yes]", {schema = "json"}))
 show(yaml.decode("[null, true, 12, '']", {schema = "failsafe"}))
@@ -100,7 +104,8 @@ all:
   <<: [*extra, *base]
   name: x
 list: [&v 1, *v, *v]
-]])
+]]
+)
 show(m)
 print(m.dev.host, m.dev.port, m.all.debug)
 show(yaml.decode("a: &x 1\nb: *y"))
@@ -120,7 +125,10 @@ show(yaml.decode("- !point {x: 1, y: 2}\n- !color red\n- plain", {tagged = true}
 local handlers = {}
 handlers["!point"] = function(v, tag) return v.x + v.y end
 handlers["*"] = function(v, tag) return tag .. ":" .. tostring(v) end
-show(yaml.decode("- !point {x: 1, y: 2}\n- !color red\n- !<tag:example.com,2000:id> 7", {tags = handlers}))
+show(yaml.decode(
+    "- !point {x: 1, y: 2}\n- !color red\n- !<tag:example.com,2000:id> 7",
+    {tags = handlers}
+))
 show(yaml.decode("%TAG !e! tag:example.com,2000:\n---\n!e!thing x", {tagged = true}))
 show(yaml.decode("!undefined!x 1"))
 
@@ -128,11 +136,13 @@ print("-- documents")
 show(yaml.decode_all("--- 1\n--- [2]\n...\n---\nk: v\n"))
 show(yaml.decode("--- a\n--- b"))
 print(yaml.decode("") == nil, len(yaml.decode_all("")), len(yaml.decode_all("# only a comment\n")))
-show(yaml.decode(string.char(0xEF, 0xBB, 0xBF) .. "k: v"))           -- byte-order mark
+show(yaml.decode(string.char(0xEF, 0xBB, 0xBF) .. "k: v")) -- byte-order mark
 
 print("-- errors")
-local bad = {"a: b: c", "key: [1, 2", "- a\n b: c", "\tk: v", "a: 'x", "\"\\q\"", "k: v # c\n... x",
-             "- [a\n- b", "@x", "a:\n  - b\n  c: d", "{a: 1}}", "&a &b x", "x: !!str\n  - a", "* x"}
+local bad = {
+    "a: b: c", "key: [1, 2", "- a\n b: c", "\tk: v", "a: 'x", "\"\\q\"", "k: v # c\n... x",
+    "- [a\n- b", "@x", "a:\n  - b\n  c: d", "{a: 1}}", "&a &b x", "x: !!str\n  - a", "* x",
+}
 for i = 0, len(bad) - 1 do print(yaml.decode(bad[i]).message) end
 show(yaml.decode("[[[[1]]]]", {max_depth = 3}))
 print(yaml.valid("a: [1, 2]"), yaml.valid("a: [1"), yaml.valid("*nope"), yaml.valid("--- 1\n--- 2"))
@@ -140,14 +150,34 @@ show(yaml.decode(42))
 show(yaml.decode("\x01"))
 
 print("-- encode")
-local data = {name = "sea", version = 1.0, n = 3, ok = true, none = nil,
-              list = {1, "two", 3.5}, nested = {a = {b = {c = "deep"}}},
-              text = "line one\nline two\n", tricky = {"true", "123", "null", "", " lead", "a: b", "#x", "- x", "y", "2001-12-14", "it's"}}
+local data = {
+    name = "sea", version = 1.0, n = 3, ok = true, none = nil,
+    list = {1, "two", 3.5}, nested = {a = {b = {c = "deep"}}},
+    text = "line one\nline two\n", tricky = {
+        "true",
+        "123",
+        "null",
+        "",
+        " lead",
+        "a: b",
+        "#x",
+        "- x",
+        "y",
+        "2001-12-14",
+        "it's",
+    },
+}
 print(yaml.encode(data, {sort_keys = true}))
 print(yaml.encode(data, {sort_keys = true, indent = 4, explicit_start = true, explicit_end = true}))
 print(yaml.encode(data, {sort_keys = true, flow = true}))
 local back = yaml.decode(yaml.encode(data))
-print(back.tricky[0] == "true", back.tricky[3] == "", back.text == data.text, back.version, back.nested.a.b.c)
+print(
+    back.tricky[0] == "true",
+    back.tricky[3] == "",
+    back.text == data.text,
+    back.version,
+    back.nested.a.b.c
+)
 print(yaml.encode(nil), yaml.encode(1), yaml.encode(-0.0), yaml.encode(1e300), yaml.encode(0.1))
 local floats = {1 / 0, -1 / 0, 0 / 0, 2.5e-8, 1e20}
 print(string.trim(yaml.encode(floats, {flow = true})))
@@ -201,7 +231,9 @@ for _, e in evs do
     local fields = {"anchor", "alias", "tag", "style", "value", "implicit", "version"}
     for i = 0, len(fields) - 1 do
         local k = fields[i]
-        if e[k] != nil then s = s .. " " .. k .. "=" .. string.replace(tostring(e[k]), "\n", "\\n") end
+        if e[k] ~= nil then
+            s = s .. " " .. k .. "=" .. string.replace(tostring(e[k]), "\n", "\\n")
+        end
     end
     print(s)
 end
@@ -216,7 +248,8 @@ print(yaml.emit({
     {type = "scalar", value = "x", tag = "!t", anchor = "a1"}, {type = "alias", alias = "a1"},
     {type = "sequence_end"},
     {type = "mapping_end"},
-    {type = "document_end"}}))
+    {type = "document_end"},
+}))
 print(yaml.emit({{type = "document_start"}, {type = "mapping_end"}}).message)
 print(yaml.emit({{type = "document_start"}, {type = "scalar", value = "x"}}).message)
 print(yaml.events("a: [1").message)

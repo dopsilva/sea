@@ -41,7 +41,10 @@ local function i16(n)
 end
 
 local function rd32(s, p)
-    local n = (string.byte(s, p) << 24) | (string.byte(s, p + 1) << 16) | (string.byte(s, p + 2) << 8) | string.byte(s, p + 3)
+    local n = (string.byte(s, p) << 24) | (string.byte(s, p + 1) << 16) | (string.byte(s, p + 2) << 8) | string.byte(
+        s,
+        p + 3
+    )
     if n >= 0x80000000 then n -= 0x100000000 end
     return n
 end
@@ -95,7 +98,8 @@ function M.scram_final(password, client_first_bare, server_first)
         attrs[string.sub(part, 1, 1)] = string.sub(part, 3)
     end
     local nonce = string.sub(client_first_bare, string.find(client_first_bare, "r=") + 2)
-    if attrs.r == nil or not string.starts_with(attrs.r, nonce) or attrs.s == nil or attrs.i == nil then
+    if attrs.r == nil or not string.starts_with(attrs.r, nonce) or attrs.s == nil
+            or attrs.i == nil then
         return error("cockroach: bad SCRAM server message")
     end
     local salt = encoding.base64_decode(attrs.s)
@@ -116,7 +120,9 @@ end
 -- ---- configuration -----------------------------------------------------------------
 
 local SSLMODES = {}
-for _, m in ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"] do SSLMODES[m] = true end
+for _, m in ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"] do
+    SSLMODES[m] = true
+end
 
 -- crdb.parse_url(url) → config | error
 -- postgresql://user:password@host:port/database?sslmode=...&sslrootcert=...
@@ -124,7 +130,10 @@ for _, m in ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"
 -- sslcert, sslkey, application_name, connect_timeout (seconds, as libpq),
 -- options; any other key is sent to the server as a session setting.
 function M.parse_url(url)
-    local m = re.match("^(postgres|postgresql|cockroachdb)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$", url)
+    local m = re.match(
+        "^(postgres|postgresql|cockroachdb)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$",
+        url
+    )
     if m == nil then return error(`cockroach: bad URL '${url}'`) end
     local g = m.groups
     local cfg = {}
@@ -143,7 +152,9 @@ function M.parse_url(url)
             local p = string.split(kv, "=", 2)
             local k = encoding.url_decode(p[0])
             local v = len(p) > 1 and encoding.url_decode(p[1]) or ""
-            if k == "sslmode" or k == "sslrootcert" or k == "sslcert" or k == "sslkey" or k == "application_name" or k == "options" then
+            if k == "sslmode" or k == "sslrootcert" or k == "sslcert" or k == "sslkey"
+                    or k == "application_name"
+                    or k == "options" then
                 cfg[k] = v
             elseif k == "connect_timeout" then
                 cfg.connect_timeout = (tonumber(v) or 10) * 1000
@@ -173,7 +184,9 @@ local function config(url, opts)
     cfg.connect_timeout = cfg.connect_timeout or 10000
     cfg.max_conns = cfg.max_conns or 8
     cfg.max_idle_time = cfg.max_idle_time or 300000
-    if not SSLMODES[cfg.sslmode] then return error(`cockroach: unknown sslmode '${cfg.sslmode}'`) end
+    if not SSLMODES[cfg.sslmode] then
+        return error(`cockroach: unknown sslmode '${cfg.sslmode}'`)
+    end
     return cfg
 end
 
@@ -206,7 +219,8 @@ local function conn_need(c, n)
         end
         if is_error(chunk) or chunk == "" then
             c.broken = true
-            return error("cockroach: read: " .. (is_error(chunk) and chunk.message or "connection closed by the server"))
+            return error("cockroach: read: " .. (is_error(chunk) and chunk.message
+                or "connection closed by the server"))
         end
         if c.pos > 1 then
             c.buf = string.sub(c.buf, c.pos) .. chunk
@@ -270,12 +284,17 @@ local function authenticate(c, cfg)
             if code == 0 then
                 -- authenticated; the server sends its settings next
             elseif code == 3 or code == 5 or code == 10 then
-                if cfg.password == nil then return error("cockroach: the server asks for a password") end
+                if cfg.password == nil then
+                    return error("cockroach: the server asks for a password")
+                end
                 if code == 3 then
                     conn_write(c, msg("p", cfg.password .. "\0"))?
                 elseif code == 5 then
                     local inner = hash.md5(cfg.password .. cfg.user)
-                    conn_write(c, msg("p", "md5" .. hash.md5(inner .. string.sub(body, 5, 8)) .. "\0"))?
+                    conn_write(
+                        c,
+                        msg("p", "md5" .. hash.md5(inner .. string.sub(body, 5, 8)) .. "\0")
+                    )?
                 else
                     if not string.contains(body, "SCRAM-SHA-256\0") then
                         return error("cockroach: the server offers no supported SASL mechanism")
@@ -315,7 +334,9 @@ end
 
 local function connect(cfg)
     local fd = net.connect(cfg.host, cfg.port, cfg.connect_timeout)
-    if is_error(fd) then return error(`cockroach: connect ${cfg.host}:${cfg.port}: ${fd.message}`) end
+    if is_error(fd) then
+        return error(`cockroach: connect ${cfg.host}:${cfg.port}: ${fd.message}`)
+    end
     local c = {}
     c.fd = fd
     c.tls = nil
@@ -420,7 +441,9 @@ local function encode(v)
         return string.format("%.17g", v)
     end
     if t == "array" then return array_literal(v) end
-    if t == "table" and v.__crdb_bytes ~= nil then return "\\x" .. encoding.hex_encode(v.__crdb_bytes) end
+    if t == "table" and v.__crdb_bytes ~= nil then
+        return "\\x" .. encoding.hex_encode(v.__crdb_bytes)
+    end
     if t == "table" and v.__crdb_json ~= nil then return json.encode(v.__crdb_json) end
     if is_time(v) then return v:format("2006-01-02T15:04:05.999999999Z07:00") end
     return json.encode(v)
@@ -489,7 +512,9 @@ decode_array = function(s, elem, opts)
                     end
                 end
                 local text = string.join(parts)
-                if string.starts_with(text, "{") and elem ~= 25 and elem ~= 1043 and elem ~= 114 and elem ~= 3802 then
+                if string.starts_with(text, "{") and elem ~= 25 and elem ~= 1043
+                        and elem ~= 114
+                        and elem ~= 3802 then
                     -- CockroachDB writes a nested array as a quoted element
                     out[] = decode_array(text, elem, opts)
                 else
@@ -590,7 +615,11 @@ function Conn.run(c, sql, params, mode, fn, opts)
                 if first == nil then
                     first = true
                     local l = rd32(body, 3)
-                    if l >= 0 then out = decode_value(cols[0].oid, string.sub(body, 7, 6 + l), opts) else out = nil end
+                    if l >= 0 then
+                        out = decode_value(cols[0].oid, string.sub(body, 7, 6 + l), opts)
+                    else
+                        out = nil
+                    end
                 end
             else
                 local row = {}
@@ -818,7 +847,10 @@ function Db.insert(db, table_name, rows, opts)
     local columns = sort.sorted(list.keys(rows[0]))
     local quoted = []
     for _, c in columns do quoted[] = M.quote_ident(c) end
-    local head = `${opts.upsert and "UPSERT" or "INSERT"} INTO ${M.quote_ident(table_name)} (${string.join(quoted, ", ")}) VALUES `
+    local head = `${opts.upsert and "UPSERT" or "INSERT"} INTO ${M.quote_ident(table_name)} (${string.join(
+        quoted,
+        ", "
+    )}) VALUES `
     local tail = ""
     if opts.on_conflict ~= nil then tail ..= " ON CONFLICT " .. opts.on_conflict end
     if opts.returning ~= nil then tail ..= " RETURNING " .. opts.returning end
@@ -926,7 +958,9 @@ function Tx.exec(tx, sql, ...) return tx_run(tx, sql, [...], "exec") end
 function Tx.row(tx, sql, ...) return tx_run(tx, sql, [...], "row") end
 function Tx.value(tx, sql, ...) return tx_run(tx, sql, [...], "value") end
 function Tx.each(tx, sql, fn, ...) return tx_run(tx, sql, [...], "each", fn) end
-function Tx.run(tx, sql, params, mode, fn) return tx_run(tx, sql, params or [], mode or "rows", fn) end
+function Tx.run(tx, sql, params, mode, fn)
+    return tx_run(tx, sql, params or [], mode or "rows", fn)
+end
 
 local function tx_end(tx, sql)
     if tx.done then return error("cockroach: the transaction has ended") end

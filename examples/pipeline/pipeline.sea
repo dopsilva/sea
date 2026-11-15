@@ -16,8 +16,8 @@
 -- O programa roda o pipeline 3 vezes (1 / 2 / 4 workers) e mede o speedup.
 --
 
-local N_JOBS  = 40   -- número de tarefas
-local WORK_MS = 50   -- ms por tarefa (simula I/O pesado: rede, disco, etc.)
+local N_JOBS  = 40 -- número de tarefas
+local WORK_MS = 50 -- ms por tarefa (simula I/O pesado: rede, disco, etc.)
 
 -- Executa o pipeline com `n_workers` workers paralelos.
 -- Retorna: soma dos resultados, contagem, tempo em ms.
@@ -25,9 +25,9 @@ local function run_pipeline(n_workers)
     local t_start = time.now()
 
     -- Canais totalmente bufferizados para desacoplar os estágios
-    local jobs    = chan(N_JOBS)      -- Source → Workers
-    local results = chan(N_JOBS)      -- Workers → Sink
-    local done    = chan(n_workers)   -- Workers → Conector (sinalização de fim)
+    local jobs    = chan(N_JOBS)    -- Source → Workers
+    local results = chan(N_JOBS)    -- Workers → Sink
+    local done    = chan(n_workers) -- Workers → Conector (sinalização de fim)
 
     -- ── Estágio 1: Source ────────────────────────────────────────────────────
     -- Emite N_JOBS tarefas e fecha o canal.
@@ -45,10 +45,10 @@ local function run_pipeline(n_workers)
     for w = 1, n_workers do
         go (function()
             for job in jobs do
-                time.sleep(WORK_MS * time.Millisecond)  -- simula latência de I/O
-                results <- (job * job)      -- f(job) = job²
+                time.sleep(WORK_MS * time.Millisecond) -- simula latência de I/O
+                results <- (job * job)                 -- f(job) = job²
             end
-            done <- true                    -- avisa que terminou
+            done <- true -- avisa que terminou
         end)()
     end
 
@@ -76,9 +76,9 @@ end
 
 -- Formata speedup com 1 casa decimal: e.g. 39 → "3.9x"
 local function fmt_speedup(t_ref, t_cur)
-    local sp = math.floor(t_ref * 10 / t_cur)   -- ex: 39
-    local i  = math.floor(sp / 10)              -- parte inteira: 3
-    local d  = sp - i * 10                      -- decimal: 9
+    local sp = math.floor(t_ref * 10 / t_cur) -- ex: 39
+    local i  = math.floor(sp / 10)            -- parte inteira: 3
+    local d  = sp - i * 10                    -- decimal: 9
     return i .. "." .. d .. "x"
 end
 
@@ -97,10 +97,16 @@ local s1, n1, t1 = run_pipeline(1)
 print("  [1 worker ]  " .. n1 .. " jobs  soma=" .. s1 .. "  " .. t1 .. " ms")
 
 local s2, n2, t2 = run_pipeline(2)
-print("  [2 workers]  " .. n2 .. " jobs  soma=" .. s2 .. "  " .. t2 .. " ms  speedup=" .. fmt_speedup(t1, t2))
+print("  [2 workers]  " .. n2 .. " jobs  soma=" .. s2 .. "  " .. t2 .. " ms  speedup=" .. fmt_speedup(
+    t1,
+    t2
+))
 
 local s4, n4, t4 = run_pipeline(4)
-print("  [4 workers]  " .. n4 .. " jobs  soma=" .. s4 .. "  " .. t4 .. " ms  speedup=" .. fmt_speedup(t1, t4))
+print("  [4 workers]  " .. n4 .. " jobs  soma=" .. s4 .. "  " .. t4 .. " ms  speedup=" .. fmt_speedup(
+    t1,
+    t4
+))
 
 print("")
 if s1 == expected and s2 == expected and s4 == expected then

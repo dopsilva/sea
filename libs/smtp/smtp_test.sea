@@ -14,7 +14,7 @@ local function server(opts)
     local fd = t.no_error(net.listen(0, "127.0.0.1"))
     local port = net.local_port(fd)
     local got = chan(4)
-    go function()
+    go (function()
         local conn = net.accept(fd, 10000)
         if is_error(conn) then return end
         local buf = ""
@@ -56,8 +56,11 @@ local function server(opts)
                 net.write(conn, "250 ok\r\n")
             elseif string.starts_with(u, "RCPT") then
                 local to = re.match("<([^>]+)>", l).groups[1]
-                if list.contains(opts.refuse or [], to) then net.write(conn, "550 no such user\r\n")
-                else net.write(conn, "250 ok\r\n") end
+                if list.contains(opts.refuse or [], to) then
+                    net.write(conn, "550 no such user\r\n")
+                else
+                    net.write(conn, "250 ok\r\n")
+                end
             elseif u == "DATA" then
                 net.write(conn, "354 go\r\n")
                 local data = []
@@ -78,7 +81,7 @@ local function server(opts)
         got <- s
         net.close(conn)
         net.close(fd)
-    end()
+    end)()
     return `127.0.0.1:${port}`, got
 end
 
@@ -97,10 +100,17 @@ t.describe("smtp", function()
     end)
 
     t.it("writes a MIME message: accents, HTML, attachments, no Bcc", function()
-        local m = smtp.message({from = "Loja São Jorge <loja@x.com>", to = ["ana@x.com"], cc = "bia@x.com",
+        local m = smtp.message({
+            from = "Loja São Jorge <loja@x.com>", to = ["ana@x.com"], cc = "bia@x.com",
             bcc = ["oculto@x.com"], reply_to = "sac@x.com", subject = "Pedido nº 12", text = "Olá", html = "<p>Olá</p>",
-            attachments = [{filename = "pedido.csv", content = "a;b\n", type = "text/csv"}], headers = {["X-Tag"] = "teste"}})
-        t.contains(m, "From: =?UTF-8?B?" .. encoding.base64_encode("Loja São Jorge") .. "?= <loja@x.com>")
+            attachments = [{filename = "pedido.csv", content = "a;b\n", type = "text/csv"}], headers = {
+                ["X-Tag"] = "teste",
+            },
+        })
+        t.contains(
+            m,
+            "From: =?UTF-8?B?" .. encoding.base64_encode("Loja São Jorge") .. "?= <loja@x.com>"
+        )
         t.contains(m, "Cc: bia@x.com")
         t.contains(m, "Reply-To: sac@x.com")
         t.contains(m, "Subject: =?UTF-8?B?" .. encoding.base64_encode("Pedido nº 12") .. "?=")
@@ -113,9 +123,13 @@ t.describe("smtp", function()
     end)
 
     t.it("puts an image inline in the HTML (cid), and the other files as attachments", function()
-        local m = smtp.message({from = "loja@x.com", to = "ana@x.com", subject = "Pix", text = "Pague", html = "<img src=\"cid:qr\">",
-            attachments = [{filename = "qr.png", content = "PNG", type = "image/png", cid = "qr"},
-                {filename = "boleto.pdf", content = "PDF", type = "application/pdf"}]})
+        local m = smtp.message({
+            from = "loja@x.com", to = "ana@x.com", subject = "Pix", text = "Pague", html = "<img src=\"cid:qr\">",
+            attachments = [
+                {filename = "qr.png", content = "PNG", type = "image/png", cid = "qr"},
+                {filename = "boleto.pdf", content = "PDF", type = "application/pdf"},
+            ],
+        })
         t.contains(m, "multipart/mixed")
         t.contains(m, "multipart/related")
         t.contains(m, "Content-ID: <qr>")
@@ -124,16 +138,20 @@ t.describe("smtp", function()
         -- the related part (the HTML and its image) comes before the files
         t.ok(string.find(m, "multipart/related") < string.find(m, "boleto.pdf"))
         -- without HTML, an inline image goes as a file
-        local plain = smtp.message({from = "loja@x.com", to = "ana@x.com", subject = "Pix", text = "Pague",
-            attachments = [{filename = "qr.png", content = "PNG", type = "image/png", cid = "qr"}]})
+        local plain = smtp.message({
+            from = "loja@x.com", to = "ana@x.com", subject = "Pix", text = "Pague",
+            attachments = [{filename = "qr.png", content = "PNG", type = "image/png", cid = "qr"}],
+        })
         t.no(string.contains(plain, "multipart/related"))
         t.contains(plain, "Content-Disposition: attachment; filename=\"qr.png\"")
     end)
 
     t.it("sends: AUTH PLAIN, every recipient, dot-stuffing", function()
         local addr, got = server()
-        local r = t.no_error(smtp.send(`smtp://ana%40x.com:segredo@${addr}?tls=none`, {from = "Loja <loja@x.com>",
-            to = "ana@x.com", bcc = ["oculto@x.com"], subject = "Oi", text = "linha\n.começa com ponto"}))
+        local r = t.no_error(smtp.send(`smtp://ana%40x.com:segredo@${addr}?tls=none`, {
+            from = "Loja <loja@x.com>",
+            to = "ana@x.com", bcc = ["oculto@x.com"], subject = "Oi", text = "linha\n.começa com ponto",
+        }))
         t.eq(r.accepted, ["ana@x.com", "oculto@x.com"])
         t.eq(r.rejected, [])
         local s = <-got
@@ -149,7 +167,10 @@ t.describe("smtp", function()
 
     t.it("logs in with AUTH LOGIN when that is all the server offers", function()
         local addr, got = server({auth = "LOGIN"})
-        t.no_error(smtp.send(`smtp://ana:segredo@${addr}?tls=none`, {from = "a@x.com", to = "b@x.com", text = "x"}))
+        t.no_error(smtp.send(
+            `smtp://ana:segredo@${addr}?tls=none`,
+            {from = "a@x.com", to = "b@x.com", text = "x"}
+        ))
         local s = <-got
         t.eq(s.cmds[1], "AUTH LOGIN")
         t.eq(s.cmds[2], encoding.base64_encode("ana"))
@@ -164,7 +185,10 @@ t.describe("smtp", function()
         t.eq(r.rejected[0].address, "nao@x.com")
         t.contains(r.rejected[0].error, "550")
         -- the same connection, the next message
-        t.is_error(c:send({from = "a@x.com", to = "nao@x.com", text = "x"}), "every recipient was refused")
+        t.is_error(
+            c:send({from = "a@x.com", to = "nao@x.com", text = "x"}),
+            "every recipient was refused"
+        )
         c:close()
         local s = <-got
         t.eq(s.cmds[0], "EHLO loja.x.com")
@@ -173,7 +197,10 @@ t.describe("smtp", function()
 
     t.it("refuses a server without STARTTLS, unless asked for plain text", function()
         local addr, got = server()
-        t.is_error(smtp.send(`smtp://${addr}`, {from = "a@x.com", to = "b@x.com", text = "x"}), "STARTTLS")
+        t.is_error(
+            smtp.send(`smtp://${addr}`, {from = "a@x.com", to = "b@x.com", text = "x"}),
+            "STARTTLS"
+        )
         local s = <-got
         t.eq(s.cmds[len(s.cmds) - 1], "QUIT")
         t.is_error(smtp.send("smtp://127.0.0.1:1?tls=none", {from = "a@x.com", to = "b@x.com"}))

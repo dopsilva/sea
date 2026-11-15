@@ -41,14 +41,14 @@ local function novo_limiter(cap, intervalo_ms)
             select
                 case _ = <-stop_ch then
                     wg.done(wg)
-                    return   -- encerra o repositor
+                    return -- encerra o repositor
                 case default then
             end
-
             -- Tenta adicionar token; descarta se bucket cheio
             select
                 case tokens <- true then
-                case default then   -- bucket cheio, descarta
+                case default then
+                    -- bucket cheio, descarta
             end
         end
     end)()
@@ -58,14 +58,14 @@ local function novo_limiter(cap, intervalo_ms)
             -- Tenta obter token sem bloquear
             select
                 case _ = <-tokens then
-                    return true    -- token obtido
+                    return true -- token obtido
                 case default then
-                    return false   -- sem tokens disponíveis
+                    return false -- sem tokens disponíveis
             end
         end,
         parar = function()
-            stop_ch <- true   -- sinaliza parada (bloqueante: garante entrega)
-            wg.wait(wg)       -- espera goroutine confirmar saída
+            stop_ch <- true -- sinaliza parada (bloqueante: garante entrega)
+            wg.wait(wg)     -- espera goroutine confirmar saída
         end,
     }
 end
@@ -110,11 +110,11 @@ print("── Teste 2: throughput ───────────────�
 print("  Limiter: cap=5, repõe 1 token a cada 50ms (≈20 req/s)")
 print("")
 
-local lim2        = novo_limiter(5, 50)
-local permitidas  = 0
-local rejeitadas  = 0
-local N_REQS      = 30
-local INTERVALO   = 20   -- ms entre requisições do cliente
+local lim2       = novo_limiter(5, 50)
+local permitidas = 0
+local rejeitadas = 0
+local N_REQS     = 30
+local INTERVALO  = 20 -- ms entre requisições do cliente
 
 for i = 1, N_REQS do
     if lim2.adquirir() then

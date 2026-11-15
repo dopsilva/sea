@@ -4,14 +4,14 @@
 -- Test: error handling
 -- create an error
 local e = error("something failed")
-print(is_error(e))      -- true
-print(e.message)        -- something failed
+print(is_error(e)) -- true
+print(e.message)   -- something failed
 
 -- non-errors
-print(is_error(42))     -- false
-print(is_error("str"))  -- false
-print(is_error(nil))    -- false
-print(is_error(true))   -- false
+print(is_error(42))    -- false
+print(is_error("str")) -- false
+print(is_error(nil))   -- false
+print(is_error(true))  -- false
 
 -- function returning error on bad input
 local function safe_div(a, b)
@@ -22,16 +22,16 @@ local function safe_div(a, b)
 end
 
 local r1 = safe_div(10, 2)
-print(r1)               -- 5
-print(is_error(r1))     -- false
+print(r1)           -- 5
+print(is_error(r1)) -- false
 
 local r2 = safe_div(10, 0)
-print(is_error(r2))     -- true
-print(r2.message)       -- division by zero
+print(is_error(r2)) -- true
+print(r2.message)   -- division by zero
 
 -- error with non-string message
 local e2 = error(42)
-print(is_error(e2))     -- true
+print(is_error(e2)) -- true
 
 -- type check
-print(type(e))          -- error
+print(type(e)) -- error

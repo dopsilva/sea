@@ -14,24 +14,30 @@ print(type(print))      -- function
 print(type(error("e"))) -- error
 
 -- tostring
-print(tostring(nil))    -- nil
-print(tostring(true))   -- true
-print(tostring(false))  -- false
-print(tostring(42))     -- 42
-print(tostring(3.14))   -- 3.14
-print(tostring("hi"))   -- hi
+print(tostring(nil))   -- nil
+print(tostring(true))  -- true
+print(tostring(false)) -- false
+print(tostring(42))    -- 42
+print(tostring(3.14))  -- 3.14
+print(tostring("hi"))  -- hi
 
 -- tonumber
-print(tonumber("42"))     -- 42
-print(tonumber("3.14"))   -- 3.14
-print(tonumber("0xff"))   -- 255
-print(tonumber(100))      -- 100
-print(tonumber(nil))      -- nil
-print(tonumber("abc"))    -- nil
-print(tonumber("010"), tonumber("08"), type(tonumber("08")), tonumber("-007"), tonumber("000000000000001250"))  -- 10  8  int  -7  1250
+print(tonumber("42"))   -- 42
+print(tonumber("3.14")) -- 3.14
+print(tonumber("0xff")) -- 255
+print(tonumber(100))    -- 100
+print(tonumber(nil))    -- nil
+print(tonumber("abc"))  -- nil
+print(                  -- 10  8  int  -7  1250
+    tonumber("010"),
+    tonumber("08"),
+    type(tonumber("08")),
+    tonumber("-007"),
+    tonumber("000000000000001250")
+)
 
 -- truthiness
-if 0 then print("zero is truthy") end       -- zero is truthy
-if "" then print("empty str is truthy") end  -- empty str is truthy
-if nil then print("nil is truthy") else print("nil is falsy") end   -- nil is falsy
-if false then print("false is truthy") else print("false is falsy") end  -- false is falsy
+if 0 then print("zero is truthy") end                                   -- zero is truthy
+if "" then print("empty str is truthy") end                             -- empty str is truthy
+if nil then print("nil is truthy") else print("nil is falsy") end       -- nil is falsy
+if false then print("false is truthy") else print("false is falsy") end -- false is falsy

@@ -23,12 +23,12 @@ flags.set_usage(function()
     print("  -tls            habilitar TLS (default false)")
 end)
 
-local port    = flags.int("port",     8080,          "porta de escuta")
-local host    = flags.string("host",  "0.0.0.0",     "endereço de bind")
-local env     = flags.string("env",   "development", "ambiente")
-local workers = flags.int("workers",  4,             "número de workers")
-local timeout = flags.number("timeout", 30.0,        "timeout em segundos")
-local tls     = flags.bool("tls",     false,         "habilitar TLS")
+local port    = flags.int("port", 8080, "porta de escuta")
+local host    = flags.string("host", "0.0.0.0", "endereço de bind")
+local env     = flags.string("env", "development", "ambiente")
+local workers = flags.int("workers", 4, "número de workers")
+local timeout = flags.number("timeout", 30.0, "timeout em segundos")
+local tls     = flags.bool("tls", false, "habilitar TLS")
 
 flags.parse()
 

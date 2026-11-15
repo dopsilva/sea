@@ -49,7 +49,13 @@ local function summary(path, src)
         elseif node.type == "func" and node.name ~= nil then
             local kind = "function"
             if node.is_method then kind = "method" end
-            funcs[] = string.format("%4d  %-8s %s(%d params)", node.line, kind, node.name, len(node.params))
+            funcs[] = string.format(
+                "%4d  %-8s %s(%d params)",
+                node.line,
+                kind,
+                node.name,
+                len(node.params)
+            )
         elseif node.type == "assign" then
             for _, t in node.targets do
                 if t.type == "ident" and not locals[t.name] then

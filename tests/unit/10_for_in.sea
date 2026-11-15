@@ -12,7 +12,7 @@ end
 -- 2	30
 
 -- over table with string keys
-local m = {a=1, b=2, c=3}
+local m = {a = 1, b = 2, c = 3}
 local keys = []
 local vals = []
 for k, v in m do
@@ -24,7 +24,7 @@ local sum = 0
 for i, v in vals do
     sum = sum + v
 end
-print(sum)  -- 6
+print(sum) -- 6
 
 -- for-in with array
 local arr = []

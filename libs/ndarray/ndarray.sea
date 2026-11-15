@@ -59,16 +59,25 @@ M.bool = "bool"
 
 local NATIVE = [
     "add", "subtract", "multiply", "divide", "floor_divide", "mod", "power", "maximum",
-    "minimum", "fmax", "fmin", "arctan2", "hypot", "copysign", "equal", "not_equal", "less", "less_equal",
-    "greater", "greater_equal", "logical_and", "logical_or", "logical_xor", "bitwise_and", "bitwise_or",
-    "bitwise_xor", "left_shift", "right_shift", "negative", "absolute", "sign", "square", "sqrt", "cbrt",
-    "reciprocal", "exp", "exp2", "expm1", "log", "log2", "log10", "log1p", "sin", "cos", "tan", "arcsin",
-    "arccos", "arctan", "sinh", "cosh", "tanh", "arcsinh", "arccosh", "arctanh", "floor", "ceil", "trunc",
-    "rint", "isnan", "isinf", "isfinite", "logical_not", "signbit", "invert", "where", "sum", "nansum",
-    "prod", "min", "max", "any", "all", "mean", "var", "std", "nanmean", "argmax", "argmin", "cumsum",
+    "minimum", "fmax", "fmin", "arctan2", "hypot", "copysign", "equal", "not_equal", "less",
+    "less_equal",
+    "greater", "greater_equal", "logical_and", "logical_or", "logical_xor", "bitwise_and",
+    "bitwise_or",
+    "bitwise_xor", "left_shift", "right_shift", "negative", "absolute", "sign", "square", "sqrt",
+    "cbrt",
+    "reciprocal", "exp", "exp2", "expm1", "log", "log2", "log10", "log1p", "sin", "cos", "tan",
+    "arcsin",
+    "arccos", "arctan", "sinh", "cosh", "tanh", "arcsinh", "arccosh", "arctanh", "floor", "ceil",
+    "trunc",
+    "rint", "isnan", "isinf", "isfinite", "logical_not", "signbit", "invert", "where", "sum",
+    "nansum",
+    "prod", "min", "max", "any", "all", "mean", "var", "std", "nanmean", "argmax", "argmin",
+    "cumsum",
     "cumprod", "argsort", "searchsorted", "matmul", "reshape", "transpose", "swapaxes", "squeeze",
-    "expand_dims", "broadcast_to", "flip", "diagonal", "copy", "astype", "ravel", "ascontiguousarray",
-    "tolist", "fill", "take", "get", "set", "nonzero", "as_strided", "conjugate", "angle", "real", "imag",
+    "expand_dims", "broadcast_to", "flip", "diagonal", "copy", "astype", "ravel",
+    "ascontiguousarray",
+    "tolist", "fill", "take", "get", "set", "nonzero", "as_strided", "conjugate", "angle", "real",
+    "imag",
 ]
 
 for _, name in NATIVE do
@@ -109,10 +118,19 @@ function M.zeros(shape, dtype) return native.full(shape, 0.0, dtype or "float64"
 function M.ones(shape, dtype) return native.full(shape, 1.0, dtype or "float64") end
 function M.empty(shape, dtype) return native.full(shape, 0.0, dtype or "float64") end
 function M.full(shape, value, dtype) return native.full(shape, value, dtype) end
-function M.zeros_like(a, dtype) a = M.asarray(a); return native.full(a.shape, 0, dtype or a.dtype) end
-function M.ones_like(a, dtype) a = M.asarray(a); return native.full(a.shape, 1, dtype or a.dtype) end
+function M.zeros_like(a, dtype)
+    a = M.asarray(a)
+    return native.full(a.shape, 0, dtype or a.dtype)
+end
+function M.ones_like(a, dtype)
+    a = M.asarray(a)
+    return native.full(a.shape, 1, dtype or a.dtype)
+end
 function M.empty_like(a, dtype) return M.zeros_like(a, dtype) end
-function M.full_like(a, value, dtype) a = M.asarray(a); return native.full(a.shape, value, dtype or a.dtype) end
+function M.full_like(a, value, dtype)
+    a = M.asarray(a)
+    return native.full(a.shape, value, dtype or a.dtype)
+end
 
 -- np.arange([start,] stop [, step] [, dtype]): ints when all are ints
 function M.arange(a, b, step, dtype)
@@ -180,7 +198,8 @@ end
 function M.meshgrid(...)
     local args = [...]
     local indexing = "xy"
-    if len(args) > 0 and type(args[len(args) - 1]) == "table" and not is_nd(args[len(args) - 1]) then
+    if len(args) > 0 and type(args[len(args) - 1]) == "table"
+            and not is_nd(args[len(args) - 1]) then
         indexing = args[len(args) - 1].indexing or "xy"
         args = list.slice(args, 0, len(args) - 1)
     end
@@ -218,7 +237,9 @@ M.flatten = A.flatten
 function A.item(a, ...)
     local idx = [...]
     if len(idx) == 0 then
-        if a.size ~= 1 then panic("ndarray.item: only an array of one element can be converted to a scalar") end
+        if a.size ~= 1 then
+            panic("ndarray.item: only an array of one element can be converted to a scalar")
+        end
         return native.get(native.reshape(a, 1), 0)
     end
     if len(idx) == 1 and a.ndim ~= 1 then
@@ -312,7 +333,10 @@ function M.array_split(a, sections, axis)
             cuts[] = at
         end
     else
-        cuts = list.map(is_nd(sections) and native.tolist(sections) or sections, function(x) return x end)
+        cuts = list.map(
+            is_nd(sections) and native.tolist(sections) or sections,
+            function(x) return x end
+        )
     end
     local out = []
     local prev = 0
@@ -457,7 +481,10 @@ function M.diff(a, n, axis)
             hi[] = d == axis and "1:" or ":"
             lo[] = d == axis and ":-1" or ":"
         end
-        a = native.subtract(native.get(a, string.join(hi, ",")), native.get(a, string.join(lo, ",")))
+        a = native.subtract(
+            native.get(a, string.join(hi, ",")),
+            native.get(a, string.join(lo, ","))
+        )
     end
     return a
 end
@@ -479,7 +506,9 @@ end
 A.dot = M.dot
 
 -- np.vdot / np.inner (1-D) / np.outer
-function M.vdot(a, b) return native.sum(native.multiply(native.ravel(M.asarray(a)), native.ravel(M.asarray(b)))) end
+function M.vdot(a, b)
+    return native.sum(native.multiply(native.ravel(M.asarray(a)), native.ravel(M.asarray(b))))
+end
 function M.inner(a, b)
     a = M.asarray(a)
     b = M.asarray(b)
@@ -488,7 +517,10 @@ function M.inner(a, b)
     return native.matmul(a, native.swapaxes(b, -1, -2))
 end
 function M.outer(a, b)
-    return native.multiply(native.reshape(native.ravel(M.asarray(a)), -1, 1), native.reshape(native.ravel(M.asarray(b)), 1, -1))
+    return native.multiply(
+        native.reshape(native.ravel(M.asarray(a)), -1, 1),
+        native.reshape(native.ravel(M.asarray(b)), 1, -1)
+    )
 end
 
 -- np.cross(a, b) for vectors of 3 (along the last axis)
@@ -517,8 +549,14 @@ function M.convolve(a, v, mode)
     -- each output is a dot product of a window of a with v reversed
     local rv = native.flip(v)
     local full = n + m - 1
-    local pad = native.concatenate([native.full(m - 1, 0, a.dtype), a, native.full(m - 1, 0, a.dtype)], 0)
-    local idx = native.add(native.reshape(native.arange(0, full, 1), -1, 1), native.reshape(native.arange(0, m, 1), 1, -1))
+    local pad = native.concatenate(
+        [native.full(m - 1, 0, a.dtype), a, native.full(m - 1, 0, a.dtype)],
+        0
+    )
+    local idx = native.add(
+        native.reshape(native.arange(0, full, 1), -1, 1),
+        native.reshape(native.arange(0, m, 1), 1, -1)
+    )
     local windows = native.take(pad, idx)
     local out = native.matmul(windows, rv)
     mode = mode or "full"
@@ -592,7 +630,9 @@ local quantile64
 -- number or an array of them (in [0, 1]); np.percentile takes q in [0, 100]
 function M.quantile(a, q, axis, keepdims)
     a = M.asarray(a)
-    if a.dtype == "float32" then return M.asarray(quantile64(a, q, axis, keepdims)):astype("float32") end
+    if a.dtype == "float32" then
+        return M.asarray(quantile64(a, q, axis, keepdims)):astype("float32")
+    end
     return quantile64(a, q, axis, keepdims)
 end
 
@@ -645,7 +685,10 @@ function M.average(a, axis, weights)
         s[axis] = w.size
         w = native.reshape(w, s)
     end
-    return native.divide(native.sum(native.multiply(a, w), axis), native.sum(native.broadcast_to(w, a.shape), axis))
+    return native.divide(
+        native.sum(native.multiply(a, w), axis),
+        native.sum(native.broadcast_to(w, a.shape), axis)
+    )
 end
 
 -- np.ptp(a [, axis]): max - min
@@ -655,7 +698,9 @@ A.ptp = M.ptp
 -- np.bincount(x [, weights [, minlength]])
 function M.bincount(x, weights, minlength)
     x = native.ravel(M.asarray(x))
-    if x.dtype == "float64" or x.dtype == "float32" then panic("ndarray.bincount: expected non-negative ints") end
+    if x.dtype == "float64" or x.dtype == "float32" then
+        panic("ndarray.bincount: expected non-negative ints")
+    end
     local n = minlength or 0
     if x.size > 0 then
         if native.min(x) < 0 then panic("ndarray.bincount: expected non-negative ints") end
@@ -718,7 +763,8 @@ local function float_formatter(vals)
         if v > amax then amax = v end
         if v ~= 0 and v < amin then amin = v end
     end
-    local sci = amax >= 1e16 or (amin < 1e-4 and amin ~= M.inf) or (amin ~= M.inf and amax / amin > 1e3 and amax >= 1e8)
+    local sci = amax >= 1e16 or (amin < 1e-4 and amin ~= M.inf)
+        or (amin ~= M.inf and amax / amin > 1e3 and amax >= 1e8)
     local function strip(s)
         if string.contains(s, ".") then
             s = re.gsub("0+$", s, "")
@@ -865,7 +911,8 @@ function M.array_repr(a)
         return `array(${s}, dtype=${a.dtype})`
     end
     local body = format_array(a, ", ", "      ")
-    if a.dtype == "bool" or a.dtype == "float64" or a.dtype == "int64" or a.dtype == "complex128" then
+    if a.dtype == "bool" or a.dtype == "float64" or a.dtype == "int64"
+            or a.dtype == "complex128" then
         return `array(${body})`
     end
     return `array(${body}, dtype=${a.dtype})`
@@ -937,7 +984,9 @@ function linalg.norm(x, ord, axis, keepdims)
     end
     local matrix = (axis == nil and x.ndim == 2) or (type(axis) == "array" and len(axis) == 2)
     if matrix then
-        if axis ~= nil and (axis[0] ~= 0 or axis[1] ~= 1) then panic("ndarray.linalg.norm: matrix norms over axes (0, 1) only") end
+        if axis ~= nil and (axis[0] ~= 0 or axis[1] ~= 1) then
+            panic("ndarray.linalg.norm: matrix norms over axes (0, 1) only")
+        end
         if ord == 1 then return native.max(native.sum(ax, 0)) end
         if ord == -1 then return native.min(native.sum(ax, 0)) end
         if ord == M.inf then return native.max(native.sum(ax, 1)) end
@@ -970,7 +1019,11 @@ function linalg.pinv(a, rcond)
     local u, s, vh = linalg.svd(a, false)
     rcond = rcond or 1e-15
     local cut = s.size > 0 and native.max(s) * rcond or 0
-    local sinv = native.where(native.greater(s, cut), native.divide(1.0, native.maximum(s, 1e-300)), 0.0)
+    local sinv = native.where(
+        native.greater(s, cut),
+        native.divide(1.0, native.maximum(s, 1e-300)),
+        0.0
+    )
     return native.matmul(native.multiply(native.transpose(vh), sinv), native.transpose(u))
 end
 
@@ -985,7 +1038,11 @@ function linalg.lstsq(a, b, rcond)
     local keep = native.greater(s, cut)
     local sinv = native.where(keep, native.divide(1.0, native.maximum(s, 1e-300)), 0.0)
     local ub = native.matmul(native.transpose(u), b)
-    if b.ndim == 1 then ub = native.multiply(ub, sinv) else ub = native.multiply(ub, native.reshape(sinv, -1, 1)) end
+    if b.ndim == 1 then
+        ub = native.multiply(ub, sinv)
+    else
+        ub = native.multiply(ub, native.reshape(sinv, -1, 1))
+    end
     local x = native.matmul(native.transpose(vh), ub)
     local rank = native.sum(keep)
     local resid = native.full(0, 0.0)
@@ -1053,14 +1110,18 @@ end
 
 -- generator methods (size: nil for one number, an int, or a shape; dtype:
 -- "float64" (the default) or "float32")
-function Gen.random(g, size, dtype) return native.rng_draw(g.state, RD_RANDOM, size, nil, nil, dtype) end
+function Gen.random(g, size, dtype)
+    return native.rng_draw(g.state, RD_RANDOM, size, nil, nil, dtype)
+end
 function Gen.uniform(g, low, high, size, dtype)
     return native.rng_draw(g.state, RD_UNIFORM, size, low or 0.0, high or 1.0, dtype)
 end
 function Gen.normal(g, loc, scale, size, dtype)
     return native.rng_draw(g.state, RD_NORMAL, size, loc or 0.0, scale or 1.0, dtype)
 end
-function Gen.standard_normal(g, size, dtype) return native.rng_draw(g.state, RD_NORMAL, size, 0.0, 1.0, dtype) end
+function Gen.standard_normal(g, size, dtype)
+    return native.rng_draw(g.state, RD_NORMAL, size, 0.0, 1.0, dtype)
+end
 function Gen.exponential(g, scale, size, dtype)
     return native.rng_draw(g.state, RD_EXPONENTIAL, size, scale or 1.0, nil, dtype)
 end
@@ -1099,7 +1160,9 @@ function Gen.choice(g, a, size, replace, p)
             idx = native.searchsorted(cdf, native.rng_draw(g.state, RD_RANDOM, count), "right")
             idx = native.minimum(idx, n - 1)
         else
-            if count > n then panic("ndarray.random.choice: cannot take a larger sample than the population without replacement") end
+            if count > n then
+                panic("ndarray.random.choice: cannot take a larger sample than the population without replacement")
+            end
             local w = native.tolist(M.asarray(p, "float64"))
             local picked = []
             for _ = 1, count do
@@ -1119,7 +1182,9 @@ function Gen.choice(g, a, size, replace, p)
     elseif replace then
         idx = native.rng_draw(g.state, RD_INTEGERS, count, 0, n)
     else
-        if count > n then panic("ndarray.random.choice: cannot take a larger sample than the population without replacement") end
+        if count > n then
+            panic("ndarray.random.choice: cannot take a larger sample than the population without replacement")
+        end
         idx = native.get(Gen.permutation(g, n), `:${count}`)
     end
     local r = native.take(pool, idx, 0)
@@ -1250,7 +1315,9 @@ local function contract(a, la, b, lb, out)
     local bdims = dims(bt.shape, nb + len(contr), len(bkeep))
     for i, l in contr do
         local other = bt.shape[nb + i]
-        if cdims[i] ~= other then panic(`ndarray.einsum: the label '${l}' has sizes ${cdims[i]} and ${other}`) end
+        if cdims[i] ~= other then
+            panic(`ndarray.einsum: the label '${l}' has sizes ${cdims[i]} and ${other}`)
+        end
     end
     local m = list.reduce(adims, function(x, y) return x * y end, 1)
     local k = list.reduce(cdims, function(x, y) return x * y end, 1)
@@ -1283,11 +1350,15 @@ function M.einsum(spec, ...)
     for i, term in terms do
         local letters = chars(string.replace(term, "...", ""))
         for _, c in letters do
-            if string.find(LETTERS, c) == nil then panic(`ndarray.einsum: bad label '${c}' in "${spec}"`) end
+            if string.find(LETTERS, c) == nil then
+                panic(`ndarray.einsum: bad label '${c}' in "${spec}"`)
+            end
         end
         local extra = ops[i].ndim - len(letters)
         if string.contains(term, "...") then
-            if extra < 0 then panic(`ndarray.einsum: operand ${i} has too few dimensions for "${term}"`) end
+            if extra < 0 then
+                panic(`ndarray.einsum: operand ${i} has too few dimensions for "${term}"`)
+            end
             ell = math.max(ell, extra)
         elseif extra ~= 0 then
             panic(`ndarray.einsum: operand ${i} has ${ops[i].ndim} dimensions, "${term}" gives ${len(letters)}`)
@@ -1310,7 +1381,10 @@ function M.einsum(spec, ...)
         for _, ls in labels do
             for _, l in ls do count[l] = (count[l] or 0) + 1 end
         end
-        local once = list.filter(list.keys(count), function(l) return count[l] == 1 and not list.contains(E, l) end)
+        local once = list.filter(
+            list.keys(count),
+            function(l) return count[l] == 1 and not list.contains(E, l) end
+        )
         sort.sort(once)
         out = list.concat(E, once)
     else
@@ -1418,7 +1492,10 @@ function fft.irfft(a, n, axis, norm)
     end
     local parts = [head]
     if n - m > 0 then
-        parts[] = native.conjugate(native.flip(native.get(head, along(head.ndim, axis, 1, n - m + 1)), axis))
+        parts[] = native.conjugate(native.flip(
+            native.get(head, along(head.ndim, axis, 1, n - m + 1)),
+            axis
+        ))
     end
     local full = native.concatenate(parts, axis)
     return native.copy(native.real(native.fft(full, n, axis, true, norm)))
@@ -1443,10 +1520,15 @@ function fft.irfft2(a, s, axes, norm) return fft.irfftn(a, s, axes or [-2, -1], 
 
 -- np.fft.fftfreq(n [, d = 1]), rfftfreq: the frequencies of the bins
 function fft.fftfreq(n, d)
-    local k = native.concatenate([native.arange(0, (n - 1) // 2 + 1, 1), native.arange(-(n // 2), 0, 1)], 0)
+    local k = native.concatenate(
+        [native.arange(0, (n - 1) // 2 + 1, 1), native.arange(-(n // 2), 0, 1)],
+        0
+    )
     return native.divide(k, (d or 1.0) * n)
 end
-function fft.rfftfreq(n, d) return native.divide(native.arange(0, n // 2 + 1, 1), (d or 1.0) * n) end
+function fft.rfftfreq(n, d)
+    return native.divide(native.arange(0, n // 2 + 1, 1), (d or 1.0) * n)
+end
 
 -- np.fft.fftshift(x [, axes]): the zero frequency to the middle; ifftshift undoes it
 function fft.fftshift(x, axes)
@@ -1480,7 +1562,9 @@ end
 
 -- an array from the bytes of a .npy file → array | error
 local function npy_parse(bytes, name)
-    if string.sub(bytes, 1, 6) ~= "\x93NUMPY" then return error(`ndarray.load: ${name} is not a .npy file`) end
+    if string.sub(bytes, 1, 6) ~= "\x93NUMPY" then
+        return error(`ndarray.load: ${name} is not a .npy file`)
+    end
     local major = string.byte(bytes, 7)
     local hlen = 0
     local start = 0
@@ -1543,7 +1627,8 @@ function M.load(path)
         local out = {}
         for _, e in compress.zip_list(path)? do
             local data = compress.zip_read(path, e.name)?
-            local name = string.ends_with(e.name, ".npy") and string.sub(e.name, 1, len(e.name) - 4) or e.name
+            local name = string.ends_with(e.name, ".npy") and string.sub(e.name, 1, len(e.name) - 4)
+                or e.name
             out[name] = npy_parse(data, e.name)?
         end
         return out
@@ -1589,12 +1674,15 @@ function M.loadtxt(path, opts)
         if c ~= nil then line = string.sub(line, 1, c - 1) end
         line = string.trim(line)
         if line == "" then continue end
-        local cells = opts.delimiter and string.split(line, opts.delimiter) or re.split("\\s+", line)
+        local cells = opts.delimiter and string.split(line, opts.delimiter)
+            or re.split("\\s+", line)
         local row = []
         for j, cell in cells do
             if opts.usecols == nil or list.contains(opts.usecols, j) then
                 local v = tonumber(string.trim(cell))
-                if v == nil then return error(`ndarray.loadtxt: ${path}:${i + 1}: not a number: ${cell}`) end
+                if v == nil then
+                    return error(`ndarray.loadtxt: ${path}:${i + 1}: not a number: ${cell}`)
+                end
                 row[] = v + 0.0
             end
         end

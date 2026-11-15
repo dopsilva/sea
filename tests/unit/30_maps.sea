@@ -8,76 +8,76 @@
 
 -- ---- 1. Creation and initial length ----------------------------------------
 local m = [=]
-print(len(m))    -- 0
+print(len(m)) -- 0
 
 -- ---- 2. String keys ---------------------------------------------------------
 m["lang"] = "sea"
 m["ver"]  = "1.0"
-print(m["lang"])   -- sea
-print(m["ver"])    -- 1.0
-print(len(m))      -- 2
+print(m["lang"]) -- sea
+print(m["ver"])  -- 1.0
+print(len(m))    -- 2
 
 -- ---- 3. Integer keys --------------------------------------------------------
 m[1]   = "one"
 m[2]   = "two"
 m[100] = "hundred"
-print(m[1])     -- one
-print(m[2])     -- two
-print(m[100])   -- hundred
-print(len(m))   -- 5
+print(m[1])   -- one
+print(m[2])   -- two
+print(m[100]) -- hundred
+print(len(m)) -- 5
 
 -- ---- 4. Float keys ----------------------------------------------------------
 m[3.14] = "pi"
 m[2.71] = "e"
-print(m[3.14])  -- pi
-print(m[2.71])  -- e
-print(len(m))   -- 7
+print(m[3.14]) -- pi
+print(m[2.71]) -- e
+print(len(m))  -- 7
 
 -- ---- 5. Boolean keys --------------------------------------------------------
 m[true]  = "yes"
 m[false] = "no"
-print(m[true])   -- yes
-print(m[false])  -- no
-print(len(m))    -- 9
+print(m[true])  -- yes
+print(m[false]) -- no
+print(len(m))   -- 9
 
 -- ---- 6. Missing key → nil ---------------------------------------------------
-print(m["missing"] == nil)  -- true
-print(m[999]       == nil)  -- true
-print(m[nil]       == nil)  -- true
+print(m["missing"] == nil) -- true
+print(m[999] == nil)       -- true
+print(m[nil] == nil)       -- true
 
 -- ---- 7. Overwrite existing key ----------------------------------------------
 m["lang"] = "sea-vm"
-print(m["lang"])  -- sea-vm
-print(len(m))     -- 9 (count unchanged)
+print(m["lang"]) -- sea-vm
+print(len(m))    -- 9 (count unchanged)
 
 -- Overwrite boolean key
 m[true] = "TRUE"
-print(m[true])  -- TRUE
-print(len(m))   -- 9
+print(m[true]) -- TRUE
+print(len(m))  -- 9
 
 -- ---- 8. key existence -------------------------------------------------------
-print(m["lang"]    ~= nil)   -- true
-print(m["missing"] ~= nil)   -- false
-print(m[1]         ~= nil)   -- true
-print(m[999]       ~= nil)   -- false
-print(m[true]      ~= nil)   -- true
-print(m[false]     ~= nil)   -- true
-print(m[3.14]      ~= nil)   -- true
+print(m["lang"] ~= nil)    -- true
+print(m["missing"] ~= nil) -- false
+print(m[1] ~= nil)         -- true
+print(m[999] ~= nil)       -- false
+print(m[true] ~= nil)      -- true
+print(m[false] ~= nil)     -- true
+print(m[3.14] ~= nil)      -- true
 
 -- ---- 9. del -----------------------------------------------------------------
 del m["ver"]
-print(m["ver"] ~= nil)       -- false
-print(m["ver"] == nil)       -- true
-print(len(m))                -- 8
+print(m["ver"] ~= nil) -- false
+print(m["ver"] == nil) -- true
+print(len(m))          -- 8
 
 -- Delete non-existent key (no-op)
 del m["never"]
-print(len(m))  -- 8 (unchanged)
+print(len(m)) -- 8 (unchanged)
 
 -- Delete integer key
 del m[2]
-print(m[2] ~= nil)           -- false
-print(len(m))                -- 7
+print(m[2] ~= nil) -- false
+print(len(m))      -- 7
 
 -- ---- 10. Re-insert after delete (tombstone reuse) ---------------------------
 local c = [=]
@@ -85,12 +85,12 @@ c["a"] = 10
 c["b"] = 20
 c["c"] = 30
 del c["b"]
-print(len(c))               -- 2
-print(c["b"] ~= nil)        -- false
-c["b"] = 99            -- re-insert same key
-print(len(c))               -- 3
-print(c["b"])               -- 99
-print(c["b"] ~= nil)        -- true
+print(len(c))        -- 2
+print(c["b"] ~= nil) -- false
+c["b"] = 99          -- re-insert same key
+print(len(c))        -- 3
+print(c["b"])        -- 99
+print(c["b"] ~= nil) -- true
 
 -- ---- 11. for-in (k, v) — order not guaranteed → sum values -----------------
 local nums = [=]
@@ -104,15 +104,15 @@ for k, v in nums do
     sum   = sum + v
     count = count + 1
 end
-print(sum)    -- 60
-print(count)  -- 3
+print(sum)   -- 60
+print(count) -- 3
 
 -- ---- 12. for-in single variable (key only) ----------------------------------
 local key_count = 0
 for k in nums do
     key_count = key_count + 1
 end
-print(key_count)  -- 3
+print(key_count) -- 3
 
 -- ---- 13. for-in over empty map ----------------------------------------------
 local empty = [=]
@@ -120,7 +120,7 @@ local hit = false
 for k, v in empty do
     hit = true
 end
-print(hit)  -- false
+print(hit) -- false
 
 -- ---- 14. collect keys via for-in --------------------------------------------
 local mk = [=]
@@ -130,7 +130,7 @@ mk["b"] = 2
 
 local keys = []
 for k, _kv in mk do keys[] = k end
-print(len(keys))  -- 3
+print(len(keys)) -- 3
 
 -- Verify all expected keys are present (order-independent)
 local found_a = false
@@ -141,48 +141,48 @@ for i, k in keys do
     if k == "b" then found_b = true end
     if k == "c" then found_c = true end
 end
-print(found_a)  -- true
-print(found_b)  -- true
-print(found_c)  -- true
+print(found_a) -- true
+print(found_b) -- true
+print(found_c) -- true
 
 -- ---- 15. collect values via for-in ------------------------------------------
 local vals = []
 for _mk, mv in mk do vals[] = mv end
-print(len(vals))  -- 3
+print(len(vals)) -- 3
 
 local vsum = 0
 for i, v in vals do
     vsum = vsum + v
 end
-print(vsum)  -- 6
+print(vsum) -- 6
 
 -- ---- 16. collect on empty map -----------------------------------------------
 local ek = []
 for k, _ev in empty do ek[] = k end
-print(len(ek))  -- 0
+print(len(ek)) -- 0
 
 local ev = []
 for _ek, v in empty do ev[] = v end
-print(len(ev))  -- 0
+print(len(ev)) -- 0
 
 -- ---- 17. Mixed key types in one map ----------------------------------------
 local mixed = [=]
-mixed["str"]  = "string-key"
-mixed[42]     = "int-key"
-mixed[1.5]    = "float-key"
-mixed[true]   = "bool-key"
+mixed["str"] = "string-key"
+mixed[42]    = "int-key"
+mixed[1.5]   = "float-key"
+mixed[true]  = "bool-key"
 print(len(mixed))          -- 4
 print(mixed["str"])        -- string-key
 print(mixed[42])           -- int-key
 print(mixed[1.5])          -- float-key
 print(mixed[true])         -- bool-key
-print(mixed["str"]  ~= nil)   -- true
-print(mixed[42]     ~= nil)   -- true
-print(mixed[1.5]    ~= nil)   -- true
-print(mixed[true]   ~= nil)   -- true
+print(mixed["str"] ~= nil) -- true
+print(mixed[42] ~= nil)    -- true
+print(mixed[1.5] ~= nil)   -- true
+print(mixed[true] ~= nil)  -- true
 -- Keys of different types don't collide
-print(mixed["42"]   ~= nil)   -- false
-print(mixed[false]  ~= nil)   -- false
+print(mixed["42"] ~= nil)  -- false
+print(mixed[false] ~= nil) -- false
 
 -- ---- 18. Nested maps --------------------------------------------------------
 local outer = [=]
@@ -191,23 +191,23 @@ inner["x"] = 100
 inner["y"] = 200
 outer["coords"] = inner
 
-print(outer["coords"]["x"])   -- 100
-print(outer["coords"]["y"])   -- 200
+print(outer["coords"]["x"]) -- 100
+print(outer["coords"]["y"]) -- 200
 
 -- Modify through nested access
 outer["coords"]["x"] = 999
-print(inner["x"])             -- 999
+print(inner["x"]) -- 999
 
 -- ---- 19. Map stored as table field ------------------------------------------
 local obj = {}
 obj.scores = [=]
 obj.scores["alice"] = 95
 obj.scores["bob"]   = 80
-print(obj.scores["alice"])  -- 95
-print(obj.scores["bob"])    -- 80
-print(len(obj.scores))      -- 2
+print(obj.scores["alice"]) -- 95
+print(obj.scores["bob"])   -- 80
+print(len(obj.scores))     -- 2
 del obj.scores["bob"]
-print(len(obj.scores))      -- 1
+print(len(obj.scores)) -- 1
 
 -- ---- 20. Map stored inside another map --------------------------------------
 local registry = [=]
@@ -215,36 +215,36 @@ local user1    = [=]
 user1["name"]  = "alice"
 user1["score"] = 42
 registry["u1"] = user1
-print(registry["u1"]["name"])   -- alice
-print(registry["u1"]["score"])  -- 42
+print(registry["u1"]["name"])  -- alice
+print(registry["u1"]["score"]) -- 42
 
 -- ---- 21. Stress: 100 integer keys -------------------------------------------
 local big = [=]
 for i = 0, 99 do
     big[i] = i * 2
 end
-print(len(big))     -- 100
-print(big[0])       -- 0
-print(big[1])       -- 2
-print(big[50])      -- 100
-print(big[99])      -- 198
+print(len(big)) -- 100
+print(big[0])   -- 0
+print(big[1])   -- 2
+print(big[50])  -- 100
+print(big[99])  -- 198
 
 -- Verify all present
 local all_ok = true
 for i = 0, 99 do
     if big[i] == nil then all_ok = false end
 end
-print(all_ok)  -- true
+print(all_ok) -- true
 
 -- Delete even keys (50 deletions)
 for i = 0, 98, 2 do
     del big[i]
 end
-print(len(big))              -- 50
-print(big[0]  ~= nil)       -- false
-print(big[1]  ~= nil)       -- true
-print(big[98] ~= nil)       -- false
-print(big[99] ~= nil)       -- true
+print(len(big))       -- 50
+print(big[0] ~= nil)  -- false
+print(big[1] ~= nil)  -- true
+print(big[98] ~= nil) -- false
+print(big[99] ~= nil) -- true
 
 -- Sum remaining (odd keys 1,3,5,...,99 → values 2,6,10,...,198)
 -- Sum = 2+6+10+...+198 = sum of 2*(2k-1) for k=1..50 = 2*(1+3+...+99)
@@ -253,16 +253,16 @@ local odd_sum = 0
 for k, v in big do
     odd_sum = odd_sum + v
 end
-print(odd_sum)  -- 5000
+print(odd_sum) -- 5000
 
 -- Re-insert even keys (verify tombstone reuse works at scale)
 for i = 0, 98, 2 do
     big[i] = i * 3
 end
-print(len(big))    -- 100
-print(big[0])      -- 0
-print(big[2])      -- 6
-print(big[98])     -- 294
+print(len(big)) -- 100
+print(big[0])   -- 0
+print(big[2])   -- 6
+print(big[98])  -- 294
 
 -- ---- 22. Stress: 100 string keys --------------------------------------------
 local smap = [=]
@@ -270,16 +270,16 @@ for i = 0, 99 do
     local key = "key_" .. i
     smap[key] = i
 end
-print(len(smap))             -- 100
-print(smap["key_0"])         -- 0
-print(smap["key_49"])        -- 49
-print(smap["key_99"])        -- 99
-print(smap["key_50"]  ~= nil)  -- true
-print(smap["key_100"] ~= nil)  -- false
+print(len(smap))              -- 100
+print(smap["key_0"])          -- 0
+print(smap["key_49"])         -- 49
+print(smap["key_99"])         -- 99
+print(smap["key_50"] ~= nil)  -- true
+print(smap["key_100"] ~= nil) -- false
 
 -- Sum all values: 0+1+2+...+99 = 4950
 local str_sum = 0
 for k, v in smap do
     str_sum = str_sum + v
 end
-print(str_sum)  -- 4950
+print(str_sum) -- 4950

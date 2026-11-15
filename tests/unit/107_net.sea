@@ -15,7 +15,7 @@ for i = 1, 100 do
 end
 local n = 0
 for i = 1, 100 do n = n + <-done end
-print("sleepers:", n, time.since(t0) // time.Millisecond < 5000)   -- serially: 10 s
+print("sleepers:", n, time.since(t0) // time.Millisecond < 5000) -- serially: 10 s
 
 -- 2. an echo server; idle connections (more than worker threads) don't block it
 local lfd = net.listen(0, "127.0.0.1")

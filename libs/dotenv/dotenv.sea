@@ -86,7 +86,14 @@ local function expand(s, vars, env)
     return string.join(out, "")
 end
 
-local ESCAPES = {n = "\n", t = "\t", r = "\r", ["\""] = "\"", ["\\"] = "\\", ["$"] = "\x00DOLLAR\x00"}
+local ESCAPES = {
+    n = "\n",
+    t = "\t",
+    r = "\r",
+    ["\""] = "\"",
+    ["\\"] = "\\",
+    ["$"] = "\x00DOLLAR\x00",
+}
 
 -- dotenv.parse(text [, env]) → table | error
 function M.parse(text, env)
@@ -102,7 +109,9 @@ function M.parse(text, env)
             local eq = string.find(line, "=")
             if eq == nil then return error(`dotenv: line ${lineno}: expected KEY=value`) end
             local key = string.trim(string.sub(line, 1, eq - 1))
-            if re.match(NAME, key) == nil then return error(`dotenv: line ${lineno}: invalid name '${key}'`) end
+            if re.match(NAME, key) == nil then
+                return error(`dotenv: line ${lineno}: invalid name '${key}'`)
+            end
             local rest = string.trim(string.sub(line, eq + 1))
             local q = string.sub(rest, 1, 1)
             local value
@@ -125,7 +134,9 @@ function M.parse(text, env)
                 end
                 local close = closing(body)
                 while close == nil do
-                    if i >= len(lines) then return error(`dotenv: line ${lineno}: unterminated ${q}`) end
+                    if i >= len(lines) then
+                        return error(`dotenv: line ${lineno}: unterminated ${q}`)
+                    end
                     body ..= "\n" .. lines[i]
                     i += 1
                     close = closing(body)

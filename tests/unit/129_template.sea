@@ -7,7 +7,10 @@ local template = require("../../libs/template/template")
 print("-- interpolation and escaping")
 print(template.render("Hello, {{name}}!", {name = "Sea"}))
 print(template.render("{{html}} {{{html}}} {{&html}}", {html = "<b>\"Tom\" & 'Jerry'</b>"}))
-print(template.render("[{{missing}}] [{{n}}] [{{f}}] [{{yes}}] [{{big}}]", {n = 42, f = 1.5, yes = true, big = bigint.new("123456789012345678901")}))
+print(template.render(
+    "[{{missing}}] [{{n}}] [{{f}}] [{{yes}}] [{{big}}]",
+    {n = 42, f = 1.5, yes = true, big = bigint.new("123456789012345678901")}
+))
 print(template.render("{{a.b.c}} [{{a.x.c}}]", {a = {b = {c = "deep"}}}))
 
 print("-- sections")
@@ -36,7 +39,8 @@ Nothing in "empty".
 {{/empty}}
 {{#title}}title is set{{/title}}
 {{! a comment }}
-]==])
+]==]
+)
 print(page:render(data))
 print(template.render("{{#list}}<{{.}}>{{/list}}", {list = {"a", "b", "c"}}))
 print(template.render("{{#flag}}on{{/flag}}{{^flag}}off{{/flag}}", {flag = false}))
@@ -65,7 +69,8 @@ print(template.render([==[
 <p>{{msg}}</p>
 {{/body}}
 {{/layout}}
-]==], {msg = "welcome"}, partials))
+]==],
+    {msg = "welcome"}, partials))
 
 print("-- lambdas")
 local count = 0
@@ -80,7 +85,12 @@ print("-- delimiters and options")
 print(template.render("{{=<% %>=}}<% name %> {{name}} <%={{ }}=%>{{name}}", {name = "x"}))
 print(template.render("<%name%>", {name = "y"}, nil, {delimiters = {"<%", "%>"}}))
 print(template.render("{{x}}", {x = "<raw>"}, nil, {escape = false}))
-print(template.render("{{x}}", {x = "a b"}, nil, {escape = function(s) return string.replace(s, " ", "_") end}))
+print(template.render(
+    "{{x}}",
+    {x = "a b"},
+    nil,
+    {escape = function(s) return string.replace(s, " ", "_") end}
+))
 print(template.escape("<a href='x'>&</a>"))
 
 print("-- errors")

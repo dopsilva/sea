@@ -22,10 +22,10 @@ local function binary_search(arr, target)
 end
 
 local sorted = {1, 3, 5, 7, 9, 11, 13, 15}
-print(binary_search(sorted, 7))    -- 3
-print(binary_search(sorted, 1))    -- 0
-print(binary_search(sorted, 15))   -- 7
-print(binary_search(sorted, 4))    -- -1
+print(binary_search(sorted, 7))  -- 3
+print(binary_search(sorted, 1))  -- 0
+print(binary_search(sorted, 15)) -- 7
+print(binary_search(sorted, 4))  -- -1
 
 -- 2. String processing: count word frequencies
 local function word_count(text)
@@ -41,10 +41,10 @@ local function word_count(text)
 end
 
 local freq = word_count("the cat sat on the mat the cat")
-print(freq["the"])  -- 3
-print(freq["cat"])  -- 2
-print(freq["sat"])  -- 1
-print(freq["mat"])  -- 1
+print(freq["the"]) -- 3
+print(freq["cat"]) -- 2
+print(freq["sat"]) -- 1
+print(freq["mat"]) -- 1
 
 -- 3. Merge sort
 local function merge_sort(arr)
@@ -96,7 +96,7 @@ for i = 0, len(sorted2) - 1 do
     if i > 0 then out = out .. " " end
     out = out .. sorted2[i]
 end
-print(out)  -- 1 2 3 4 5 6 7 8 9
+print(out) -- 1 2 3 4 5 6 7 8 9
 
 -- 4. Closure-based event system
 local function make_emitter()
@@ -113,7 +113,7 @@ local function make_emitter()
             for i, fn in handlers[event] do
                 fn(data)
             end
-        end
+        end,
     }
 end
 
@@ -122,8 +122,8 @@ local log = []
 emitter.on("data", function(x) log[] = x * 2 end)
 emitter.on("data", function(x) log[] = x + 10 end)
 emitter.emit("data", 5)
-print(log[0])  -- 10  (5*2)
-print(log[1])  -- 15  (5+10)
+print(log[0]) -- 10  (5*2)
+print(log[1]) -- 15  (5+10)
 emitter.emit("data", 3)
-print(log[2])  -- 6   (3*2)
-print(log[3])  -- 13  (3+10)
+print(log[2]) -- 6   (3*2)
+print(log[3]) -- 13  (3+10)

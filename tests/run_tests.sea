@@ -112,7 +112,9 @@ for _, sea_file in files do
             -- a crash or a hang: the tail of the output; a mismatch: the diff
             local lines = string.split(detail, "\n")
             local from = 0
-            if r.code ~= nil and (r.timed_out or r.code ~= 0) and len(lines) > 15 then from = len(lines) - 15 end
+            if r.code ~= nil and (r.timed_out or r.code ~= 0) and len(lines) > 15 then
+                from = len(lines) - 15
+            end
             for i = from, len(lines) - 1 do print("      " .. lines[i]) end
         end
         failed[] = name
@@ -123,6 +125,9 @@ print("")
 if len(failed) == 0 then
     print("Resultados: " .. pass .. "/" .. total .. " passaram")
 else
-    print("Resultados: " .. pass .. "/" .. total .. " passaram (" .. len(failed) .. " falha(s): " .. string.join(failed, ", ") .. ")")
+    print("Resultados: " .. pass .. "/" .. total .. " passaram (" .. len(failed) .. " falha(s): " .. string.join(
+        failed,
+        ", "
+    ) .. ")")
     os.exit(1)
 end

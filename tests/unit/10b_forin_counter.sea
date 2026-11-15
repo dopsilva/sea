@@ -18,7 +18,7 @@ print(n)
 -- 3
 
 -- Caso 2: tabela {string keys} com dois locais antes do loop
-local t = {x=1, y=2}
+local t = {x = 1, y = 2}
 local count = 0
 local dummy = 0
 for k, v in t do

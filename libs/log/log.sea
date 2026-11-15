@@ -68,8 +68,9 @@ end
 local function text_value(v)
     if type(v) == "error" then v = v.message end
     if type(v) ~= "string" then v = tostring(v) end
-    if v == "" or string.contains(v, " ") or string.contains(v, "\"") or string.contains(v, "=") or
-        string.contains(v, "\n") or string.contains(v, "\t") then
+    if v == "" or string.contains(v, " ") or string.contains(v, "\"")
+            or string.contains(v, "=")
+            or string.contains(v, "\n") or string.contains(v, "\t") then
         return json.encode(v)
     end
     return v
@@ -99,7 +100,9 @@ function Logger.log(self, level, msg, fields)
     if st.format == "json" then
         -- the time, level and message first, then the fields in key order
         local parts = []
-        if st.time then parts[] = `"time":${json.encode(time.now():format("2006-01-02T15:04:05.000Z07:00"))}` end
+        if st.time then
+            parts[] = `"time":${json.encode(time.now():format("2006-01-02T15:04:05.000Z07:00"))}`
+        end
         parts[] = `"level":"${JSON_NAMES[n]}"`
         parts[] = `"msg":${json.encode(tostring(msg))}`
         for _, fs in [self.fields, fields] do
@@ -138,7 +141,9 @@ end
 function Logger.set_level(self, level) self.state.level = level_of(level) end
 
 function Logger.set_format(self, format)
-    if format ~= "text" and format ~= "json" then panic(`log: unknown format '${format}' (use text or json)`) end
+    if format ~= "text" and format ~= "json" then
+        panic(`log: unknown format '${format}' (use text or json)`)
+    end
     self.state.format = format
 end
 

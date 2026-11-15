@@ -58,13 +58,38 @@ local cli = flags.new("sea test", {
         "each in its own process, and prints a summary.",
 })
 local verbose_flag = cli:bool("v", false, "show every test")
-local run_flag = cli:string("run", "", "only the tests whose full name contains TEXT", {arg = "text"})
-local bench_flag = cli:string("bench", "", "also run the benchmarks whose name contains TEXT (\".\" for all)", {arg = "text"})
+local run_flag = cli:string(
+    "run",
+    "",
+    "only the tests whose full name contains TEXT",
+    {arg = "text"}
+)
+local bench_flag = cli:string(
+    "bench",
+    "",
+    "also run the benchmarks whose name contains TEXT (\".\" for all)",
+    {arg = "text"}
+)
 local benchtime_flag = cli:number("benchtime", 1, "seconds per benchmark", {arg = "s"})
-local jobs_flag = cli:int("j", 0, "files run at the same time (default: the number of CPUs)", {arg = "n"})
-local timeout_flag = cli:number("timeout", 600, "seconds a file may take before it is killed", {arg = "s"})
+local jobs_flag = cli:int(
+    "j",
+    0,
+    "files run at the same time (default: the number of CPUs)",
+    {arg = "n"}
+)
+local timeout_flag = cli:number(
+    "timeout",
+    600,
+    "seconds a file may take before it is killed",
+    {arg = "s"}
+)
 local cover_flag = cli:bool("cover", false, "report the lines of the code under test that ran")
-local coverprofile_flag = cli:string("coverprofile", "", "also write the coverage as an lcov file (implies -cover)", {arg = "file"})
+local coverprofile_flag = cli:string(
+    "coverprofile",
+    "",
+    "also write the coverage as an lcov file (implies -cover)",
+    {arg = "file"}
+)
 local paths = cli:parse()
 
 local function positive(f)
@@ -91,7 +116,9 @@ for _, p in paths do
         for _, f in fs.walk(p, {files = true}) do
             local hidden = false
             for _, part in path.parts(path.relative(p, f)) do
-                if string.starts_with(part, ".") and part ~= "." and part ~= ".." then hidden = true end
+                if string.starts_with(part, ".") and part ~= "." and part ~= ".." then
+                    hidden = true
+                end
             end
             if not hidden and string.ends_with(f, "_test.sea") then files[] = path.normalize(f) end
         end
@@ -115,7 +142,8 @@ end
 local self = os.executable()
 local tmp = fs.tempdir("seatest-")
 if is_error(self) or is_error(tmp) then
-    io.write_err("sea test: cannot set up: " .. tostring(is_error(self) and self.message or tmp.message) .. "\n")
+    io.write_err("sea test: cannot set up: " .. tostring(is_error(self) and self.message
+        or tmp.message) .. "\n")
     os.exit(2)
 end
 
@@ -194,7 +222,9 @@ local function report(res)
         if res.failed > 0 then parts[] = tostring(res.failed) .. " failed" end
         if res.skipped > 0 then parts[] = tostring(res.skipped) .. " skipped" end
         if res.todo > 0 then parts[] = tostring(res.todo) .. " todo" end
-        if res.benches > 0 then parts[] = tostring(res.benches) .. (res.benches == 1 and " benchmark" or " benchmarks") end
+        if res.benches > 0 then
+            parts[] = tostring(res.benches) .. (res.benches == 1 and " benchmark" or " benchmarks")
+        end
         counts = string.join(parts, ", ")
         total.passed = total.passed + res.passed
         total.failed = total.failed + res.failed
@@ -260,7 +290,12 @@ if total.todo > 0 then parts[] = tostring(total.todo) .. " todo" end
 local nfiles = len(files) == 1 and "1 file" or (tostring(len(files)) .. " files")
 if failed_files > 0 then nfiles = nfiles .. ", " .. tostring(failed_files) .. " failed" end
 print("")
-print(string.format("%s; %s (%.2f s)", nfiles, string.join(parts, ", "), time.since(t_start) / time.Second))
+print(string.format(
+    "%s; %s (%.2f s)",
+    nfiles,
+    string.join(parts, ", "),
+    time.since(t_start) / time.Second
+))
 
 if cover then
     local cwd = path.abs(".")
@@ -313,17 +348,29 @@ if cover then
         all_ran = all_ran + ran
         local ranges = []
         for k, r in missed do
-            if k < 8 then ranges[] = r[0] == r[1] and tostring(r[0]) or (tostring(r[0]) .. "-" .. tostring(r[1])) end
+            if k < 8 then
+                ranges[] = r[0] == r[1] and tostring(r[0])
+                    or (tostring(r[0]) .. "-" .. tostring(r[1]))
+            end
         end
         if len(missed) > 8 then ranges[] = "..." end
         local pct = len(nums) > 0 and 100 * ran / len(nums) or 100
         local miss = len(ranges) > 0 and ("  not run: " .. string.join(ranges, ", ")) or ""
-        print(string.format("  %-" .. tostring(width) .. "s  %5.1f%%  %d/%d%s", show(f), pct, ran, len(nums), miss))
+        print(string.format(
+            "  %-" .. tostring(width) .. "s  %5.1f%%  %d/%d%s",
+            show(f),
+            pct,
+            ran,
+            len(nums),
+            miss
+        ))
     end
     if len(names) == 0 then
         print("  (no code outside the test files ran)")
     else
-        print(string.format("  %-" .. tostring(width) .. "s  %5.1f%%  %d/%d", "total", all_n > 0 and 100 * all_ran / all_n or 100, all_ran,
+        print(string.format("  %-" .. tostring(width) .. "s  %5.1f%%  %d/%d", "total", all_n > 0
+            and 100 * all_ran / all_n
+            or 100, all_ran,
             all_n))
     end
     if coverprofile ~= nil then

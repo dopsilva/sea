@@ -71,8 +71,8 @@ wg2.wait(wg2)
 local d1 = <-doubled
 local d2 = <-doubled
 local d3 = <-doubled
-assert(d1 == 4,  "first doubled value")
-assert(d2 == 8,  "second doubled value")
+assert(d1 == 4, "first doubled value")
+assert(d2 == 8, "second doubled value")
 assert(d3 == 12, "third doubled value")
 
 print("PASS: goroutines")

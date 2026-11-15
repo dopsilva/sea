@@ -10,11 +10,11 @@ assert(type(e1) == "error", "type() of error is 'error'")
 assert(e1.message == "something went wrong", "error.message field")
 
 -- 2. is_error() returns false for non-errors
-assert(is_error(42)    == false, "number is not an error")
-assert(is_error("hi")  == false, "string is not an error")
-assert(is_error(nil)   == false, "nil is not an error")
-assert(is_error(true)  == false, "bool is not an error")
-assert(is_error({})    == false, "table is not an error")
+assert(is_error(42) == false, "number is not an error")
+assert(is_error("hi") == false, "string is not an error")
+assert(is_error(nil) == false, "nil is not an error")
+assert(is_error(true) == false, "bool is not an error")
+assert(is_error({}) == false, "table is not an error")
 
 -- 3. error with non-string message
 local e2 = error(99)

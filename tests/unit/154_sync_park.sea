@@ -12,14 +12,14 @@ local n = 0
 local N = 32
 wg:add(N)
 for i = 1, N do
-    go function()
+    go (function()
         mu:acquire()
         local before = n
-        time.sleep(2 * time.millisecond)   -- parks while holding the lock
-        n = before + 1                     -- no lost update: the lock is exclusive
+        time.sleep(2 * time.millisecond) -- parks while holding the lock
+        n = before + 1                   -- no lost update: the lock is exclusive
         mu:release()
         wg:done()
-    end()
+    end)()
 end
 wg:wait()
 print("n =", n)
@@ -39,13 +39,13 @@ seen:add(8)
 local woke = 0
 local wmu = sync.mutex()
 for i = 1, 8 do
-    go function()
+    go (function()
         gate:wait()
         wmu:acquire()
         woke += 1
         wmu:release()
         seen:done()
-    end()
+    end)()
 end
 time.sleep(5 * time.millisecond)
 gate:done()

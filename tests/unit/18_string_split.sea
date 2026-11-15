@@ -23,30 +23,30 @@ end
 
 -- split empty string: one empty piece (k separators give k + 1 pieces)
 local empty = string.split("", ",")
-print(len(empty), empty[0] == "")   -- 1  true
+print(len(empty), empty[0] == "") -- 1  true
 
 -- empty pieces at both ends and in the middle
 local edges = string.split(",a,,b,", ",")
-print(len(edges), string.join(edges, "|"))   -- 5  |a||b|
-print(len(string.split("x\n", "\n")))   -- 2
+print(len(edges), string.join(edges, "|")) -- 5  |a||b|
+print(len(string.split("x\n", "\n")))      -- 2
 
 -- split with no separator found (returns full string)
 local one = string.split("hello", ",")
-print(len(one))     -- 1
-print(one[0])       -- hello
+print(len(one)) -- 1
+print(one[0])   -- hello
 
 -- string.sub edge cases
 local s = "hello"
-print(string.sub(s, -3))      -- llo
-print(string.sub(s, -3, -1))  -- llo
-print(string.sub(s, 1, -1))   -- hello
-print(string.sub(s, 2, -2))   -- ell
+print(string.sub(s, -3))     -- llo
+print(string.sub(s, -3, -1)) -- llo
+print(string.sub(s, 1, -1))  -- hello
+print(string.sub(s, 2, -2))  -- ell
 
 -- string.find with init
 local t = "abcabc"
-print(string.find(t, "bc"))      -- 2
-print(string.find(t, "bc", 3))   -- 5
-print(string.find(t, "xyz"))     -- nil
+print(string.find(t, "bc"))    -- 2
+print(string.find(t, "bc", 3)) -- 5
+print(string.find(t, "xyz"))   -- nil
 
 -- string.join takes a positional table too ({"a", "b"}: keys 0, 1, ...)
 print(string.join({"x", "y", 3}, "-"), string.join({}, ","), string.join({"only"}))
@@ -54,5 +54,9 @@ print(string.join({"x", "y", 3}, "-"), string.join({}, ","), string.join({"only"
 -- split with a limit, splitlines, format_number
 print(string.split("a=b=c", "=", 2), string.split("k: v: w", ": ", 2), string.split("x", ",", 3))
 print(string.splitlines("a\nb\r\n\nc\n"), string.splitlines(""), ("one\ntwo"):splitlines())
-print(string.format_number(1234567), string.format_number(-1234.567), string.format_number(1234.5, 1, ".", ","))
+print(
+    string.format_number(1234567),
+    string.format_number(-1234.567),
+    string.format_number(1234.5, 1, ".", ",")
+)
 print(string.format_number(999), string.format_number(1e9, 0), string.format_number(0.5))

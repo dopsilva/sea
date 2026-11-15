@@ -5,7 +5,7 @@
 local SEA = "./bin/sea"
 local stream = require("sea/stream")
 
-local dir = fs.realpath(fs.tempdir("seatools-"))   -- resolved: on macOS /var is a link to /private/var
+local dir = fs.realpath(fs.tempdir("seatools-")) -- resolved: on macOS /var is a link to /private/var
 local function run(args, stdin)
     local cmd = []
     cmd[] = SEA
@@ -15,7 +15,9 @@ local function run(args, stdin)
     if stdin ~= nil then opts.stdin = stdin end
     local r = process.run(cmd, opts)
     if is_error(r) then return r.message end
-    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= "" and (" | " .. string.trim(r.stderr)) or "")
+    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= ""
+        and (" | " .. string.trim(r.stderr))
+        or "")
 end
 -- the binary path relative to dir: absolute
 SEA = fs.realpath(SEA)
@@ -93,11 +95,23 @@ local function get(target)
 end
 local function status(resp) return string.sub(resp, 10, 12) end
 local page = get("/")
-print(status(page), string.contains(page, "href=\"/m/mylib.sea\""), string.contains(page, "a small library"))
+print(
+    status(page),
+    string.contains(page, "href=\"/m/mylib.sea\""),
+    string.contains(page, "a small library")
+)
 page = get("/m/mylib.sea")
-print(status(page), string.contains(page, "<code>m.add(a, b) → the sum</code>"), string.contains(page, "href=\"/src/mylib.sea#L"))
+print(
+    status(page),
+    string.contains(page, "<code>m.add(a, b) → the sum</code>"),
+    string.contains(page, "href=\"/src/mylib.sea#L")
+)
 page = get("/src/mylib.sea")
-print(status(page), string.contains(page, "id=\"L12\""), string.contains(page, "<span class=\"k\">function</span>"))
+print(
+    status(page),
+    string.contains(page, "id=\"L12\""),
+    string.contains(page, "<span class=\"k\">function</span>")
+)
 page = get("/search?q=sum")
 print(status(page), string.contains(page, "mylib.add"))
 print(status(get("/builtin/fs")), status(get("/src/../../etc/passwd")), status(get("/nope")))
@@ -185,16 +199,25 @@ print(util.greet(os.args[1] or "world"), len(os.args) - 1, plugin.ok)
 if os.args[1] == "boom" then panic("kaboom") end
 ]==]
 )
-fs.write(dir .. "/app/lib/util.sea", "local M = {}\nfunction M.greet(n) return \"hello, \" .. n end\nreturn M\n")
+fs.write(
+    dir .. "/app/lib/util.sea",
+    "local M = {}\nfunction M.greet(n) return \"hello, \" .. n end\nreturn M\n"
+)
 fs.write(dir .. "/app/lib/plugin.sea", "return {ok = true}\n")
-print(re.gsub("[0-9.]+ MB", run({"build", "-v", "-o", "hello", "-i", "app/lib/plugin.sea", "app/main.sea"}), "N MB"))
+print(re.gsub(
+    "[0-9.]+ MB",
+    run({"build", "-v", "-o", "hello", "-i", "app/lib/plugin.sea", "app/main.sea"}),
+    "N MB"
+))
 fs.rename(dir .. "/app", dir .. "/moved")
 local function run_exe(args)
     local cmd = []
     cmd[] = dir .. "/hello"
     for i = 0, len(args) - 1 do cmd[] = args[i] end
     local r = process.run(cmd, {cwd = "/"})
-    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= "" and (" | " .. string.trim(r.stderr)) or "")
+    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= ""
+        and (" | " .. string.trim(r.stderr))
+        or "")
 end
 print(run_exe({}))
 print(run_exe({"there", "--jit", "x"}))
@@ -228,7 +251,11 @@ t.it("sign", function() t.eq(m.sign(5), 1) end)
 )
 print(untimed(run({"test", "-cover", "-coverprofile", "c.lcov", "cv"})))
 local lcov = fs.read(dir .. "/c.lcov")
-print(string.contains(lcov, "/cv/mathx.sea\nDA:1,1\n"), string.contains(lcov, "DA:7,0"), string.contains(lcov, "LH:6"))
+print(
+    string.contains(lcov, "/cv/mathx.sea\nDA:1,1\n"),
+    string.contains(lcov, "DA:7,0"),
+    string.contains(lcov, "LH:6")
+)
 
 print("-- sea prof")
 fs.write(dir .. "/hot.sea", [==[
@@ -249,10 +276,16 @@ wg:wait()
 ]==]
 )
 local p = process.run({SEA, "prof", "-hz", "1000", "hot.sea"}, {cwd = dir})
-print(p.code, string.trim(p.stdout), string.contains(p.stderr, "samples"), re.test("%\\s+[0-9.]+\\s+spin\\s+hot.sea:1", p.stderr),
+print(p.code, string.trim(p.stdout), string.contains(p.stderr, "samples"), re.test(
+    "%\\s+[0-9.]+\\s+spin\\s+hot.sea:1",
+    p.stderr
+),
     re.test("hot.sea:[23]\\s+\\(spin\\)", p.stderr))
 p = process.run({SEA, "prof", "-o", "out.folded", "hot.sea"}, {cwd = dir})
-print(p.code, string.contains(fs.read(dir .. "/out.folded"), "(anonymous) (hot.sea:9);spin (hot.sea:1) "))
+print(
+    p.code,
+    string.contains(fs.read(dir .. "/out.folded"), "(anonymous) (hot.sea:9);spin (hot.sea:1) ")
+)
 p = process.run({SEA, "prof"}, {cwd = dir})
 print(p.code, string.sub(p.stderr, 1, 15))
 
@@ -266,10 +299,16 @@ local function run_in(sub, args)
     for i = 0, len(args) - 1 do cmd[] = args[i] end
     local r = process.run(cmd, {cwd = dir .. "/" .. sub})
     if is_error(r) then return r.message end
-    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= "" and (" | " .. string.trim(r.stderr)) or "")
+    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= ""
+        and (" | " .. string.trim(r.stderr))
+        or "")
 end
 print(untimed(run_in("proj", {"test"})))
-print(run_in("proj", {"check"}), run_in("proj", {"fmt", "-l", "."}), run_in("proj", {"main.sea", "you"}))
+print(
+    run_in("proj", {"check"}),
+    run_in("proj", {"fmt", "-l", "."}),
+    run_in("proj", {"main.sea", "you"})
+)
 print(untimed(run_in("mylib", {"test"})))
 
 print("-- sea get")
@@ -281,13 +320,25 @@ local repos = dir .. "/repos"
 fs.mkdir(repos .. "/pad", {parents = true})
 fs.mkdir(repos .. "/strutil", {parents = true})
 local commit = "git -c user.email=t@t -c user.name=t commit -qm"
-fs.write(repos .. "/pad/init.sea", "local M = {}\nfunction M.left(s, n) return string.rep(\" \", n - len(s)) .. s end\nreturn M\n")
+fs.write(
+    repos .. "/pad/init.sea",
+    "local M = {}\nfunction M.left(s, n) return string.rep(\" \", n - len(s)) .. s end\nreturn M\n"
+)
 sh(repos .. "/pad", "git init -q && git add -A && " .. commit .. " v1 && git tag v1.0.0")
-fs.write(repos .. "/strutil/strutil.sea", "local pad = require(\"pad\")\nlocal M = {}\nM.VERSION = \"1\"\nfunction M.shout(s) return pad.left(string.upper(s), 6) end\nreturn M\n")
-fs.write(repos .. "/strutil/sea.toml", "[package]\nname = \"strutil\"\n\n[dependencies]\npad = { git = \"" .. repos .. "/pad\", tag = \"v1.0.0\" }\n")
+fs.write(
+    repos .. "/strutil/strutil.sea",
+    "local pad = require(\"pad\")\nlocal M = {}\nM.VERSION = \"1\"\nfunction M.shout(s) return pad.left(string.upper(s), 6) end\nreturn M\n"
+)
+fs.write(
+    repos .. "/strutil/sea.toml",
+    "[package]\nname = \"strutil\"\n\n[dependencies]\npad = { git = \"" .. repos .. "/pad\", tag = \"v1.0.0\" }\n"
+)
 sh(repos .. "/strutil", "git init -q && git add -A && " .. commit .. " v1 && git tag v1.0.0 && sed -i.bak 's/VERSION = \"1\"/VERSION = \"2\"/' strutil.sea && rm -f strutil.sea.bak && " .. commit ..
     " v2 -a && git tag v2.0.0")
-fs.write(dir .. "/proj/main.sea", "local strutil = require(\"strutil\")\nprint(\"[\" .. strutil.shout(\"hi\") .. \"]\", strutil.VERSION)\n")
+fs.write(
+    dir .. "/proj/main.sea",
+    "local strutil = require(\"strutil\")\nprint(\"[\" .. strutil.shout(\"hi\") .. \"]\", strutil.VERSION)\n"
+)
 local function hide(s) return string.replace(re.gsub("[0-9a-f]{12}", s, "C"), repos, "REPOS") end
 print(hide(run_in("proj", {"get", repos .. "/strutil@v1.0.0"})))
 print(run_in("proj", {"main.sea"}), run_in("proj", {"check", "main.sea"}))
@@ -295,14 +346,20 @@ print(hide(string.replace(fs.read(dir .. "/proj/sea.toml"), "\n", " | ")))
 print(len(string.split(string.trim(fs.read(dir .. "/proj/sea.lock")), "\n")))
 fs.remove(dir .. "/proj/sea_modules", {recursive = true})
 print(hide(run_in("proj", {"get"})))
-fs.write(dir .. "/proj/sea.toml", string.replace(fs.read(dir .. "/proj/sea.toml"), "v1.0.0", "v2.0.0"))
+fs.write(
+    dir .. "/proj/sea.toml",
+    string.replace(fs.read(dir .. "/proj/sea.toml"), "v1.0.0", "v2.0.0")
+)
 print(hide(run_in("proj", {"get"})), run_in("proj", {"main.sea"}))
 print(hide(run_in("proj", {"get", "-l"})))
 print(re.gsub("[0-9.]+ MB", run_in("proj", {"build", "-o", "app", "main.sea"}), "N MB"))
 fs.mkdir(dir .. "/locallib")
 fs.write(dir .. "/locallib/init.sea", "return {x = 42}\n")
 print(hide(string.replace(run_in("proj", {"get", "-path", "../locallib"}), dir, "DIR")))
-print(run_in("proj", {"get", "-rm", "strutil"}), string.join(fs.list(dir .. "/proj/sea_modules"), ","))
+print(
+    run_in("proj", {"get", "-rm", "strutil"}),
+    string.join(fs.list(dir .. "/proj/sea_modules"), ",")
+)
 print(run_in("proj", {"get", "-rm", "nothing"}))
 print(run({"get"}))
 local app = process.run({dir .. "/proj/app"}, {cwd = "/"})
@@ -310,12 +367,17 @@ print(app.code, string.trim(app.stdout))
 
 print("-- sea lsp")
 fs.mkdir(dir .. "/ls")
-fs.write(dir .. "/ls/util.sea", "local M = {}\n\n-- util.add(a, b) → the sum\nfunction M.add(a, b)\n    return a + b\nend\n\nM.VERSION = \"1.0\"\n\nreturn M\n")
+fs.write(
+    dir .. "/ls/util.sea",
+    "local M = {}\n\n-- util.add(a, b) → the sum\nfunction M.add(a, b)\n    return a + b\nend\n\nM.VERSION = \"1.0\"\n\nreturn M\n"
+)
 local app_src = "local util = require(\"./util\")\n\n-- greet someone\nlocal function greet(name)\n    return \"hi \" .. name\nend\n\nprint(util.add(1, 2), greet(\"é\"), string.upper(\"x\"))\npritn(1)\n"
 fs.write(dir .. "/ls/app.sea", app_src)
 local lsp = process.spawn({SEA, "lsp"}, {cwd = dir .. "/ls"})
 local inbuf = ""
-local function lsend(body) lsp:write("Content-Length: " .. tostring(len(body)) .. "\r\n\r\n" .. body) end
+local function lsend(body)
+    lsp:write("Content-Length: " .. tostring(len(body)) .. "\r\n\r\n" .. body)
+end
 local function lrecv()
     while true do
         local h = string.find(inbuf, "\r\n\r\n")
@@ -332,21 +394,38 @@ local function lrecv()
         inbuf = inbuf .. chunk
     end
 end
-local function jq(str) return "\"" .. string.replace(string.replace(string.replace(str, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n") .. "\"" end
+local function jq(str)
+    return "\"" .. string.replace(
+        string.replace(string.replace(str, "\\", "\\\\"), "\"", "\\\""),
+        "\n",
+        "\\n"
+    ) .. "\""
+end
 local uri = "file://" .. dir .. "/ls/app.sea"
 lsend("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"rootUri\":" .. jq("file://" .. dir .. "/ls") .. "}}")
 local r = lrecv()
-print(string.contains(r, "\"hoverProvider\":true"), string.contains(r, "\"triggerCharacters\":[\".\",\":\"]"))
+print(
+    string.contains(r, "\"hoverProvider\":true"),
+    string.contains(r, "\"triggerCharacters\":[\".\",\":\"]")
+)
 lsend("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":" .. jq(uri) .. ",\"version\":1,\"text\":" .. jq(app_src) .. "}}}")
 r = lrecv()
-print(string.contains(r, "publishDiagnostics"), string.contains(r, "did you mean 'print'?"), string.contains(r, "\"line\":8"))
+print(
+    string.contains(r, "publishDiagnostics"),
+    string.contains(r, "did you mean 'print'?"),
+    string.contains(r, "\"line\":8")
+)
 local function at(id, method, line, ch)
     lsend("{\"jsonrpc\":\"2.0\",\"id\":" .. tostring(id) .. ",\"method\":\"textDocument/" .. method .. "\",\"params\":{\"textDocument\":{\"uri\":" .. jq(uri) ..
         "},\"position\":{\"line\":" .. tostring(line) .. ",\"character\":" .. tostring(ch) .. "}}}")
     return lrecv()
 end
 r = at(2, "hover", 7, 12)
-print(string.contains(r, "function util.add(a, b)"), string.contains(r, "the sum"), string.contains(r, "util.sea:4"))
+print(
+    string.contains(r, "function util.add(a, b)"),
+    string.contains(r, "the sum"),
+    string.contains(r, "util.sea:4")
+)
 r = at(3, "definition", 7, 12)
 print(string.contains(r, "/ls/util.sea"), string.contains(r, "\"line\":3"))
 r = at(4, "hover", 7, 24)
@@ -376,10 +455,19 @@ fs.mkdir(prefix .. "/bin", {parents = true})
 fs.mkdir(prefix .. "/lib/sea/greet", {parents = true})
 fs.mkdir(prefix .. "/lib/sea/util", {parents = true})
 fs.copy(SEA, prefix .. "/bin/sea")
-fs.write(prefix .. "/lib/sea/greet/greet.sea", "local util = require(\"../util/util\")\nreturn {hi = function(n) return util.up(\"hi \" .. n) end}\n")
-fs.write(prefix .. "/lib/sea/util/util.sea", "return {up = function(s) return string.upper(s) end}\n")
+fs.write(
+    prefix .. "/lib/sea/greet/greet.sea",
+    "local util = require(\"../util/util\")\nreturn {hi = function(n) return util.up(\"hi \" .. n) end}\n"
+)
+fs.write(
+    prefix .. "/lib/sea/util/util.sea",
+    "return {up = function(s) return string.upper(s) end}\n"
+)
 fs.mkdir(dir .. "/elsewhere")
-fs.write(dir .. "/elsewhere/app.sea", "local greet = require(\"greet\")\nlocal u = require(\"util/util\")\nprint(greet.hi(\"sea\"), u.up(\"x\"))\n")
+fs.write(
+    dir .. "/elsewhere/app.sea",
+    "local greet = require(\"greet\")\nlocal u = require(\"util/util\")\nprint(greet.hi(\"sea\"), u.up(\"x\"))\n"
+)
 local inst = process.run({prefix .. "/bin/sea", "app.sea"}, {cwd = dir .. "/elsewhere"})
 print(inst.stdout, inst.stderr)
 inst = process.run({prefix .. "/bin/sea", "check", "app.sea"}, {cwd = dir .. "/elsewhere"})

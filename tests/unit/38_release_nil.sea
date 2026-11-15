@@ -11,9 +11,9 @@ print("case1 ok")
 -- Case 2: array retains element; x = nil drops our local ref only (RC: 2→1)
 local arr = []
 local x = tostring(99)
-arr[] = x      -- RC 1→2
-x = nil        -- OP_RELEASE → RC 2→1; arr still holds it
-print(arr[0])  -- must print "99"
+arr[] = x     -- RC 1→2
+x = nil       -- OP_RELEASE → RC 2→1; arr still holds it
+print(arr[0]) -- must print "99"
 
 -- Case 3: x = nil on a non-owned local (number) is a plain assign, no crash
 local n = 123

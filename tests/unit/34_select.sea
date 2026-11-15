@@ -6,10 +6,10 @@ local ch = chan(1)
 ch <- 42
 local got = 0
 select
-  case x = <-ch then
-    got = x
-  case default then
-    got = -1
+    case x = <-ch then
+        got = x
+    case default then
+        got = -1
 end
 assert(got == 42, "test1: expected 42, got " .. got)
 print("test1 ok")
@@ -18,10 +18,10 @@ print("test1 ok")
 local ch2 = chan(1)
 local got2 = 0
 select
-  case x = <-ch2 then
-    got2 = x
-  case default then
-    got2 = -1
+    case x = <-ch2 then
+        got2 = x
+    case default then
+        got2 = -1
 end
 assert(got2 == -1, "test2: expected -1, got " .. got2)
 print("test2 ok")
@@ -31,10 +31,10 @@ local ch3 = chan(1)
 ch3 <- 99
 local sent = false
 select
-  case ch3 <- 100 then
-    sent = true
-  case default then
-    sent = false
+    case ch3 <- 100 then
+        sent = true
+    case default then
+        sent = false
 end
 assert(sent == false, "test3: channel should be full")
 print("test3 ok")
@@ -43,10 +43,10 @@ print("test3 ok")
 local ch4 = chan(1)
 local sent4 = false
 select
-  case ch4 <- 77 then
-    sent4 = true
-  case default then
-    sent4 = false
+    case ch4 <- 77 then
+        sent4 = true
+    case default then
+        sent4 = false
 end
 assert(sent4 == true, "test4: send should succeed")
 local v4 = <-ch4
@@ -59,14 +59,14 @@ local quit = chan(1)
 local result = 0
 
 go (function()
-  data <- 55
+    data <- 55
 end)()
 
 select
-  case x = <-data then
-    result = x
-  case _ = <-quit then
-    result = -1
+    case x = <-data then
+        result = x
+    case _ = <-quit then
+        result = -1
 end
 assert(result == 55, "test5: expected 55, got " .. result)
 print("test5 ok")
@@ -77,21 +77,21 @@ local ch6b = chan(1)
 local r6 = 0
 
 go (function()
-  ch6b <- 88
+    ch6b <- 88
 end)()
 
 select
-  case x = <-ch6a then
-    r6 = x
-  case y = <-ch6b then
-    r6 = y
-  case default then
-    r6 = -1
+    case x = <-ch6a then
+        r6 = x
+    case y = <-ch6b then
+        r6 = y
+    case default then
+        r6 = -1
 end
 
 -- Either the goroutine ran before select (r6=88) or default fires (r6=-1)
 if r6 == -1 then
-  r6 = <-ch6b
+    r6 = <-ch6b
 end
 assert(r6 == 88, "test6: expected 88, got " .. r6)
 print("test6 ok")

@@ -26,8 +26,13 @@ M.TIMEOUT = 20000
 
 -- smtp.parse_url(url) → {secure, plain, host, port, user, pass} | error
 function M.parse_url(url)
-    local m = re.match("^(smtps?)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]+)(?::(\\d+))?/?(\\?.*)?$", url or "")
-    if m == nil then return error("smtp: the URL is smtp[s]://[user:pass@]host[:port][?tls=none]") end
+    local m = re.match(
+        "^(smtps?)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]+)(?::(\\d+))?/?(\\?.*)?$",
+        url or ""
+    )
+    if m == nil then
+        return error("smtp: the URL is smtp[s]://[user:pass@]host[:port][?tls=none]")
+    end
     local g = m.groups
     local out = {}
     out.secure = g[1] == "smtps"
@@ -120,7 +125,8 @@ function M.message(mail)
             local name = encode_header(a.filename or "image")
             parts[] = `Content-Type: ${a.type or "application/octet-stream"}; name="${name}"\r\n` ..
                 `Content-Disposition: inline; filename="${name}"\r\n` .. `Content-ID: <${a.cid}>\r\n` ..
-                "Content-Transfer-Encoding: base64\r\n\r\n" .. wrap76(encoding.base64_encode(a.content or ""))
+                    "Content-Transfer-Encoding: base64\r\n\r\n" .. wrap76(encoding.base64_encode(a.content
+                        or ""))
         end
         body = multipart("related", parts)
     elseif len(inline) > 0 then
@@ -133,7 +139,8 @@ function M.message(mail)
             local name = encode_header(a.filename or "file")
             parts[] = `Content-Type: ${a.type or "application/octet-stream"}; name="${name}"\r\n` ..
                 `Content-Disposition: attachment; filename="${name}"\r\n` ..
-                "Content-Transfer-Encoding: base64\r\n\r\n" .. wrap76(encoding.base64_encode(a.content or ""))
+                    "Content-Transfer-Encoding: base64\r\n\r\n" .. wrap76(encoding.base64_encode(a.content
+                        or ""))
         end
         body = multipart("mixed", parts)
     end
@@ -153,7 +160,11 @@ end
 function Client.line(c)
     while not string.contains(c.buf, "\n") do
         local chunk = nil
-        if c.tls ~= nil then chunk = ssl.recv(c.tls, 65536, c.timeout) else chunk = net.read(c.fd, 65536, c.timeout) end
+        if c.tls ~= nil then
+            chunk = ssl.recv(c.tls, 65536, c.timeout)
+        else
+            chunk = net.read(c.fd, 65536, c.timeout)
+        end
         if is_error(chunk) then return chunk end
         if chunk == "" then return error("smtp: the server closed the connection") end
         c.buf ..= chunk

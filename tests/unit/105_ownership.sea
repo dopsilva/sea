@@ -8,13 +8,13 @@
 local parts = string.split("alpha-" .. string.rep("z", 90) .. ",beta", ",")
 local e = parts[0]
 parts = nil
-print(string.len(e))                       -- 96
+print(string.len(e)) -- 96
 
 -- 2. swap through borrowed temporaries
 local a = "first" .. string.rep("1", 70)
 local b = "second" .. string.rep("2", 70)
 a, b = b, a
-print(string.sub(a, 1, 6), string.sub(b, 1, 5))   -- second  first
+print(string.sub(a, 1, 6), string.sub(b, 1, 5)) -- second  first
 
 -- 3. x = x.next: the new value is taken before the old one is dropped
 local node = nil
@@ -24,13 +24,13 @@ while node ~= nil do
     sum = sum + node.val
     node = node.next
 end
-print(sum)                                 -- 15
+print(sum) -- 15
 
 -- 4. `x = a or f(y)` must not overwrite the next local
 local x = 1
 local y = 2
 x = false or tostring(5)
-print(x, y)                                -- 5  2
+print(x, y) -- 5  2
 
 -- 5. the container of a for-in loop is held while the body reassigns it
 local items = []
@@ -41,7 +41,7 @@ for _, v in items do
     items = nil
     seen = seen + string.len(v)
 end
-print(seen)                                -- 142
+print(seen) -- 142
 
 -- 6. `?` releases what the function holds and returns the error
 local function step(n)
@@ -53,12 +53,12 @@ local function run(n)
     local v = step(n)?
     return v + string.len(keep.tag)
 end
-print(run(1), is_error(run(3)), run(3).message)   -- 84  true  too big: 3
+print(run(1), is_error(run(3)), run(3).message) -- 84  true  too big: 3
 
 -- 7. defer arguments are owned by the defer entry
 local function deferred()
     local msg = "bye-" .. string.rep("d", 70)
-    defer print(string.len(msg))           -- 74
+    defer print(string.len(msg)) -- 74
     msg = "changed"
 end
 deferred()
@@ -69,7 +69,7 @@ for i = 1, 3 do ch <- "msg" .. i .. string.rep("-", 70) end
 close(ch)
 local total = 0
 for m in ch do total = total + string.len(m) end
-print(total)                               -- 222
+print(total) -- 222
 
 -- 9. select receiving into an existing local
 local got = "old" .. string.rep("o", 70)
@@ -77,14 +77,14 @@ local c2 = chan(1)
 c2 <- "new" .. string.rep("n", 70)
 select
     case got = <-c2 then
-        print(string.sub(got, 1, 3))      -- new
+        print(string.sub(got, 1, 3)) -- new
 end
 
 -- 10. s = s .. x appends; another holder of the old value is unaffected
 local s = string.rep("s", 80)
 local s0 = s
 for i = 1, 3 do s = s .. "+" end
-print(string.len(s), string.len(s0))       -- 83  80
+print(string.len(s), string.len(s0)) -- 83  80
 
 -- 11. a method call on a temporary object, and a local function naming itself
 local function make()
@@ -93,17 +93,17 @@ local function make()
     o.get = function(self) return self.n end
     return o
 end
-print(make():get())                        -- 3
+print(make():get()) -- 3
 local function fact(n)
     if n <= 1 then return 1 end
     return n * fact(n - 1)
 end
 local f = fact
-print(f(5))                                -- 120
+print(f(5)) -- 120
 
 -- 12. varargs are owned by the call
 local function count(...)
     local t = {...}
     return len(t)
 end
-print(count("a" .. string.rep("v", 70), "b", "c"))   -- 3
+print(count("a" .. string.rep("v", 70), "b", "c")) -- 3

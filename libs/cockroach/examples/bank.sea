@@ -14,7 +14,8 @@
 
 local crdb = require("../cockroach")
 
-local url = os.getenv("COCKROACH_URL") or "postgresql://root@localhost:26257/defaultdb?sslmode=disable"
+local url = os.getenv("COCKROACH_URL")
+    or "postgresql://root@localhost:26257/defaultdb?sslmode=disable"
 local db = crdb.open(url, {max_conns = 8})
 if is_error(db) then
     print(db.message)
@@ -37,10 +38,10 @@ local attempts = 0
 local function transfer(from, to, amount)
     return db:transaction(function(tx)
         mu:acquire()
-        attempts += 1   -- counts the reruns too
+        attempts += 1 -- counts the reruns too
         mu:release()
         local balance = tx:value("SELECT balance FROM accounts WHERE id = $1", from)?
-        if balance < amount then return 0 end   -- not enough money: nothing to do
+        if balance < amount then return 0 end -- not enough money: nothing to do
         local _ = tx:exec("UPDATE accounts SET balance = balance - $1 WHERE id = $2", amount, from)?
         local _ = tx:exec("UPDATE accounts SET balance = balance + $1 WHERE id = $2", amount, to)?
         return amount

@@ -15,7 +15,11 @@ local srv = http.listen(0, function(req)
                     conn:close(1000, "see you")
                     break
                 end
-                if conn.last_type == "binary" then conn:send_binary(m) else conn:send("echo: " .. m) end
+                if conn.last_type == "binary" then
+                    conn:send_binary(m)
+                else
+                    conn:send("echo: " .. m)
+                end
             end
         end, {protocols = {"chat", "v2"}})
     end
@@ -47,12 +51,12 @@ print(ws.connect("http://x"), ws.connect("ws://127.0.0.1:" .. srv.port .. "/nope
 -- many concurrent clients
 local ch = chan(10)
 for i = 1, 10 do
-    go function()
+    go (function()
         local cc = ws.connect(url)
         cc:send("n" .. i)
         ch <- cc:receive()
         cc:close()
-    end()
+    end)()
 end
 local got = []
 for i = 1, 10 do got[] = <-ch end

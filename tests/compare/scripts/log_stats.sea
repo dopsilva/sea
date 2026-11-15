@@ -4,7 +4,7 @@
 -- Statistics of an HTTP access log: status codes, top clients and paths, p95 latency.
 local stream = require("sea/stream")
 
-local LINE = re.compile([=[^(\S+) \S+ \S+ \[[^:]+:(\d\d):[^\]]+\] "(\S+) (\S+) [^"]*" (\d{3}) (\d+) ([\d.]+)$]=])   -- [=[ ]=]: the pattern holds "]]"
+local LINE = re.compile([=[^(\S+) \S+ \S+ \[[^:]+:(\d\d):[^\]]+\] "(\S+) (\S+) [^"]*" (\d{3}) (\d+) ([\d.]+)$]=]) -- [=[ ]=]: the pattern holds "]]"
 local statuses = [=]
 local ips = [=]
 local paths = [=]

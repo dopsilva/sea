@@ -98,7 +98,8 @@ local function distance(a, b, max)
             local cb = string.byte(b, j)
             local cost = ca == cb and 0 or 1
             local v = math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
-            if before ~= nil and i > 1 and j > 1 and ca == string.byte(b, j - 1) and string.byte(a, i - 1) == cb then
+            if before ~= nil and i > 1 and j > 1 and ca == string.byte(b, j - 1)
+                    and string.byte(a, i - 1) == cb then
                 v = math.min(v, before[j - 2] + 1)
             end
             cur[] = v
@@ -183,9 +184,15 @@ end
 -- Can the module be found from dir (as require would)?
 local function module_exists(name, dir)
     if builtins()[name] then return true end
-    if name == "sea/test" or name == "sea/check" or name == "sea/stream" or name == "sea/flags" or name == "sea/log" or name == "sea/dotenv" or name == "sea/parser" then return true end
+    if name == "sea/test" or name == "sea/check" or name == "sea/stream" or name == "sea/flags"
+            or name == "sea/log"
+            or name == "sea/dotenv"
+            or name == "sea/parser" then
+        return true
+    end
     local function try(base)
-        return fs.exists(base .. ".sea") or fs.exists(base .. "/init.sea") or fs.exists(base .. ".so")
+        return fs.exists(base .. ".sea") or fs.exists(base .. "/init.sea")
+            or fs.exists(base .. ".so")
     end
     if path.isabs(name) then return try(name) end
     if try(path.join(dir, name)) or try(name) then return true end
@@ -194,7 +201,9 @@ local function module_exists(name, dir)
         local d = path.normalize(path.abs(dir))
         while true do
             local mods = path.join(d, "sea_modules")
-            if fs.isdir(mods) and (try(path.join(mods, name)) or fs.isfile(path.join(mods, name, path.basename(name) .. ".sea"))) then
+            if fs.isdir(mods)
+                    and (try(path.join(mods, name))
+                        or fs.isfile(path.join(mods, name, path.basename(name) .. ".sea"))) then
                 return true
             end
             if d == "/" then break end
@@ -210,7 +219,9 @@ local function module_exists(name, dir)
     local lib = sea_libdir()
     if lib ~= nil and not string.starts_with(name, ".") then
         local own = path.join(lib, name, path.basename(name))
-        if try(path.join(lib, name)) or fs.isfile(own .. ".sea") or fs.isfile(own .. ".so") then return true end
+        if try(path.join(lib, name)) or fs.isfile(own .. ".sea") or fs.isfile(own .. ".so") then
+            return true
+        end
     end
     return false
 end
@@ -226,14 +237,17 @@ local function is_call_to(n, obj, field)
     local c = n.callee
     if c == nil then return false end
     if obj == nil then return c.type == "ident" and c.name == field end
-    return c.type == "field" and c.field == field and c.object.type == "ident" and c.object.name == obj
+    return c.type == "field" and c.field == field and c.object.type == "ident"
+        and c.object.name == obj
 end
 
 -- Does a statement always leave its block?
 local function terminates(s)
     local t = s.type
     if t == "return" or t == "break" or t == "continue" or t == "panic" then return true end
-    if t == "expr_stmt" and s.expr.type == "call" and is_call_to(s.expr, "os", "exit") then return true end
+    if t == "expr_stmt" and s.expr.type == "call" and is_call_to(s.expr, "os", "exit") then
+        return true
+    end
     if t == "do" then
         local n = len(s.stmts)
         return n > 0 and terminates(s.stmts[n - 1])
@@ -345,7 +359,11 @@ function M.source(src, opts)
             local pos = {}
             pos.line = i + 1
             pos.col = c.start
-            report("longstring", pos, "`[[` opens a long string, not a nested array: write [ [a, b], [c, d] ] (with a space)")
+            report(
+                "longstring",
+                pos,
+                "`[[` opens a long string, not a nested array: write [ [a, b], [c, d] ] (with a space)"
+            )
         end
     end
 
@@ -380,7 +398,8 @@ function M.source(src, opts)
     local function close_scope()
         for _, v in scope.order do
             if not v.used and not string.starts_with(v.name, "_") and v.report_unused then
-                local what = v.kind == "func" and "function" or (v.kind == "param" and "parameter" or "variable")
+                local what = v.kind == "func" and "function"
+                    or (v.kind == "param" and "parameter" or "variable")
                 local how = v.written and " is assigned but never used" or " is never used"
                 report("unused", v, what .. " '" .. v.name .. "'" .. how)
             end
@@ -394,12 +413,20 @@ function M.source(src, opts)
         local prev = scope.vars[n]
         if prev ~= nil then
             if kind == "local" or kind == "func" then
-                report("redeclared", node, "'" .. n .. "' is already declared in this block (line " .. tostring(prev.line) .. ")")
+                report(
+                    "redeclared",
+                    node,
+                    "'" .. n .. "' is already declared in this block (line " .. tostring(prev.line) .. ")"
+                )
             end
         elseif kind == "local" or kind == "func" then
             local outer = lookup(n)
             if outer ~= nil and (outer.kind == "local" or outer.kind == "func") then
-                report("shadow", node, "'" .. n .. "' hides the local declared at line " .. tostring(outer.line))
+                report(
+                    "shadow",
+                    node,
+                    "'" .. n .. "' hides the local declared at line " .. tostring(outer.line)
+                )
             end
         end
         local v = {}
@@ -491,33 +518,48 @@ function M.source(src, opts)
                 expr(n.callee)
             end
             args_of(n)
-            if v == nil and n.callee.type == "ident" and n.callee.name == "recover" and len(n.args) > 0 then
-                report("args", n, "recover() takes no arguments and does not call anything: use it inside a deferred call, defer function() local e = recover() ... end()")
+            if v == nil and n.callee.type == "ident" and n.callee.name == "recover"
+                    and len(n.args) > 0 then
+                report(
+                    "args",
+                    n,
+                    "recover() takes no arguments and does not call anything: use it inside a deferred call, defer function() local e = recover() ... end()"
+                )
             end
             local fixed = len(n.args) - (expands(n.args) and 1 or 0)
             if v ~= nil and v.params ~= nil and not v.vararg and fixed > v.params then
-                report("args", n, "'" .. v.name .. "' takes " .. tostring(v.params) .. " argument" .. (v.params == 1 and "" or "s") ..
+                report("args", n, "'" .. v.name .. "' takes " .. tostring(v.params) .. " argument" .. (v.params == 1
+                    and ""
+                    or "s") ..
                     ", called with " .. tostring(len(n.args)))
             end
             -- string.format / printf
             local fi = nil
             if is_call_to(n, "string", "format") or is_call_to(n, nil, "printf") then fi = 0 end
-            if fi ~= nil and len(n.args) > 0 and n.args[0].type == "string" and not expands(n.args) then
+            if fi ~= nil and len(n.args) > 0 and n.args[0].type == "string"
+                    and not expands(n.args) then
                 local want = format_args(n.args[0].value)
                 local got = len(n.args) - 1
                 if want ~= nil and want ~= got then
-                    report("format", n, "the format takes " .. tostring(want) .. " argument" .. (want == 1 and "" or "s") ..
+                    report("format", n, "the format takes " .. tostring(want) .. " argument" .. (want == 1
+                        and ""
+                        or "s") ..
                         ", got " .. tostring(got))
                 end
             end
             -- require("literal")
-            if is_call_to(n, nil, "require") and len(n.args) == 1 and n.args[0].type == "string" then
+            if is_call_to(n, nil, "require") and len(n.args) == 1
+                    and n.args[0].type == "string" then
                 local m = n.args[0].value
-                if not module_exists(m, dir) then report("require", n.args[0], "module '" .. m .. "' not found") end
+                if not module_exists(m, dir) then
+                    report("require", n.args[0], "module '" .. m .. "' not found")
+                end
             end
         elseif t == "field" then
             -- math.foo: the built-in modules' fields are known
-            if n.object.type == "ident" and lookup(n.object.name) == nil and known[n.object.name] and not globals[n.object.name] then
+            if n.object.type == "ident" and lookup(n.object.name) == nil
+                    and known[n.object.name]
+                    and not globals[n.object.name] then
                 local mod = module_fields(n.object.name)
                 if mod ~= nil and not mod[n.field] then
                     local best = nil
@@ -552,7 +594,9 @@ function M.source(src, opts)
                     if f.key.type == "string" or f.key.type == "number" then
                         local k = f.key.type .. ":" .. tostring(f.key.value)
                         if seen[k] then
-                            report("dupkey", f.key, "key " .. (f.key.type == "string" and ("'" .. f.key.value .. "'") or tostring(f.key.value)) ..
+                            report("dupkey", f.key, "key " .. (f.key.type == "string"
+                                and ("'" .. f.key.value .. "'")
+                                or tostring(f.key.value)) ..
                                 " is set twice in this table")
                         end
                         seen[k] = true
@@ -605,7 +649,9 @@ function M.source(src, opts)
     stmt = function(s)
         local t = s.type
         if t == "local" then
-            local is_local_func = len(s.names) == 1 and len(s.values) == 1 and s.values[0].type == "func" and s.values[0].name == s.names[0]
+            local is_local_func = len(s.names) == 1 and len(s.values) == 1
+                and s.values[0].type == "func"
+                and s.values[0].name == s.names[0]
             if is_local_func then
                 local v = declare(s.names[0], s, "func")
                 if v ~= nil then
@@ -637,15 +683,20 @@ function M.source(src, opts)
         elseif t == "assign" then
             for _, v in s.values do expr(v) end
             for _, tg in s.targets do target(tg) end
-            if len(s.targets) == 1 and len(s.values) == 1 and s.targets[0].type == "ident" and s.values[0].type == "ident" and
-                s.targets[0].name == s.values[0].name then
+            if len(s.targets) == 1 and len(s.values) == 1 and s.targets[0].type == "ident"
+                    and s.values[0].type == "ident"
+                    and s.targets[0].name == s.values[0].name then
                 report("selfassign", s, "'" .. s.targets[0].name .. "' is assigned to itself")
             end
         elseif t == "if" then
             expr(s.cond)
             block(s.then_body, false)
             if s.else_body ~= nil then
-                if s.else_body.type == "if" then stmt(s.else_body) else block(s.else_body, false) end
+                if s.else_body.type == "if" then
+                    stmt(s.else_body)
+                else
+                    block(s.else_body, false)
+                end
             end
         elseif t == "while" then
             expr(s.cond)
@@ -671,7 +722,8 @@ function M.source(src, opts)
                 open_scope(false)
                 if c.stmt ~= nil then
                     local cs = c.stmt
-                    if cs.type == "assign" and len(cs.targets) == 1 and cs.targets[0].type == "ident" then
+                    if cs.type == "assign" and len(cs.targets) == 1
+                            and cs.targets[0].type == "ident" then
                         for _, v in cs.values do expr(v) end
                         local nm = cs.targets[0].name
                         local v = lookup(nm)

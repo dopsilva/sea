@@ -37,10 +37,20 @@ local cli = flags.new("sea doc", {
         "at the top of a file, and the comment right above each function; -http serves\n" ..
             "them as web pages (e.g. sea doc -http :6060 -open).",
 })
-local format_flag = cli:string("f", "text", "output format", {alias = "format", arg = "format", choices = {"text", "markdown", "md", "html", "json"}})
+local format_flag = cli:string(
+    "f",
+    "text",
+    "output format",
+    {alias = "format", arg = "format", choices = {"text", "markdown", "md", "html", "json"}}
+)
 local out_flag = cli:string("o", "", "write to a file instead of stdout", {arg = "file"})
 local all_flag = cli:bool("all", false, "include local (private) functions")
-local http_flag = cli:string("http", "", "serve the documentation as web pages", {arg = "[host]:port"})
+local http_flag = cli:string(
+    "http",
+    "",
+    "serve the documentation as web pages",
+    {arg = "[host]:port"}
+)
 local open_flag = cli:bool("open", false, "with -http, open the index in the browser")
 local args = cli:parse()
 
@@ -212,7 +222,8 @@ local function read_module(file)
             if name ~= nil then
                 local doc = doc_above(s.line)
                 if v.type == "func" then
-                    local is_method = v.is_method or (len(v.params) > 0 and v.params[0].name == "self")
+                    local is_method = v.is_method
+                        or (len(v.params) > 0 and v.params[0].name == "self")
                     local shown
                     if t.type == "field" then
                         local owner = chain(t.object)
@@ -223,14 +234,28 @@ local function read_module(file)
                     else
                         shown = name
                     end
-                    local kind = t.type == "ident" and "global" or (is_method and "method" or "function")
+                    local kind = t.type == "ident" and "global"
+                        or (is_method and "method" or "function")
                     mod.entries[] = new_entry(shown, kind, func_params(v, is_method), doc, s.line)
                 elseif t.type == "field" and doc ~= "" then
-                    mod.entries[] = new_entry(display(chain(t.object), t.field), "field", nil, doc, s.line)
+                    mod.entries[] = new_entry(
+                        display(chain(t.object), t.field),
+                        "field",
+                        nil,
+                        doc,
+                        s.line
+                    )
                 end
             end
-        elseif s.type == "local" and show_all and len(s.values) >= 1 and s.values[0].type == "func" then
-            mod.entries[] = new_entry(s.names[0], "local", func_params(s.values[0], false), doc_above(s.line), s.line)
+        elseif s.type == "local" and show_all and len(s.values) >= 1
+                and s.values[0].type == "func" then
+            mod.entries[] = new_entry(
+                s.names[0],
+                "local",
+                func_params(s.values[0], false),
+                doc_above(s.line),
+                s.line
+            )
         end
     end
     return mod
@@ -261,7 +286,9 @@ local function split_signature(sig)
             depth = depth - 1
             if depth == 0 then
                 local tail = string.trim(string.sub(sig, i + 1))
-                if string.starts_with(tail, "→") then tail = string.trim(string.sub(tail, len("→") + 1)) end
+                if string.starts_with(tail, "→") then
+                    tail = string.trim(string.sub(tail, len("→") + 1))
+                end
                 return string.sub(sig, open + 1, i - 1), tail
             end
         end
@@ -474,7 +501,11 @@ local function url_path(s)
     local res = []
     for k = 1, len(s) do
         local c = string.sub(s, k, k)
-        if re.test("^[A-Za-z0-9_./-]$", c) then res[] = c else res[] = string.format("%%%02X", string.byte(c)) end
+        if re.test("^[A-Za-z0-9_./-]$", c) then
+            res[] = c
+        else
+            res[] = string.format("%%%02X", string.byte(c))
+        end
     end
     return string.join(res, "")
 end
@@ -533,7 +564,8 @@ local function entry_heading(e)
     local lines = string.split(e.doc, "\n")
     local first = lines[0] or ""
     local short = re.gsub("^.*[.:]", e.name, "")
-    if e.params ~= nil and re.test("^([A-Za-z_][A-Za-z0-9_]*[.:])*" .. re.escape(short) .. "\\(", first) then
+    if e.params ~= nil
+            and re.test("^([A-Za-z_][A-Za-z0-9_]*[.:])*" .. re.escape(short) .. "\\(", first) then
         local rest = []
         for k = 1, len(lines) - 1 do rest[] = lines[k] end
         return first, string.trim(string.join(rest, "\n"))
@@ -676,7 +708,9 @@ local function page_source(mod, src)
     local nlines = len(string.split(src, "\n"))
     if string.ends_with(src, "\n") then nlines = nlines - 1 end
     local nums = []
-    for n = 1, nlines do nums[] = "<a id=\"L" .. n .. "\" href=\"#L" .. n .. "\">" .. n .. "</a>" end
+    for n = 1, nlines do
+        nums[] = "<a id=\"L" .. n .. "\" href=\"#L" .. n .. "\">" .. n .. "</a>"
+    end
     -- byte offset of each line start, to place the tokens
     local starts_list = []
     starts_list[] = 0
@@ -706,7 +740,8 @@ local function page_source(mod, src)
                     cls = "c"
                 end
                 local text = string.sub(src, off + 1, off + len(tk.text))
-                code[] = cls == nil and esc(text) or "<span class=\"" .. cls .. "\">" .. esc(text) .. "</span>"
+                code[] = cls == nil and esc(text)
+                    or "<span class=\"" .. cls .. "\">" .. esc(text) .. "</span>"
                 at = off + len(tk.text)
             end
         end
@@ -795,7 +830,7 @@ for _, a in args do
         if is_builtin then
             builtin = a
         elseif prefix_builtin and builtin == nil and filter == nil then
-            builtin = prefix                 -- sea doc string.split
+            builtin = prefix -- sea doc string.split
             filter = a
         elseif filter == nil then
             filter = a
@@ -816,7 +851,9 @@ local function load_modules()
             for _, f in fs.walk(p, {files = true}) do
                 local hidden = false
                 for _, part in path.parts(path.relative(p, f)) do
-                    if string.starts_with(part, ".") and part ~= "." and part ~= ".." then hidden = true end
+                    if string.starts_with(part, ".") and part ~= "." and part ~= ".." then
+                        hidden = true
+                    end
                 end
                 if not hidden and path.ext(f) == ".sea" then files[] = path.normalize(f) end
             end
@@ -911,7 +948,9 @@ local function route(target)
     elseif p == "/search" then
         local term = ""
         for _, kv in string.split(q or "", "&") do
-            if string.starts_with(kv, "q=") then term = string.trim(url_decode(string.sub(kv, 3))) end
+            if string.starts_with(kv, "q=") then
+                term = string.trim(url_decode(string.sub(kv, 3)))
+            end
         end
         page_search(mods, term)
     else
@@ -966,7 +1005,9 @@ local function serve(addr)
     if open_browser then
         go (function()
             local r = process.run({"xdg-open", url})
-            if is_error(r) or not r.ok then io.write_err("sea doc: could not open a browser; visit " .. url .. "\n") end
+            if is_error(r) or not r.ok then
+                io.write_err("sea doc: could not open a browser; visit " .. url .. "\n")
+            end
         end)()
     end
     -- one request at a time: the pages are built in the shared output buffer
@@ -998,7 +1039,8 @@ if filter ~= nil then
     for _, mod in mods do
         local es = []
         for _, e in mod.entries do
-            if e.name == filter or string.ends_with(e.name, "." .. filter) or string.ends_with(e.name, ":" .. filter) then
+            if e.name == filter or string.ends_with(e.name, "." .. filter)
+                    or string.ends_with(e.name, ":" .. filter) then
                 es[] = e
             end
         end

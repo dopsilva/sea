@@ -8,7 +8,11 @@ print(t:in_zone("-03:00"), t:in_zone("-03:00"):hour(), t:format("02/01/2006 15:0
 print(t:add_date(0, 1, 0), t:add_date(0, 0, 30), t:add_date(1, 0, 0):year())
 print(time.date(2026, 1, 31, "UTC"):add_date(0, 1, 0))
 print(t:add_seconds(7 * 86400), t:add(time.Day), t:add(30 * 86400 * 1e9))
-print(time.parse("2026-10-18T14:30:05.25Z"), time.parse("2026-10-18 14:30-03:00"), time.parse("2026-10-18", nil, "UTC"))
+print(
+    time.parse("2026-10-18T14:30:05.25Z"),
+    time.parse("2026-10-18 14:30-03:00"),
+    time.parse("2026-10-18", nil, "UTC")
+)
 print(time.parse("18/10/2026 09:05", "02/01/2006 15:04", "UTC"))
 print(time.parse("Oct 18, 2026 at 3:04pm", "Jan 2, 2006 at 3:04pm", "UTC"))
 print(time.parse("Sun, 18 Oct 2026 14:30:00 +0000", "Mon, 02 Jan 2006 15:04:05 -0700"))
@@ -16,23 +20,34 @@ print(time.parse("2026-02-30"), time.parse("nope"), time.parse("2026-13-01"))
 local a = time.parse("2026-01-01", nil, "UTC")
 local b = time.parse("2026-12-25", nil, "UTC")
 print(time.days(b:sub(a)), a:before(b), b:after(a), a:equal(time.date(2026, 1, 1, "UTC")))
-print(t:utc():iso(true), time.unix(0):utc(), time.unix(0):zone(), time.unix(0):utc():zone(), t:format("Monday, January 2 2006 3:04 PM MST"))
+print(
+    t:utc():iso(true),
+    time.unix(0):utc(),
+    time.unix(0):zone(),
+    time.unix(0):utc():zone(),
+    t:format("Monday, January 2 2006 3:04 PM MST")
+)
 local x = time.parse("2026-10-18T14:30:05.123456789Z")
 print(x:iso(true), x:format("15:04:05.000"), x:nanosecond())
 print(time.Day, time.days(time.Day))
 
 -- named zones (the system's tz database)
 local noon = time.date(2026, 7, 1, 12, 0, 0, "UTC")
-for _, z in ["America/Sao_Paulo", "America/New_York", "Europe/Lisbon", "Asia/Kolkata", "Australia/Sydney"] do
+for _, z in [
+    "America/Sao_Paulo", "America/New_York", "Europe/Lisbon", "Asia/Kolkata", "Australia/Sydney",
+] do
     local w = time.date(2026, 1, 15, 12, 0, 0, "UTC"):in_zone(z)
     print(z, noon:in_zone(z):format("15:04 MST -07:00"), w:format("15:04 MST -07:00"), w:zone())
 end
-print(time.date(2026, 3, 8, 2, 30, 0, "America/New_York"))          -- skipped hour: moved forward
-print(time.date(2026, 11, 1, 1, 30, 0, "America/New_York"))         -- repeated hour: the first
+print(time.date(2026, 3, 8, 2, 30, 0, "America/New_York"))  -- skipped hour: moved forward
+print(time.date(2026, 11, 1, 1, 30, 0, "America/New_York")) -- repeated hour: the first
 print(time.date(2026, 11, 1, 1, 30, 0, "America/New_York"):add_seconds(3600))
-print(time.parse("2026-12-25 09:00", "", "Europe/Berlin"), time.date(2050, 7, 1, 12, 0, 0, "America/New_York"))
+print(
+    time.parse("2026-12-25 09:00", "", "Europe/Berlin"),
+    time.date(2050, 7, 1, 12, 0, 0, "America/New_York")
+)
 local d = time.date(2026, 3, 7, 12, 0, 0, "America/New_York")
-print(d:add_date(0, 0, 1), d:add_date(0, 0, 1):sub(d) / time.Hour)  -- a 23-hour day
+print(d:add_date(0, 0, 1), d:add_date(0, 0, 1):sub(d) / time.Hour) -- a 23-hour day
 local function try(f)
     local err = nil
     local function run()
@@ -47,4 +62,8 @@ print(try(function() time.now():in_zone("../etc/passwd") end))
 
 -- a dot before the month is not a fraction of a second (".01" is followed by a digit)
 local dotted = time.parse("2026-10-30 14:05:06.123", "2006-01-02 15:04:05.000", "UTC")
-print(dotted:format("02.01.2006"), dotted:format("05.000"), time.parse("30.10.2026", "02.01.2006", "UTC"):format("2006-01-02"))  -- 30.10.2026  06.123  2026-10-30
+print( -- 30.10.2026  06.123  2026-10-30
+    dotted:format("02.01.2006"),
+    dotted:format("05.000"),
+    time.parse("30.10.2026", "02.01.2006", "UTC"):format("2006-01-02")
+)

@@ -146,7 +146,10 @@ local function apply(self, f, text)
                 if c == text then ok = true end
             end
             if not ok then
-                return fail(self, show(f) .. " must be one of " .. string.join(f.choices, ", ") .. " (got '" .. text .. "')")
+                return fail(
+                    self,
+                    show(f) .. " must be one of " .. string.join(f.choices, ", ") .. " (got '" .. text .. "')"
+                )
             end
         end
         if f.kind == "list" then
@@ -156,7 +159,9 @@ local function apply(self, f, text)
         end
     elseif f.kind == "int" then
         local n = tonumber(text)
-        if n == nil or type(n) ~= "int" then return fail(self, show(f) .. " takes an integer (got '" .. text .. "')") end
+        if n == nil or type(n) ~= "int" then
+            return fail(self, show(f) .. " takes an integer (got '" .. text .. "')")
+        end
         f.value = n
     elseif f.kind == "number" then
         local n = tonumber(text)
@@ -199,7 +204,8 @@ function Set.parse(self, args)
             if not self.interspersed then flags_done = true end
         elseif a == "--" then
             flags_done = true
-        elseif (a == "-h" or a == "--help" or a == "-help") and self.defs["h"] == nil and self.defs["help"] == nil then
+        elseif (a == "-h" or a == "--help" or a == "-help") and self.defs["h"] == nil
+                and self.defs["help"] == nil then
             self:usage(false)
             os.exit(0)
         else

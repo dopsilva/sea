@@ -17,8 +17,15 @@ print(len(hash.sha256("x", true)), encoding.hex_encode(hash.md5("abc", {raw = tr
 print("-- hmac (RFC 4231 test case 2, RFC 2202)")
 print(hash.hmac("sha256", "Jefe", "what do ya want for nothing?"))
 print(hash.hmac("sha512", "Jefe", "what do ya want for nothing?"))
-print(hash.hmac("md5", "Jefe", "what do ya want for nothing?"), hash.hmac("SHA-1", "Jefe", "what do ya want for nothing?"))
-print(hash.hmac("sha256", string.rep(string.char(0xaa), 131), "Test Using Larger Than Block-Size Key - Hash Key First"))
+print(
+    hash.hmac("md5", "Jefe", "what do ya want for nothing?"),
+    hash.hmac("SHA-1", "Jefe", "what do ya want for nothing?")
+)
+print(hash.hmac(
+    "sha256",
+    string.rep(string.char(0xaa), 131),
+    "Test Using Larger Than Block-Size Key - Hash Key First"
+))
 
 print("-- incremental")
 local h = hash.new("sha-256")
@@ -29,7 +36,11 @@ for i = 1, 1000 do m:update("0123456789") end
 print(m:digest() == hash.md5(string.rep("0123456789", 1000)))
 
 print("-- checksums")
-print(hash.crc32("The quick brown fox jumps over the lazy dog"), hash.crc32(""), hash.crc32("fox", hash.crc32("quick brown ")) == hash.crc32("quick brown fox"))
+print(
+    hash.crc32("The quick brown fox jumps over the lazy dog"),
+    hash.crc32(""),
+    hash.crc32("fox", hash.crc32("quick brown ")) == hash.crc32("quick brown fox")
+)
 print(hash.adler32("Wikipedia"), hash.fnv1a(""), hash.fnv1a("a"), hash.fnv1a("foobar"))
 print(hash.equal("token", "token"), hash.equal("token", "tokeN"), hash.equal("token", "toke"))
 
@@ -38,20 +49,37 @@ local samples = {"", "f", "fo", "foo", "foob", "fooba", "foobar"}
 for i = 0, len(samples) - 1 do
     local s = samples[i]
     print("[" .. s .. "]", encoding.base64_encode(s), encoding.base32_encode(s), encoding.hex_encode(s),
-          encoding.base64_decode(encoding.base64_encode(s)) == s, encoding.base32_decode(encoding.base32_encode(s)) == s)
+        encoding.base64_decode(encoding.base64_encode(s)) == s, encoding.base32_decode(encoding.base32_encode(s)) == s)
 end
 local bin = string.char(0xfb, 0xff, 0xfe)
-print(encoding.base64_encode(bin), encoding.base64_encode(bin, {url = true}), encoding.base64_encode("hi", {pad = false}))
-print(encoding.base64_decode("+/+-_w==") == string.char(0xfb, 0xff, 0xbe, 0xff), encoding.base64_decode("aGVs\nbG8"), encoding.base32_encode("hi", false))
+print(
+    encoding.base64_encode(bin),
+    encoding.base64_encode(bin, {url = true}),
+    encoding.base64_encode("hi", {pad = false})
+)
+print(
+    encoding.base64_decode("+/+-_w==") == string.char(0xfb, 0xff, 0xbe, 0xff),
+    encoding.base64_decode("aGVs\nbG8"),
+    encoding.base32_encode("hi", false)
+)
 print(encoding.base64_decode("a$b"))
 print(encoding.base64_decode("aGVsbG8=x"))
 print(encoding.base64_decode("a"))
 print(encoding.base32_decode("jbswy3dp"), encoding.base32_decode("JB1"))
 
 print("-- hex, url, html")
-print(encoding.hex_encode("\x00\xffAz"), encoding.hex_encode("\xab", true), encoding.hex_decode("de:AD be ef") == "\xde\xad\xbe\xef")
+print(
+    encoding.hex_encode("\x00\xffAz"),
+    encoding.hex_encode("\xab", true),
+    encoding.hex_decode("de:AD be ef") == "\xde\xad\xbe\xef"
+)
 print(encoding.hex_decode("abc"))
 print(encoding.hex_decode("zz"))
-print(encoding.url_encode("a b&c=d/é~"), encoding.url_encode("a b", {plus = true}), encoding.url_decode("a%20b%C3%A9+c"), encoding.url_decode("a+b", true))
+print(
+    encoding.url_encode("a b&c=d/é~"),
+    encoding.url_encode("a b", {plus = true}),
+    encoding.url_decode("a%20b%C3%A9+c"),
+    encoding.url_decode("a+b", true)
+)
 print(encoding.url_decode("50%"))
 print(encoding.html_escape("<a href=\"x\">Tom & Jerry's</a>"))

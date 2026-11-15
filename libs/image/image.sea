@@ -685,7 +685,11 @@ function M.decode_png(bytes)
         elseif color_type == 2 then
             for x = 0, w - 1 do
                 local base = x * 3
-                img.data[y * w + x] = rgb_to_luma(curr_row[base], curr_row[base + 1], curr_row[base + 2])
+                img.data[y * w + x] = rgb_to_luma(
+                    curr_row[base],
+                    curr_row[base + 1],
+                    curr_row[base + 2]
+                )
             end
         elseif color_type == 6 then
             for x = 0, w - 1 do

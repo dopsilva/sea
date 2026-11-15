@@ -42,8 +42,10 @@ end)
 local function require_auth(req, next)
     local auth = req.headers["authorization"]
     if not auth then
-        return { status=401, body="Unauthorized\n",
-                 headers={ ["Content-Type"]="text/plain" } }
+        return {
+            status = 401, body = "Unauthorized\n",
+            headers = {["Content-Type"] = "text/plain"},
+        }
     end
     return next(req)
 end
@@ -56,18 +58,18 @@ local next_id = 1
 -- ---- Rotas -------------------------------------------------------------
 
 router.get("/", function(req)
-    return { status=200, body="Sea HTTP Router\n" }
+    return {status = 200, body = "Sea HTTP Router\n"}
 end)
 
 router.any("/ping", function(req)
-    return { status=200, body="pong\n" }
+    return {status = 200, body = "pong\n"}
 end)
 
 router.get("/users", function(req)
     local lines = ""
     for id, name in users do lines = lines .. id .. ": " .. name .. "\n" end
     if len(lines) == 0 then lines = "(empty)\n" end
-    return { status=200, body=lines }
+    return {status = 200, body = lines}
 end)
 
 router.post("/users", function(req)
@@ -75,35 +77,35 @@ router.post("/users", function(req)
     next_id = next_id + 1
     users[id] = req.body
     return {
-        status  = 201,
-        body    = id .. "\n",
-        headers = { ["Location"] = "/users/" .. id },
+        status = 201,
+        body = id .. "\n",
+        headers = {Location = "/users/" .. id},
     }
 end)
 
 router.get("/users/:id", function(req)
     local name = users[req.params["id"]]
-    if not name then return { status=404, body="not found\n" } end
-    return { status=200, body=name .. "\n" }
+    if not name then return {status = 404, body = "not found\n"} end
+    return {status = 200, body = name .. "\n"}
 end)
 
-router.delete("/users/:id", { require_auth }, function(req)
+router.delete("/users/:id", {require_auth}, function(req)
     del users[req.params["id"]]
-    return { status=204, body="" }
+    return {status = 204, body = ""}
 end)
 
 -- ---- Grupo /admin (todos precisam de auth) -----------------------------
 
-local admin = router.group("/admin", { require_auth })
+local admin = router.group("/admin", {require_auth})
 
 admin.get("/stats", function(req)
-    return { status=200, body="users: " .. len(users) .. "\n" }
+    return {status = 200, body = "users: " .. len(users) .. "\n"}
 end)
 
 admin.post("/reset", function(req)
-    users  = [=]
+    users = [=]
     next_id = 1
-    return { status = 200, body = "reset ok\n" }
+    return {status = 200, body = "reset ok\n"}
 end)
 
 -- ---- Iniciar servidor --------------------------------------------------

@@ -7,37 +7,37 @@
 
 -- Direct literal folding
 local a = 2 + 3
-print(a)  -- 5
+print(a) -- 5
 
 -- Folding through a local constant
 local N = 10
 local b = N + 5
-print(b)  -- 15
+print(b) -- 15
 
 -- Negation of constant
 local c = -N
-print(c)  -- -10
+print(c) -- -10
 
 -- Bitwise AND fold
 local d = N & 7
-print(d)  -- 2
+print(d) -- 2
 
 -- Chained fold
 local e = N * 2 + 1
-print(e)  -- 21
+print(e) -- 21
 
 -- Mutable variable must NOT be folded: each increment must work correctly
 local x = 5
 x = x + 1
 x = x + 1
-print(x)  -- 7
+print(x) -- 7
 
 -- Loop counter must not be frozen at compile-time value
 local sum = 0
 for i = 1, 5 do
     sum = sum + i
 end
-print(sum)  -- 15
+print(sum) -- 15
 
 -- N is unchanged after loop
-print(N)   -- 10
+print(N) -- 10

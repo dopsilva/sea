@@ -5,14 +5,28 @@
 local a = [3, 1, 4, 1, 5, 9, 2, 6]
 print(list.map(a, function(x) return x * 2 end))
 print(list.filter(a, function(x) return x % 2 == 0 end))
-print(list.reduce(a, function(acc, x) return acc + x end, 0), list.reduce(a, function(acc, x) return acc + x end))
+print(
+    list.reduce(a, function(acc, x) return acc + x end, 0),
+    list.reduce(a, function(acc, x) return acc + x end)
+)
 print(list.sum(a), list.sum([1.5, 2]), list.sum([]), list.sum(a, function(x) return x * x end))
 print(list.min(a), list.max(a), list.min(["pear", "apple"]), list.max([], nil))
 local people = [{name = "ana", age = 31}, {name = "bob", age = 25}, {name = "caio", age = 31}]
-print(list.max(people, function(p) return p.age end).name, list.min(people, function(p) return p.age end).name)
-print(list.find(people, function(p) return p.age > 30 end).name, list.find(a, function(x) return x > 100 end))
+print(
+    list.max(people, function(p) return p.age end).name,
+    list.min(people, function(p) return p.age end).name
+)
+print(
+    list.find(people, function(p) return p.age > 30 end).name,
+    list.find(a, function(x) return x > 100 end)
+)
 print(list.index(a, 5), list.index(a, 7), list.contains(["x", "y"], "y"), list.contains(a, 1.0))
-print(list.any(a, function(x) return x > 8 end), list.all(a, function(x) return x > 0 end), list.count(a, 1), list.count(a, function(x) return x > 3 end))
+print(
+    list.any(a, function(x) return x > 8 end),
+    list.all(a, function(x) return x > 0 end),
+    list.count(a, 1),
+    list.count(a, function(x) return x > 3 end)
+)
 print(list.unique(a), list.slice(a, 2, 5), list.slice(a, -2), list.concat([1], [2, 3], {4}))
 print(list.flatten([ [1, 2], [3], 4 ]), list.reversed([1, 2, 3]), list.chunk([1, 2, 3, 4, 5], 2))
 print(list.zip(["a", "b", "c"], [1, 2]), list.range(5), list.range(1, 10, 3), list.range(5, 1, -2))
@@ -44,7 +58,13 @@ for _, x in big do s2 += x * 2 end
 print(list.sum(list.map(big, function(x) return x * 2 end)) == s2)
 
 -- statistics
-print(list.mean([1, 2, 3, 4]), list.median([5, 1, 3]), list.median([4, 1, 3, 2]), list.mean([]), list.stdev([1]))
+print(
+    list.mean([1, 2, 3, 4]),
+    list.median([5, 1, 3]),
+    list.median([4, 1, 3, 2]),
+    list.mean([]),
+    list.stdev([1])
+)
 print(string.format("%.6f", list.stdev([2, 4, 4, 4, 5, 5, 7, 9])))
 
 -- counters
@@ -56,6 +76,12 @@ local st = {ok = 0, fail = 0}
 list.inc(st, "ok")
 print(st, list.most_common(st))
 print(string.contains(tostring(try(function() list.inc(st, "x") end)), "no field 'x'"))
-print(string.contains(tostring(try(function() list.inc({a = "x"}, "a") end)), "is a string, not a number"))
-print(string.contains(tostring(try(function() list.most_common({a = true}) end)), "is a bool, not a number"))
+print(string.contains(
+    tostring(try(function() list.inc({a = "x"}, "a") end)),
+    "is a string, not a number"
+))
+print(string.contains(
+    tostring(try(function() list.most_common({a = true}) end)),
+    "is a bool, not a number"
+))
 print(string.contains(tostring(try(function() list.inc(5, "a") end)), "expected a table"))

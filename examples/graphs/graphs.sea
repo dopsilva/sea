@@ -93,7 +93,7 @@ print("")
 print("── 2. Dijkstra: rotas entre cidades ─────────")
 
 -- Min-heap de pares (prioridade, valor) em dois arrays paralelos.
-local function heap_new() return { prio = [], val = [] } end
+local function heap_new() return {prio = [], val = []} end
 
 local function heap_push(h, p, v)
     local prio = h.prio
@@ -170,7 +170,7 @@ local function dijkstra(src)
     heap_push(h, 0, src)
     while len(h.prio) > 0 do
         local d, city = heap_pop(h)
-        if d == dist[city] then          -- ignora entradas obsoletas
+        if d == dist[city] then -- ignora entradas obsoletas
             local edges = graph[city]
             for i = 0, len(edges) - 1 do
                 local e = edges[i]

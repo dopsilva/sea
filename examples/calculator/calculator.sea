@@ -35,12 +35,16 @@ local function tokenize(src)
             i = i + 1
         elseif is_digit(b) or b == 46 then
             local j = i
-            while j <= n and (is_digit(string.byte(src, j)) or string.byte(src, j) == 46) do j = j + 1 end
+            while j <= n and (is_digit(string.byte(src, j)) or string.byte(src, j) == 46) do
+                j = j + 1
+            end
             toks[] = {kind = "num", text = string.sub(src, i, j - 1)}
             i = j
         elseif is_alpha(b) then
             local j = i
-            while j <= n and (is_alpha(string.byte(src, j)) or is_digit(string.byte(src, j))) do j = j + 1 end
+            while j <= n and (is_alpha(string.byte(src, j)) or is_digit(string.byte(src, j))) do
+                j = j + 1
+            end
             toks[] = {kind = "name", text = string.sub(src, i, j - 1)}
             i = j
         elseif string.contains("+-*/%^(),=", string.char(b)) then

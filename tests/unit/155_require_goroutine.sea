@@ -12,7 +12,7 @@ go (function()
     done <- true
 end)()
 local _ = <-done
-time.sleep(20 * time.millisecond)   -- the goroutine finishes and its VM is freed
+time.sleep(20 * time.millisecond) -- the goroutine finishes and its VM is freed
 
 -- allocate, so freed code would be overwritten
 local junk = []

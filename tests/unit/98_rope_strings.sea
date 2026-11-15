@@ -39,5 +39,13 @@ local lit = "key-" .. pad
 local again = "key-" .. pad
 print("equal", lit == again)
 print("not equal", lit ~= again, lit == "key-" .. pad .. "x")
-print("ordering", ("a" .. pad) < ("b" .. pad), ("b" .. pad) <= ("a" .. pad), ("b" .. pad) > ("a" .. pad))
-print("rope vs flat", lit == "key-0123456789012345678901234567890123456789012345678901234567890123456789")
+print(
+    "ordering",
+    ("a" .. pad) < ("b" .. pad),
+    ("b" .. pad) <= ("a" .. pad),
+    ("b" .. pad) > ("a" .. pad)
+)
+print(
+    "rope vs flat",
+    lit == "key-0123456789012345678901234567890123456789012345678901234567890123456789"
+)

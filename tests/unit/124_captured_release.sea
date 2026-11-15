@@ -6,7 +6,7 @@
 -- every path out: end of block, break/continue, return.
 
 local function rss_kb()
-    if not fs.exists("/proc/self/statm") then return 0 end   -- no procfs (macOS): the growth check is skipped
+    if not fs.exists("/proc/self/statm") then return 0 end -- no procfs (macOS): the growth check is skipped
     return tonumber(string.split(os.readfile("/proc/self/statm"), " ")[1]) * 4
 end
 
@@ -55,14 +55,14 @@ local before = rss_kb()
 churn(100000)
 local grown = rss_kb() - before
 -- ASAN keeps freed memory in quarantine, so RSS says nothing there
-print(os.getenv("ASAN_OPTIONS") != nil or grown < 8000)
+print(os.getenv("ASAN_OPTIONS") ~= nil or grown < 8000)
 
 -- the closures that do exist still see their values
 local keep = []
 for i = 1, 3 do
     local t = {}
     t.v = i
-    if i != 2 then keep[] = function() return t.v end end
+    if i ~= 2 then keep[] = function() return t.v end end
 end
 print(keep[0](), keep[1]())
 print(returns(true), holder().payload == string.rep("x", 200))

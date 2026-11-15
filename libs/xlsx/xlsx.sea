@@ -63,17 +63,23 @@ function M.serial_to_date(serial, date1904)
     end
     local y, m, d = civil((date1904 and EPOCH_1904 or EPOCH_1900) + days)
     local out = string.format("%04d-%02d-%02d", y, m, d)
-    if secs > 0 then out ..= string.format(" %02d:%02d:%02d", secs // 3600, (secs % 3600) // 60, secs % 60) end
+    if secs > 0 then
+        out ..= string.format(" %02d:%02d:%02d", secs // 3600, (secs % 3600) // 60, secs % 60)
+    end
     return out
 end
 
 -- xlsx.date_to_serial("YYYY-MM-DD[ HH:MM[:SS]]") → number | nil
 function M.date_to_serial(s)
-    local m = re.match("^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?)?", s or "")
+    local m = re.match(
+        "^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?)?",
+        s or ""
+    )
     if m == nil then return nil end
     local n = days_from(tonumber(m.groups[1]), tonumber(m.groups[2]), tonumber(m.groups[3])) - EPOCH_1900
     if m.groups[4] ~= nil then
-        n = n + (tonumber(m.groups[4]) * 3600 + tonumber(m.groups[5]) * 60 + tonumber(m.groups[6] or "0")) / 86400
+        n = n + (tonumber(m.groups[4]) * 3600 + tonumber(m.groups[5]) * 60 + tonumber(m.groups[6]
+            or "0")) / 86400
     end
     return n
 end
@@ -82,7 +88,9 @@ end
 
 -- the built-in number formats that are dates or times
 local DATE_IDS = {}
-for _, id in [14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 30, 36, 45, 46, 47, 50, 57] do DATE_IDS[id] = true end
+for _, id in [14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 30, 36, 45, 46, 47, 50, 57] do
+    DATE_IDS[id] = true
+end
 
 -- a custom format code that shows a date or a time (not inside quotes or [colors])
 local function is_date_code(code)
@@ -195,13 +203,17 @@ local function read_book(part)
         local custom = {}
         local fmts = child(st, "numFmts")
         if fmts ~= nil then
-            for _, f in children(fmts, "numFmt") do custom[tonumber(attr(f, "numFmtId"))] = attr(f, "formatCode") end
+            for _, f in children(fmts, "numFmt") do
+                custom[tonumber(attr(f, "numFmtId"))] = attr(f, "formatCode")
+            end
         end
         local xfs = child(st, "cellXfs")
         if xfs ~= nil then
             for i, xf in children(xfs, "xf") do
                 local id = tonumber(attr(xf, "numFmtId") or "0")
-                if DATE_IDS[id] or (custom[id] ~= nil and is_date_code(custom[id])) then date_style[i] = true end
+                if DATE_IDS[id] or (custom[id] ~= nil and is_date_code(custom[id])) then
+                    date_style[i] = true
+                end
             end
         end
     end
@@ -248,10 +260,14 @@ local function read_book(part)
                 row[] = value
             end
             -- trailing empty cells out
-            while len(row) > 0 and row[len(row) - 1] == "" do row = list.slice(row, 0, len(row) - 1) end
+            while len(row) > 0 and row[len(row) - 1] == "" do
+                row = list.slice(row, 0, len(row) - 1)
+            end
             rows[] = row
         end
-        while len(rows) > 0 and len(rows[len(rows) - 1]) == 0 do rows = list.slice(rows, 0, len(rows) - 1) end
+        while len(rows) > 0 and len(rows[len(rows) - 1]) == 0 do
+            rows = list.slice(rows, 0, len(rows) - 1)
+        end
         local s = {}
         s.name = attr(sh, "name") or `Planilha${i + 1}`
         s.rows = rows
@@ -272,7 +288,9 @@ end
 
 -- xlsx.decode(bytes) → {sheets} | error: a workbook's bytes (an upload)
 function M.decode(bytes)
-    if type(bytes) ~= "string" or string.sub(bytes, 1, 2) ~= "PK" then return error("xlsx: not an .xlsx file (a ZIP)") end
+    if type(bytes) ~= "string" or string.sub(bytes, 1, 2) ~= "PK" then
+        return error("xlsx: not an .xlsx file (a ZIP)")
+    end
     local p = fs.tempfile("xlsx-")?
     defer fs.remove(p)
     local _ = fs.write(p, bytes)?
@@ -328,7 +346,8 @@ local function sheet_xml(rows)
 end
 
 local function valid_sheet_name(name)
-    return type(name) == "string" and name ~= "" and utf8.len(name) <= 31 and re.match("[\\\\/?*\\[\\]:]", name) == nil
+    return type(name) == "string" and name ~= "" and utf8.len(name) <= 31
+        and re.match("[\\\\/?*\\[\\]:]", name) == nil
 end
 
 -- xlsx.write(path, sheets) → true | error; sheets [{name, rows}]
@@ -336,7 +355,9 @@ function M.write(p, sheets)
     if type(sheets) ~= "array" or len(sheets) == 0 then return error("xlsx: at least one sheet") end
     local names = {}
     for _, s in sheets do
-        if not valid_sheet_name(s.name) then return error(`xlsx: sheet name '${tostring(s.name)}': 1 to 31 characters, none of \\ / ? * [ ] :`) end
+        if not valid_sheet_name(s.name) then
+            return error(`xlsx: sheet name '${tostring(s.name)}': 1 to 31 characters, none of \\ / ? * [ ] :`)
+        end
         if names[utf8.lower(s.name)] then return error(`xlsx: sheet ${s.name} twice`) end
         names[utf8.lower(s.name)] = true
     end

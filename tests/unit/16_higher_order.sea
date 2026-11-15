@@ -47,10 +47,10 @@ local function reduce(t, fn, init)
 end
 
 local sum = reduce(nums, function(a, b) return a + b end, 0)
-print(sum)   -- 15
+print(sum) -- 15
 
 local product = reduce(nums, function(a, b) return a * b end, 1)
-print(product)  -- 120
+print(product) -- 120
 
 -- compose
 local function compose(f, g)
@@ -60,7 +60,7 @@ end
 local add1 = function(x) return x + 1 end
 local times2 = function(x) return x * 2 end
 local add1_then_times2 = compose(times2, add1)
-print(add1_then_times2(4))   -- 10
+print(add1_then_times2(4)) -- 10
 
 -- memoize
 local function memoize(fn)
@@ -76,6 +76,6 @@ local function memoize(fn)
 end
 
 local slow_double = memoize(function(x) return x * 2 end)
-print(slow_double(5))   -- 10
-print(slow_double(5))   -- 10 (cached)
-print(slow_double(7))   -- 14
+print(slow_double(5)) -- 10
+print(slow_double(5)) -- 10 (cached)
+print(slow_double(7)) -- 14

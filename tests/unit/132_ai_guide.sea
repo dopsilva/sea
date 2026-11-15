@@ -44,7 +44,9 @@ end
 
 local function output_lines(out)
     local res = []
-    for _, l in string.split(out, "\n") do res[] = re.gsub("\\s+$", string.replace(l, "\t", "  "), "") end
+    for _, l in string.split(out, "\n") do
+        res[] = re.gsub("\\s+$", string.replace(l, "\t", "  "), "")
+    end
     while len(res) > 0 and res[len(res) - 1] == "" do del res[len(res) - 1] end
     return res
 end

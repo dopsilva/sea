@@ -221,7 +221,7 @@ irreg["surgido"] = "surgir"
 local regras = []
 
 local function regra(suf, term, desc)
-    local r = {sufixo=suf, terminacao=term, descricao=desc}
+    local r = {sufixo = suf, terminacao = term, descricao = desc}
     regras[] = r
 end
 
@@ -234,18 +234,18 @@ regra("indo", "ir", "gerúndio -IR")
 regra("aremos", "ar", "futuro 1pp -AR")
 regra("eremos", "er", "futuro 1pp -ER")
 regra("iremos", "ir", "futuro 1pp -IR")
-regra("arão",   "ar", "futuro 3pp -AR")
-regra("erão",   "er", "futuro 3pp -ER")
-regra("irão",   "ir", "futuro 3pp -IR")
-regra("arei",   "ar", "futuro 1ps -AR")
-regra("erei",   "er", "futuro 1ps -ER")
-regra("irei",   "ir", "futuro 1ps -IR")
-regra("arás",   "ar", "futuro 2ps -AR")
-regra("erás",   "er", "futuro 2ps -ER")
-regra("irás",   "ir", "futuro 2ps -IR")
-regra("ará",    "ar", "futuro 3ps -AR")
-regra("erá",    "er", "futuro 3ps -ER")
-regra("irá",    "ir", "futuro 3ps -IR")
+regra("arão", "ar", "futuro 3pp -AR")
+regra("erão", "er", "futuro 3pp -ER")
+regra("irão", "ir", "futuro 3pp -IR")
+regra("arei", "ar", "futuro 1ps -AR")
+regra("erei", "er", "futuro 1ps -ER")
+regra("irei", "ir", "futuro 1ps -IR")
+regra("arás", "ar", "futuro 2ps -AR")
+regra("erás", "er", "futuro 2ps -ER")
+regra("irás", "ir", "futuro 2ps -IR")
+regra("ará", "ar", "futuro 3ps -AR")
+regra("erá", "er", "futuro 3ps -ER")
+regra("irá", "ir", "futuro 3ps -IR")
 
 -- pretérito perfeito
 regra("aram", "ar", "pret. perf. 3pp -AR")
@@ -254,36 +254,36 @@ regra("iram", "ir", "pret. perf. 3pp -IR")
 regra("aste", "ar", "pret. perf. 2ps -AR")
 regra("este", "er", "pret. perf. 2ps -ER")
 regra("iste", "ir", "pret. perf. 2ps -IR")
-regra("ou",   "ar", "pret. perf. 3ps -AR")
-regra("eu",   "er", "pret. perf. 3ps -ER")
-regra("iu",   "ir", "pret. perf. 3ps -IR")
-regra("ei",   "ar", "pret. perf. 1ps -AR")
+regra("ou", "ar", "pret. perf. 3ps -AR")
+regra("eu", "er", "pret. perf. 3ps -ER")
+regra("iu", "ir", "pret. perf. 3ps -IR")
+regra("ei", "ar", "pret. perf. 1ps -AR")
 
 -- imperfeito do indicativo
-regra("avam",  "ar", "imperf. 3pp -AR")
-regra("avas",  "ar", "imperf. 2ps -AR")
-regra("ava",   "ar", "imperf. 3ps -AR")
+regra("avam", "ar", "imperf. 3pp -AR")
+regra("avas", "ar", "imperf. 2ps -AR")
+regra("ava", "ar", "imperf. 3ps -AR")
 regra("íamos", "ir", "imperf. 1pp -IR")
-regra("íeis",  "ir", "imperf. 2pp -IR")
-regra("iam",   "ir", "imperf. 3pp -IR")
+regra("íeis", "ir", "imperf. 2pp -IR")
+regra("iam", "ir", "imperf. 3pp -IR")
 
 -- particípio passado
 regra("ados", "ar", "part. passado -AR plural")
 regra("adas", "ar", "part. passado -AR plural fem.")
 regra("idos", "er", "part. passado -ER/-IR plural")
-regra("ado",  "ar", "part. passado -AR")
-regra("ido",  "er", "part. passado -ER/-IR")
+regra("ado", "ar", "part. passado -AR")
+regra("ido", "er", "part. passado -ER/-IR")
 
 -- presente do indicativo
 regra("amos", "ar", "presente 1pp -AR")
 regra("emos", "er", "presente 1pp -ER")
 regra("imos", "ir", "presente 1pp -IR")
-regra("ais",  "ar", "presente 2pp -AR")
-regra("eis",  "er", "presente 2pp -ER")
-regra("am",   "ar", "presente 3pp -AR")
-regra("em",   "er", "presente 3pp -ER/-IR")
-regra("as",   "ar", "presente 2ps -AR")
-regra("es",   "er", "presente 2ps -ER/-IR")
+regra("ais", "ar", "presente 2pp -AR")
+regra("eis", "er", "presente 2pp -ER")
+regra("am", "ar", "presente 3pp -AR")
+regra("em", "er", "presente 3pp -ER/-IR")
+regra("as", "ar", "presente 2ps -AR")
+regra("es", "er", "presente 2ps -ER/-IR")
 
 -- ─── Função principal ────────────────────────────────────────────────────────
 
@@ -305,7 +305,7 @@ local function para_infinitivo(forma)
     end
 
     -- 3. Tenta regras de sufixo (mais longa primeiro = mais específica)
-    for i = 0, len(regras)-1 do
+    for i = 0, len(regras) - 1 do
         local r = regras[i]
         if termina_com(v, r.sufixo) then
             local radical = remover_sufixo(v, r.sufixo)
@@ -323,94 +323,94 @@ end
 local testes = []
 
 local function t(forma, esperado)
-    testes[] = {forma=forma, esperado=esperado}
+    testes[] = {forma = forma, esperado = esperado}
 end
 
 -- irregulares
-t("sou",     "ser")
-t("foi",     "ser")
-t("eram",    "ser")
-t("estou",   "estar")
-t("estava",  "estar")
+t("sou", "ser")
+t("foi", "ser")
+t("eram", "ser")
+t("estou", "estar")
+t("estava", "estar")
 t("estando", "estar")
-t("tenho",   "ter")
-t("tinha",   "ter")
-t("tido",    "ter")
-t("vou",     "ir")
-t("vão",     "ir")
-t("indo",    "ir")
-t("venho",   "vir")
-t("veio",    "vir")
-t("faço",    "fazer")
-t("fez",     "fazer")
-t("feito",   "fazer")
-t("dou",     "dar")
-t("deu",     "dar")
-t("posso",   "poder")
-t("pôde",    "poder")
-t("quero",   "querer")
-t("quis",    "querer")
-t("sei",     "saber")
-t("soube",   "saber")
-t("digo",    "dizer")
-t("disse",   "dizer")
-t("trago",   "trazer")
-t("trouxe",  "trazer")
-t("ponho",   "pôr")
-t("pôs",     "pôr")
+t("tenho", "ter")
+t("tinha", "ter")
+t("tido", "ter")
+t("vou", "ir")
+t("vão", "ir")
+t("indo", "ir")
+t("venho", "vir")
+t("veio", "vir")
+t("faço", "fazer")
+t("fez", "fazer")
+t("feito", "fazer")
+t("dou", "dar")
+t("deu", "dar")
+t("posso", "poder")
+t("pôde", "poder")
+t("quero", "querer")
+t("quis", "querer")
+t("sei", "saber")
+t("soube", "saber")
+t("digo", "dizer")
+t("disse", "dizer")
+t("trago", "trazer")
+t("trouxe", "trazer")
+t("ponho", "pôr")
+t("pôs", "pôr")
 
 -- regulares — gerúndio
 t("cantando", "cantar")
-t("comendo",  "comer")
+t("comendo", "comer")
 t("partindo", "partir")
-t("falando",  "falar")
-t("bebendo",  "beber")
+t("falando", "falar")
+t("bebendo", "beber")
 t("dormindo", "dormir")
-t("andando",  "andar")
+t("andando", "andar")
 t("correndo", "correr")
-t("subindo",  "subir")
+t("subindo", "subir")
 
 -- regulares — pretérito perfeito
-t("cantou",   "cantar")
-t("comeu",    "comer")
-t("partiu",   "partir")
+t("cantou", "cantar")
+t("comeu", "comer")
+t("partiu", "partir")
 t("cantaram", "cantar")
-t("comeram",  "comer")
+t("comeram", "comer")
 t("partiram", "partir")
-t("falou",    "falar")
-t("bebeu",    "beber")
+t("falou", "falar")
+t("bebeu", "beber")
 
 -- regulares — futuro
-t("cantará",  "cantar")
-t("comerá",   "comer")
-t("partirá",  "partir")
+t("cantará", "cantar")
+t("comerá", "comer")
+t("partirá", "partir")
 t("cantarão", "cantar")
-t("comerão",  "comer")
+t("comerão", "comer")
 t("partirão", "partir")
 t("cantarei", "cantar")
-t("comerei",  "comer")
+t("comerei", "comer")
 
 -- regulares — imperfeito
-t("cantava",  "cantar")
+t("cantava", "cantar")
 t("cantavam", "cantar")
-t("dormiam",  "dormir")
+t("dormiam", "dormir")
 
 -- regulares — particípio
-t("cantado",  "cantar")
-t("comido",   "comer")
-t("partido",  "partir")
+t("cantado", "cantar")
+t("comido", "comer")
+t("partido", "partir")
 t("cantados", "cantar")
-t("falado",   "falar")
+t("falado", "falar")
 
 -- regulares — presente
 t("cantamos", "cantar")
-t("comemos",  "comer")
+t("comemos", "comer")
 t("partimos", "partir")
-t("cantam",   "cantar")
-t("comem",    "comer")
-t("cantar",   "cantar")
-t("comer",    "comer")
-t("partir",   "partir")
+t("cantam", "cantar")
+t("comem", "comer")
+t("cantar", "cantar")
+t("comer", "comer")
+t("partir", "partir")
 
 -- ─── Execução e relatório ────────────────────────────────────────────────────
 
@@ -423,10 +423,10 @@ local acertos = 0
 local erros   = 0
 local total   = len(testes)
 
-for i = 0, total-1 do
-    local tc         = testes[i]
+for i = 0, total - 1 do
+    local tc = testes[i]
     local inf, regra_usada = para_infinitivo(tc.forma)
-    local ok         = (inf == tc.esperado)
+    local ok = (inf == tc.esperado)
 
     if ok then
         acertos = acertos + 1
@@ -434,8 +434,8 @@ for i = 0, total-1 do
         erros = erros + 1
         local got = inf
         if got == nil then got = "?" end
-        print("  ERRO  " .. tc.forma .. " → " .. got
-              .. "  (esperado: " .. tc.esperado .. ")  [" .. regra_usada .. "]")
+        print("  ERRO  " .. tc.forma .. " → " .. got ..
+            "  (esperado: " .. tc.esperado .. ")  [" .. regra_usada .. "]")
     end
 end
 
@@ -468,7 +468,7 @@ demos[] = "trouxeram"
 demos[] = "querendo"
 demos[] = "souberam"
 
-for i = 0, len(demos)-1 do
+for i = 0, len(demos) - 1 do
     local forma = demos[i]
     local inf, desc = para_infinitivo(forma)
     local resultado = inf

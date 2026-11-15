@@ -10,32 +10,32 @@ local function sum(...)
     return total
 end
 
-print(sum(1, 2, 3))          -- 6
-print(sum(10, 20, 30, 40))   -- 100
-print(sum())                  -- 0
+print(sum(1, 2, 3))        -- 6
+print(sum(10, 20, 30, 40)) -- 100
+print(sum())               -- 0
 
 -- pack varargs into table
 local function pack(...)
     return {...}
 end
 local t = pack(5, 10, 15)
-print(t[0])   -- 5
-print(t[1])   -- 10
-print(t[2])   -- 15
+print(t[0]) -- 5
+print(t[1]) -- 10
+print(t[2]) -- 15
 
 -- pass through varargs
 local function wrap(...)
     return sum(...)
 end
-print(wrap(1, 2, 3, 4, 5))  -- 15
+print(wrap(1, 2, 3, 4, 5)) -- 15
 
 -- count varargs
 local function count(...)
     local t = {...}
     return len(t)
 end
-print(count(1, 2, 3))   -- 3
-print(count())           -- 0
+print(count(1, 2, 3)) -- 3
+print(count())        -- 0
 
 -- mixed fixed + vararg
 local function first_and_rest(first, ...)
@@ -43,7 +43,7 @@ local function first_and_rest(first, ...)
     return first, len(rest)
 end
 local f, r = first_and_rest(10, 20, 30, 40)
-print(f, r)   -- 10	3
+print(f, r) -- 10	3
 
 -- a vararg function that calls another: the callee's frame sits where the
 -- varargs used to be stored, and overwrote them (the second call then freed
@@ -58,16 +58,16 @@ local function outer(x, ...)
     return s, len(again), again[0]
 end
 local s1, n1, v1 = outer("a", "b", "c")
-print(s1, n1, v1)              -- a:2	2	b
+print(s1, n1, v1) -- a:2	2	b
 local s2, n2, v2 = outer("a")
-print(s2, n2, v2)              -- a:0	0	nil
+print(s2, n2, v2) -- a:0	0	nil
 local s3, n3, v3 = outer("a", {}, "z")
-print(s3, n3, type(v3))        -- a:2	2	table
+print(s3, n3, type(v3)) -- a:2	2	table
 local function keep(...)
     local before = {...}
-    print("x", "y", "z")       -- a call that needs registers past the arguments
+    print("x", "y", "z") -- a call that needs registers past the arguments
     local after = {...}
     return before[1] == after[1], after[0]
 end
 local same, p0 = keep("p", "q")
-print(same, p0)                -- true	p
+print(same, p0) -- true	p

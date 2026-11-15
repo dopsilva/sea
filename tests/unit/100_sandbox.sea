@@ -70,7 +70,8 @@ function conta()
   counter += 1
   return counter
 end
-]], "s.sea"))
+]],
+    "s.sea"))
 
 print("soma", sb:call("soma", 2, 3))
 for _, n in ["laco", "laco_for", "recursao", "cauda", "teimoso"] do
@@ -78,7 +79,10 @@ for _, n in ["laco", "laco_for", "recursao", "cauda", "teimoso"] do
     print(n, is_error(r), r)
 end
 print("de novo", sb:call("soma", 4, 5))
-for _, n in ["tenta_io", "tenta_require", "tenta_os", "tenta_net", "tenta_go", "tenta_chan", "tenta_assert", "falha"] do
+for _, n in [
+    "tenta_io", "tenta_require", "tenta_os", "tenta_net", "tenta_go", "tenta_chan", "tenta_assert",
+    "falha",
+] do
     local r = sb:call(n)
     print(n, is_error(r))
 end

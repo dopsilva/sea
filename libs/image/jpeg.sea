@@ -20,8 +20,10 @@
 local M = {}
 
 local ZIGZAG = [
-    0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7,
-    14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60,
+    0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20,
+    13, 6, 7,
+    14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38,
+    31, 39, 46, 53, 60,
     61, 54, 47, 55, 62, 63,
 ]
 
@@ -219,8 +221,9 @@ end
 local function idct8(c, ws, plane, pw, x0, y0)
     -- columns into ws, 2 bits up (a column of zeros past the DC is the DC)
     for col = 0, 7 do
-        if c[col + 8] == 0 and c[col + 16] == 0 and c[col + 24] == 0 and c[col + 32] == 0 and c[col + 40] == 0 and
-            c[col + 48] == 0 and c[col + 56] == 0 then
+        if c[col + 8] == 0 and c[col + 16] == 0 and c[col + 24] == 0 and c[col + 32] == 0
+                and c[col + 40] == 0
+                and c[col + 48] == 0 and c[col + 56] == 0 then
             local dc = c[col] << 2
             ws[col] = dc
             ws[col + 8] = dc
@@ -275,8 +278,9 @@ local function idct8(c, ws, plane, pw, x0, y0)
     for y = 0, 7 do
         local r = y * 8
         local o = (y0 + y) * pw + x0
-        if ws[r + 1] == 0 and ws[r + 2] == 0 and ws[r + 3] == 0 and ws[r + 4] == 0 and ws[r + 5] == 0 and
-            ws[r + 6] == 0 and ws[r + 7] == 0 then
+        if ws[r + 1] == 0 and ws[r + 2] == 0 and ws[r + 3] == 0 and ws[r + 4] == 0
+                and ws[r + 5] == 0
+                and ws[r + 6] == 0 and ws[r + 7] == 0 then
             local v = CLAMP[((ws[r] + 4112) >> 5) & 1023]
             for x = o, o + 7 do plane[x] = v end
             continue
@@ -480,7 +484,9 @@ end
 -- jpeg.decode(bytes [, opts]) → {width, height, data} | error
 function M.decode(s, opts)
     opts = opts or {}
-    if type(s) ~= "string" or string.sub(s, 1, 2) ~= "\xff\xd8" then return error("jpeg: not a JPEG file") end
+    if type(s) ~= "string" or string.sub(s, 1, 2) ~= "\xff\xd8" then
+        return error("jpeg: not a JPEG file")
+    end
     local qt = {}
     local dc_tables = {}
     local ac_tables = {}
@@ -543,10 +549,16 @@ function M.decode(s, opts)
                     local symbols = []
                     for k = 0, total - 1 do symbols[] = string.byte(s, p + 17 + k) end
                     p += 17 + total
-                    if tc == 0 then dc_tables[id] = huffman(counts, symbols) else ac_tables[id] = huffman(counts, symbols) end
+                    if tc == 0 then
+                        dc_tables[id] = huffman(counts, symbols)
+                    else
+                        ac_tables[id] = huffman(counts, symbols)
+                    end
                 end
             elseif m == 0xC0 or m == 0xC1 or m == 0xC2 then
-                if string.byte(s, seg) ~= 8 then return error("jpeg: only 8-bit samples are read") end
+                if string.byte(s, seg) ~= 8 then
+                    return error("jpeg: only 8-bit samples are read")
+                end
                 progressive = m == 0xC2
                 frame = {}
                 frame.height = u16(s, seg + 1)
@@ -566,7 +578,9 @@ function M.decode(s, opts)
                     if comp.h > frame.hmax then frame.hmax = comp.h end
                     if comp.v > frame.vmax then frame.vmax = comp.v end
                 end
-                if frame.width == 0 or frame.height == 0 then return error("jpeg: the image has no size") end
+                if frame.width == 0 or frame.height == 0 then
+                    return error("jpeg: the image has no size")
+                end
                 frame.mcux = (frame.width + 8 * frame.hmax - 1) // (8 * frame.hmax)
                 frame.mcuy = (frame.height + 8 * frame.vmax - 1) // (8 * frame.vmax)
                 for _, comp in frame.comps do
@@ -586,7 +600,10 @@ function M.decode(s, opts)
                 local scale = opts.scale or 1
                 if opts.max_side ~= nil then
                     scale = 1
-                    while scale < 8 and math.max(frame.width, frame.height) // scale > opts.max_side do scale *= 2 end
+                    while scale < 8
+                            and math.max(frame.width, frame.height) // scale > opts.max_side do
+                        scale *= 2
+                    end
                 end
                 if scale ~= 1 and scale ~= 2 and scale ~= 4 and scale ~= 8 then
                     return error("jpeg: scale is 1, 2, 4 or 8")
@@ -636,8 +653,10 @@ function M.decode(s, opts)
                 if is_error(ok) then return ok end
                 -- the next marker: where the bits stopped
                 pos = r.pos
-                while pos < len(s) and not (string.byte(s, pos) == 0xFF and string.byte(s, pos + 1) ~= 0 and
-                    not (string.byte(s, pos + 1) >= 0xD0 and string.byte(s, pos + 1) <= 0xD7)) do
+                while pos < len(s) and not (string.byte(s, pos) == 0xFF
+                        and string.byte(s, pos + 1) ~= 0
+                        and not (string.byte(s, pos + 1) >= 0xD0
+                            and string.byte(s, pos + 1) <= 0xD7)) do
                     pos += 1
                 end
                 continue

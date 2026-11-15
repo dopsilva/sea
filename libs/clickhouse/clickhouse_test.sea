@@ -31,7 +31,10 @@ t.describe("offline", function()
         t.eq(clickhouse.literal("it's \\ ok"), "'it\\'s \\\\ ok'")
         t.eq(clickhouse.literal([1, "a", nil, [2.5]]), "[1,'a',NULL,[2.5]]")
         t.eq(clickhouse.literal({b = 2, a = "x"}), "{'a':'x','b':2}")
-        t.eq(clickhouse.literal(time.parse("2026-10-21T10:00:00.5Z"):utc()), "'2026-10-21 10:00:00.5'")
+        t.eq(
+            clickhouse.literal(time.parse("2026-10-21T10:00:00.5Z"):utc()),
+            "'2026-10-21 10:00:00.5'"
+        )
         t.eq(clickhouse.quote_ident("logs.my `t`"), "`logs`.`my \\`t\\``")
     end)
 
@@ -73,7 +76,14 @@ server("server", function()
                 at = "2026-10-21 10:00:00", url = "/", ms = 12, big = bigint.new("18446744073709551615"),
                 tags = ["a", "b"], attrs = {k = "v"}, price = 9.99, ok = true,
             },
-            {at = time.parse("2026-10-21 10:00:05", nil, "UTC"), url = "/x\t'y\\", ms = 30, big = 5, note = "hi", price = 1},
+            {
+                at = time.parse("2026-10-21 10:00:05", nil, "UTC"),
+                url = "/x\t'y\\",
+                ms = 30,
+                big = 5,
+                note = "hi",
+                price = 1,
+            },
         ])
         t.eq(s.written_rows, 2)
         local rows = db:query("SELECT * FROM sea_ch_test ORDER BY at")
@@ -91,11 +101,21 @@ server("server", function()
     end)
 
     t.it("binds parameters by type", function()
-        t.eq(db:value("SELECT count() FROM sea_ch_test WHERE ms > {min:UInt32} AND url = {u:String}", {min = 5, u = "/x\t'y\\"}), 1)
+        t.eq(
+            db:value(
+                "SELECT count() FROM sea_ch_test WHERE ms > {min:UInt32} AND url = {u:String}",
+                {min = 5, u = "/x\t'y\\"}
+            ),
+            1
+        )
         t.eq(db:value("SELECT has({t:Array(String)}, 'b')", {t = ["a", "b"]}), 1)
         t.eq(db:value("SELECT {n:Nullable(String)} IS NULL", {n = nil}), 1)
         t.eq(db:value("SELECT {m:Map(String, UInt8)}['b']", {m = {a = 1, b = 2}}), 2)
-        t.eq(db:row("SELECT {d:DateTime} AS d", {d = time.parse("2026-10-21 10:00:05", nil, "UTC")}, {settings = {session_timezone = "UTC"}}).d,
+        t.eq(db:row(
+            "SELECT {d:DateTime} AS d",
+            {d = time.parse("2026-10-21 10:00:05", nil, "UTC")},
+            {settings = {session_timezone = "UTC"}}
+        ).d,
             "2026-10-21 10:00:05")
     end)
 

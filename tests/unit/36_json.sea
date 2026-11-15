@@ -21,50 +21,50 @@ end
 
 -- ---- encode: primitives -------------------------------------------------------
 
-check("enc nil",   json.encode(nil),   "null")
-check("enc true",  json.encode(true),  "true")
+check("enc nil", json.encode(nil), "null")
+check("enc true", json.encode(true), "true")
 check("enc false", json.encode(false), "false")
-check("enc int",   json.encode(42),    "42")
-check("enc neg",   json.encode(-7),    "-7")
-check("enc str",   json.encode("hi"),  '"hi"')
+check("enc int", json.encode(42), "42")
+check("enc neg", json.encode(-7), "-7")
+check("enc str", json.encode("hi"), '"hi"')
 
 -- string escaping
 check("enc esc newline", json.encode("a\nb"), '"a\\nb"')
-check("enc esc tab",     json.encode("a\tb"), '"a\\tb"')
-check("enc esc quote",   json.encode('a"b'),  '"a\\"b"')
-check("enc esc slash",   json.encode("a\\b"), '"a\\\\b"')
+check("enc esc tab", json.encode("a\tb"), '"a\\tb"')
+check("enc esc quote", json.encode('a"b'), '"a\\"b"')
+check("enc esc slash", json.encode("a\\b"), '"a\\\\b"')
 
 -- ---- encode: array ------------------------------------------------------------
 
-check("enc arr empty", json.encode({}),        "{}")
-check("enc arr ints",  json.encode({1, 2, 3}), "[1,2,3]")
+check("enc arr empty", json.encode({}), "{}")
+check("enc arr ints", json.encode({1, 2, 3}), "[1,2,3]")
 check("enc arr mixed", json.encode({1, "x", true, nil}), '[1,"x",true,null]')
 
 -- ---- encode: table (object) ---------------------------------------------------
 
-local obj = { name = "sea", version = 1 }
+local obj = {name = "sea", version = 1}
 local enc_obj = json.encode(obj)
 -- key order is unspecified; check both possible orderings
-local ok_obj = (enc_obj == '{"name":"sea","version":1}') or
-               (enc_obj == '{"version":1,"name":"sea"}')
+local ok_obj = (enc_obj == '{"name":"sea","version":1}')
+    or (enc_obj == '{"version":1,"name":"sea"}')
 check("enc obj", tostring(ok_obj), "true")
 
 -- ---- encode: nested -----------------------------------------------------------
 
-local nested = { lang = "sea", tags = {"fast", "simple"} }
+local nested = {lang = "sea", tags = {"fast", "simple"}}
 local enc_nested = json.encode(nested)
-local ok_nested = (enc_nested == '{"lang":"sea","tags":["fast","simple"]}') or
-                  (enc_nested == '{"tags":["fast","simple"],"lang":"sea"}')
+local ok_nested = (enc_nested == '{"lang":"sea","tags":["fast","simple"]}')
+    or (enc_nested == '{"tags":["fast","simple"],"lang":"sea"}')
 check("enc nested", tostring(ok_nested), "true")
 
 -- ---- decode: primitives -------------------------------------------------------
 
-check("dec null",  json.decode("null"),  nil)
-check("dec true",  json.decode("true"),  true)
+check("dec null", json.decode("null"), nil)
+check("dec true", json.decode("true"), true)
 check("dec false", json.decode("false"), false)
-check("dec int",   json.decode("42"),    42)
-check("dec neg",   json.decode("-7"),    -7)
-check("dec str",   json.decode('"hello"'), "hello")
+check("dec int", json.decode("42"), 42)
+check("dec neg", json.decode("-7"), -7)
+check("dec str", json.decode('"hello"'), "hello")
 
 -- string unescaping
 check("dec esc n", json.decode('"a\\nb"'), "a\nb")
@@ -74,7 +74,7 @@ check("dec esc q", json.decode('"a\\"b"'), 'a"b')
 -- ---- decode: array ------------------------------------------------------------
 
 local arr = json.decode("[1,2,3]")
-check("dec arr len",   arr[0] == 1 and arr[1] == 2 and arr[2] == 3, true)
+check("dec arr len", arr[0] == 1 and arr[1] == 2 and arr[2] == 3, true)
 
 local arr2 = json.decode('["x",true,null]')
 check("dec arr mixed", arr2[0] == "x" and arr2[1] == true and arr2[2] == nil, true)
@@ -85,14 +85,14 @@ check("dec arr empty", len(arr_empty), 0)
 -- ---- decode: object -----------------------------------------------------------
 
 local o = json.decode('{"name":"sea","ok":true,"n":99}')
-check("dec obj str",  o["name"], "sea")
-check("dec obj bool", o["ok"],   true)
-check("dec obj int",  o["n"],    99)
+check("dec obj str", o["name"], "sea")
+check("dec obj bool", o["ok"], true)
+check("dec obj int", o["n"], 99)
 
 -- ---- decode: nested -----------------------------------------------------------
 
 local nested2 = json.decode('{"lang":"sea","tags":["fast","simple"]}')
-check("dec nested str",    nested2["lang"],    "sea")
+check("dec nested str", nested2["lang"], "sea")
 check("dec nested arr[0]", nested2["tags"][0], "fast")
 check("dec nested arr[1]", nested2["tags"][1], "simple")
 
@@ -104,17 +104,17 @@ check("dec ws", json.decode("  [ 1 , 2 ]  ")[0], 1)
 
 -- failures are error values (a JSON null decodes to nil)
 check("dec bad trailing", is_error(json.decode("42 garbage")), true)
-check("dec bad empty",    is_error(json.decode("")),           true)
-check("dec bad partial",  is_error(json.decode("{")),          true)
-check("dec bad unclosed", is_error(json.decode("[1,2")),       true)
-check("dec null not err", is_error(json.decode("null")),       false)
+check("dec bad empty", is_error(json.decode("")), true)
+check("dec bad partial", is_error(json.decode("{")), true)
+check("dec bad unclosed", is_error(json.decode("[1,2")), true)
+check("dec null not err", is_error(json.decode("null")), false)
 
 -- ---- round-trip ---------------------------------------------------------------
 
-local data = { x = 1, y = "hello", z = {10, 20, 30} }
+local data = {x = 1, y = "hello", z = {10, 20, 30}}
 local rt   = json.decode(json.encode(data))
-check("roundtrip x",    rt["x"],    1)
-check("roundtrip y",    rt["y"],    "hello")
+check("roundtrip x", rt["x"], 1)
+check("roundtrip y", rt["y"], "hello")
 check("roundtrip z[1]", rt["z"][1], 20)
 
 -- ---- summary ------------------------------------------------------------------

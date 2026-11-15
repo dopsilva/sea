@@ -15,7 +15,7 @@ print(q:in("uf", ["SP", "RJ"]))
 print(q:or(function(s) return s:select() end))
 print(q.in(q, "id", [1]))
 
-local t = {and = 1, not = 2, end = 3, ["for"] = 4}
+local t = {and = 1, not = 2, end = 3, for = 4}
 print(t.and, t.not, t.end, t["for"])
 
 local m = [=]
@@ -29,4 +29,7 @@ print(r)
 
 -- the formatter keeps these names bare
 local parser = require("sea/parser")
-printf("%s", parser.format("local t = {or = 1}\nprint(t.in, t:not(), x.y.end)\nfunction a.b:in() end\n"))
+printf(
+    "%s",
+    parser.format("local t = {or = 1}\nprint(t.in, t:not(), x.y.end)\nfunction a.b:in() end\n")
+)

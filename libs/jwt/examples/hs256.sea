@@ -10,9 +10,9 @@ local SECRET = "meu-segredo-super-secreto"
 
 -- assina
 local token = jwt.sign(
-    { sub = "user:42", name = "Alice", role = "admin" },
+    {sub = "user:42", name = "Alice", role = "admin"},
     SECRET,
-    { alg = "HS256", exp = 3600, iss = "myapp" }
+    {alg = "HS256", exp = 3600, iss = "myapp"}
 )
 print("Token:")
 print(token)
@@ -46,7 +46,7 @@ end
 for i = 0, 1 do
     local algs = {"HS384", "HS512"}
     local alg = algs[i]
-    local t = jwt.sign({ sub = "test" }, SECRET, { alg = alg })
+    local t = jwt.sign({sub = "test"}, SECRET, {alg = alg})
     local c, e = jwt.verify(t, SECRET)
     if c then
         print(alg .. " OK")

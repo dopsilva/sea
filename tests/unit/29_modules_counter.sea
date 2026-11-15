@@ -6,4 +6,4 @@ local count = 0
 local function increment() count = count + 1 end
 local function get() return count end
 
-return { increment = increment, get = get }
+return {increment = increment, get = get}

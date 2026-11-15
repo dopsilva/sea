@@ -15,13 +15,13 @@
 --                        [Worker N] ──╯
 --
 
-local N_JOBS    = 60
-local JOB_MS    = 30    -- ms de trabalho por job (simula I/O/CPU)
+local N_JOBS = 60
+local JOB_MS = 30 -- ms de trabalho por job (simula I/O/CPU)
 
 -- Função de trabalho: job → resultado
 local function processar(job)
     time.sleep(JOB_MS * time.Millisecond)
-    return { id = job, resultado = job * job + job }  -- f(n) = n² + n
+    return {id = job, resultado = job * job + job} -- f(n) = n² + n
 end
 
 -- Executa o pool com `n_workers` workers.
@@ -68,7 +68,7 @@ end
 
 -- Soma esperada: Σ (i² + i) para i=1..N = N*(N+1)*(2N+1)/6 + N*(N+1)/2
 local expected = N_JOBS * (N_JOBS + 1) * (2 * N_JOBS + 1) / 6 +
-                 N_JOBS * (N_JOBS + 1) / 2
+    N_JOBS * (N_JOBS + 1) / 2
 
 print("╔══════════════════════════════════════════╗")
 print("║      Worker Pool em Sea                  ║")
@@ -89,15 +89,15 @@ print("  [1 worker ]  " .. c1 .. " jobs  soma=" .. s1 .. "  " .. t1 .. " ms")
 
 local c2, s2, t2 = executar_pool(2)
 print("  [2 workers]  " .. c2 .. " jobs  soma=" .. s2 .. "  " .. t2 .. " ms" ..
-      "  speedup=" .. fmt_speedup(t1, t2))
+    "  speedup=" .. fmt_speedup(t1, t2))
 
 local c4, s4, t4 = executar_pool(4)
 print("  [4 workers]  " .. c4 .. " jobs  soma=" .. s4 .. "  " .. t4 .. " ms" ..
-      "  speedup=" .. fmt_speedup(t1, t4))
+    "  speedup=" .. fmt_speedup(t1, t4))
 
 local c8, s8, t8 = executar_pool(8)
 print("  [8 workers]  " .. c8 .. " jobs  soma=" .. s8 .. "  " .. t8 .. " ms" ..
-      "  speedup=" .. fmt_speedup(t1, t8))
+    "  speedup=" .. fmt_speedup(t1, t8))
 
 print("")
 if s1 == expected and s2 == expected and s4 == expected and s8 == expected then

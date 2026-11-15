@@ -20,9 +20,9 @@
 -- Resultado: total de entregas > total de publicações.
 --
 
-local N_PUBS       = 4    -- publishers simultâneos
-local MSGS_PER_PUB = 80   -- mensagens por publisher
-local BROKER_LAT   = 1    -- latência simulada por mensagem no broker (ms)
+local N_PUBS       = 4  -- publishers simultâneos
+local MSGS_PER_PUB = 80 -- mensagens por publisher
+local BROKER_LAT   = 1  -- latência simulada por mensagem no broker (ms)
 
 math.randomseed(time.time())
 
@@ -35,9 +35,9 @@ TOPICS[] = "games"
 local N_TOTAL = N_PUBS * MSGS_PER_PUB
 
 -- ─── Canais de controle ───────────────────────────────────────────────────────
-local pub_ch    = chan(N_TOTAL + 8)   -- mensagens dos publishers → broker
-local stats_req = chan(1)             -- requisição de snapshot ao broker
-local stats_res = chan(1)             -- resposta do broker com estado atual
+local pub_ch    = chan(N_TOTAL + 8) -- mensagens dos publishers → broker
+local stats_req = chan(1)           -- requisição de snapshot ao broker
+local stats_res = chan(1)           -- resposta do broker com estado atual
 
 -- ─── Tabela de roteamento ─────────────────────────────────────────────────────
 -- subs[tópico] = array de inboxes dos subscribers daquele tópico
@@ -47,7 +47,7 @@ local all_inboxes = []
 local function new_sub(topics_arr)
     local inbox = chan(N_TOTAL + 8)
     all_inboxes[] = inbox
-    for i = 0, len(topics_arr)-1 do
+    for i = 0, len(topics_arr) - 1 do
         local t = topics_arr[i]
         if subs[t] == nil then
             subs[t] = []
@@ -57,18 +57,18 @@ local function new_sub(topics_arr)
     return inbox
 end
 
-local t_alice = [] 
+local t_alice = []
 t_alice[] = "tecnologia"
 t_alice[] = "games"
-local t_bob   = [] 
+local t_bob = []
 t_bob[] = "esportes"
 t_bob[] = "tecnologia"
-local t_carol = [] 
+local t_carol = []
 t_carol[] = "política"
 t_carol[] = "esportes"
-local t_dave  = [] 
+local t_dave = []
 t_dave[] = "games"
-local t_eve   = [] 
+local t_eve = []
 t_eve[] = "tecnologia"
 t_eve[] = "política"
 
@@ -94,7 +94,7 @@ go (function()
         -- ── Verifica query de snapshot (não-bloqueante) ─────────────────
         select
             case _ = <-stats_req then
-                stats_res <- routed      -- responde com estado atual
+                stats_res <- routed -- responde com estado atual
             case default then
                 -- nenhuma query pendente, continua
         end
@@ -102,13 +102,13 @@ go (function()
         -- ── Roteia mensagem para todos os subscribers do tópico ─────────
         local inboxes = subs[evt.topic]
         if inboxes ~= nil then
-            for i = 0, len(inboxes)-1 do
+            for i = 0, len(inboxes) - 1 do
                 inboxes[i] <- evt.msg
             end
             routed = routed + len(inboxes)
         end
 
-        time.sleep(BROKER_LAT * time.Millisecond)  -- simula latência de persistência (DB write)
+        time.sleep(BROKER_LAT * time.Millisecond) -- simula latência de persistência (DB write)
     end
 
     -- Verifica se há query pendente depois da última mensagem
@@ -117,9 +117,8 @@ go (function()
             stats_res <- routed
         case default then
     end
-
     -- Fecha todos os inboxes → subscribers terminam seus for-in loops
-    for i = 0, len(all_inboxes)-1 do
+    for i = 0, len(all_inboxes) - 1 do
         close(all_inboxes[i])
     end
     broker_done <- routed
@@ -134,15 +133,15 @@ local function start_sub(name, inbox)
         for _ in inbox do
             count = count + 1
         end
-        results_ch <- {name=name, count=count}
+        results_ch <- {name = name, count = count}
     end)()
 end
 
 start_sub("alice", inbox_alice)
-start_sub("bob",   inbox_bob)
+start_sub("bob", inbox_bob)
 start_sub("carol", inbox_carol)
-start_sub("dave",  inbox_dave)
-start_sub("eve",   inbox_eve)
+start_sub("dave", inbox_dave)
+start_sub("eve", inbox_eve)
 
 -- ─── Publishers ──────────────────────────────────────────────────────────────
 local pub_done = chan(N_PUBS)
@@ -150,8 +149,8 @@ local pub_done = chan(N_PUBS)
 local function start_pub(id)
     go (function()
         for j = 1, MSGS_PER_PUB do
-            local tidx = math.random(0, len(TOPICS)-1)
-            pub_ch <- {topic=TOPICS[tidx], msg="pub" .. id .. "#" .. j}
+            local tidx = math.random(0, len(TOPICS) - 1)
+            pub_ch <- {topic = TOPICS[tidx], msg = "pub" .. id .. "#" .. j}
         end
         pub_done <- true
     end)()
@@ -215,10 +214,10 @@ print("  Entregas realizadas      : " .. total_routed)
 print("  Fan-out médio            : " .. fanout_int .. "." .. fanout_dec .. "x por mensagem")
 print("───────────────────────────────────────────")
 print("  alice  (tech, games)     : " .. counts["alice"] .. " msgs")
-print("  bob    (sport, tech)     : " .. counts["bob"]   .. " msgs")
+print("  bob    (sport, tech)     : " .. counts["bob"] .. " msgs")
 print("  carol  (pol, sport)      : " .. counts["carol"] .. " msgs")
-print("  dave   (games)           : " .. counts["dave"]  .. " msgs")
-print("  eve    (tech, pol)       : " .. counts["eve"]   .. " msgs")
+print("  dave   (games)           : " .. counts["dave"] .. " msgs")
+print("  eve    (tech, pol)       : " .. counts["eve"] .. " msgs")
 print("───────────────────────────────────────────")
 print("  Total recebido           : " .. total_recv)
 if total_recv == total_routed then

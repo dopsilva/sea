@@ -35,11 +35,15 @@ t.describe("xlsx", function()
         t.no_error(xlsx.write(p, [
             {
                 name = "Pedidos", rows = [
-                    ["Pedido", "Cliente", "Data", "Total"], [1001, "Padaria Pão & Cia", {date = "2026-10-31"}, 150.75],
+                    ["Pedido", "Cliente", "Data", "Total"],
+                    [1001, "Padaria Pão & Cia", {date = "2026-10-31"}, 150.75],
                     [1002, "  espaços  ", {date = "2026-11-01 08:30"}, 0],
                 ],
             },
-            {name = "Itens", rows = [ ["Pedido", "Produto", "Qtd"], [1001, "", 3], [], [1002, "Café", true] ]},
+            {
+                name = "Itens",
+                rows = [ ["Pedido", "Produto", "Qtd"], [1001, "", 3], [], [1002, "Café", true] ],
+            },
         ]))
         local book = t.no_error(xlsx.read(p))
         t.eq(list.map(book.sheets, function(s) return s.name end), ["Pedidos", "Itens"])

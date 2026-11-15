@@ -34,7 +34,7 @@ print(xml.parse(string.rep("<a>", 600) .. string.rep("</a>", 600), {max_depth = 
 print("valid", xml.valid("<a/>"), xml.valid("<a>"), xml.valid("x"))
 print("refs", xml.parse("<a>&#233;&#x1F600;&lt;&amp;&apos;&quot;&gt;</a>").text)
 print("crlf", string.replace(xml.parse("<a t=\"x\ny\">l1\r\nl2\rl3</a>").text, "\n", "|"),
-      xml.attr(xml.parse("<a t=\"x\ny\"/>"), "t"))
+    xml.attr(xml.parse("<a t=\"x\ny\"/>"), "t"))
 
 -- ---- mixed content keeps its order ----------------------------------------
 local p = xml.parse("<p>Hello <b>world</b>!</p>")
@@ -45,7 +45,14 @@ print("deep text", xml.text(p, true))
 -- ---- whitespace, comments, cdata, pi ----------------------------------------
 local src = "<r>\n  <x id='1'>one</x>\n  <!-- note -->\n  <y><![CDATA[a < b]]></y>\n  <?app go?>\n</r>"
 local all = xml.parse(src, {comments = true, cdata = true, pi = true})
-print("kept", len(all.nodes), all.nodes[3].type, all.nodes[3].value, all.nodes[7].type, all.nodes[7].target)
+print(
+    "kept",
+    len(all.nodes),
+    all.nodes[3].type,
+    all.nodes[3].value,
+    all.nodes[7].type,
+    all.nodes[7].target
+)
 print("cdata node", xml.find(all, "y").nodes[0].type, xml.find(all, "y").text)
 print(xml.encode(all))
 local lean = xml.parse(src, {ignore_whitespace = true})
@@ -78,8 +85,20 @@ local docsrc = [[<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <book id="2"><d:title>Memorias</d:title><year>1881</year></book>
   <shelf><book id="3" lang="en"><d:title>Ulysses</d:title></book></shelf>
 </lib>]]
-local doc = xml.parse(docsrc, {document = true, comments = true, namespaces = true, ignore_whitespace = true})
-print("doc", doc.type, doc.version, doc.encoding, doc.standalone, doc.doctype, len(doc.nodes), doc.root.tag)
+local doc = xml.parse(
+    docsrc,
+    {document = true, comments = true, namespaces = true, ignore_whitespace = true}
+)
+print(
+    "doc",
+    doc.type,
+    doc.version,
+    doc.encoding,
+    doc.standalone,
+    doc.doctype,
+    len(doc.nodes),
+    doc.root.tag
+)
 local title = xml.find(xml.find(doc.root, "book"), "d:title")
 print("ns", doc.root.ns, doc.root.name, title.ns, title.name)
 print(xml.encode(doc, {indent = 2, declaration = true}))
@@ -106,7 +125,11 @@ print("[@lang!='en']", ids(xml.query(r, "//book[@lang!='en']")))
 print("[2] [last()]", ids(xml.query(r, "book[2]")), ids(xml.query(r, "book[last()]")))
 print("[year=1881]", ids(xml.query(r, "book[year=1881]")))
 print("[year]", ids(xml.query(r, "//book[year]")))
-print("[text()]", len(xml.query(r, "//year[text()='1899']")), len(xml.query(r, "//year[text()!='1899']")))
+print(
+    "[text()]",
+    len(xml.query(r, "//year[text()='1899']")),
+    len(xml.query(r, "//year[text()!='1899']"))
+)
 print("@id", ids(xml.query(r, "//book/@id")))
 print("@*", ids(xml.query(r, "book[1]/@*")))
 print("text()", ids(xml.query(r, "//d:title/text()")))
@@ -136,8 +159,9 @@ local function stopper(tag)
 end
 print("sax stop", xml.sax("<a><b/><b/><b/></a>", {start = stopper}), seen)
 local nsseen = []
-xml.sax('<a xmlns="urn:a"><b/></a>', {start = function(tag, attrs, ns) nsseen[] = tag .. "=" .. ns end},
-        {namespaces = true})
+xml.sax('<a xmlns="urn:a"><b/></a>', {
+    start = function(tag, attrs, ns) nsseen[] = tag .. "=" .. ns end,
+}, {namespaces = true})
 print("sax ns", string.join(nsseen, " "))
 print(err(xml.sax("<a>", {})))
 local function try(f)

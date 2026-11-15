@@ -168,7 +168,11 @@ local function name_token(l)
     while l.pos <= l.n and is_regular(string.byte(l.s, l.pos)) do l.pos += 1 end
     local raw = string.sub(l.s, start, l.pos - 1)
     if string.contains(raw, "#") then
-        raw = re.gsub("#([0-9A-Fa-f]{2})", raw, function(m) return string.char(tonumber(m.groups[1], 16)) end)
+        raw = re.gsub(
+            "#([0-9A-Fa-f]{2})",
+            raw,
+            function(m) return string.char(tonumber(m.groups[1], 16)) end
+        )
     end
     return "/" .. raw
 end
@@ -474,7 +478,8 @@ function Doc.stream_data(doc, obj)
             local early = true
             if type(p) == "table" and doc:get(p, "EarlyChange") == 0 then early = false end
             data = lzw(data, early)
-        elseif f == "/DCTDecode" or f == "/DCT" or f == "/JPXDecode" or f == "/CCITTFaxDecode" or f == "/JBIG2Decode" then
+        elseif f == "/DCTDecode" or f == "/DCT" or f == "/JPXDecode" or f == "/CCITTFaxDecode"
+                or f == "/JBIG2Decode" then
             break -- an image's own format
         else
             return error("pdf: unsupported filter " .. tostring(f))
@@ -650,7 +655,9 @@ local function parse_cmap(data)
             stack = []
         elseif t == "endcodespacerange" then
             for _, v in stack do
-                if type(v) == "table" and v.str ~= nil and len(v.str) > cm.bytes then cm.bytes = len(v.str) end
+                if type(v) == "table" and v.str ~= nil and len(v.str) > cm.bytes then
+                    cm.bytes = len(v.str)
+                end
             end
             mode = nil
         elseif t == "beginbfchar" then
@@ -661,7 +668,8 @@ local function parse_cmap(data)
             while i + 1 < len(stack) do
                 local src = stack[i]
                 local dst = stack[i + 1]
-                if type(src) == "table" and type(dst) == "table" and src.str ~= nil and dst.str ~= nil then
+                if type(src) == "table" and type(dst) == "table" and src.str ~= nil
+                        and dst.str ~= nil then
                     cm.map[bytes_int(src.str)] = utf16be(dst.str)
                 end
                 i += 2
@@ -676,13 +684,16 @@ local function parse_cmap(data)
                 local lo = stack[i]
                 local hi = stack[i + 1]
                 local dst = stack[i + 2]
-                if type(lo) == "table" and type(hi) == "table" and lo.str ~= nil and hi.str ~= nil then
+                if type(lo) == "table" and type(hi) == "table" and lo.str ~= nil
+                        and hi.str ~= nil then
                     local a = bytes_int(lo.str)
                     local b = bytes_int(hi.str)
                     if b - a <= 65535 then
                         if type(dst) == "array" then
                             for k, d in dst do
-                                if type(d) == "table" and d.str ~= nil then cm.map[a + k] = utf16be(d.str) end
+                                if type(d) == "table" and d.str ~= nil then
+                                    cm.map[a + k] = utf16be(d.str)
+                                end
                             end
                         elseif type(dst) == "table" and dst.str ~= nil then
                             local base = dst.str
@@ -783,7 +794,11 @@ function Doc.font(doc, ref_or_dict)
             if data ~= nil and not is_error(data) then
                 local cm = parse_cmap(data)
                 f.map = cm.map
-                if subtype ~= "/Type0" then f.bytes = 1 else f.bytes = cm.bytes > 1 and cm.bytes or 2 end
+                if subtype ~= "/Type0" then
+                    f.bytes = 1
+                else
+                    f.bytes = cm.bytes > 1 and cm.bytes or 2
+                end
             end
         end
     end
@@ -820,7 +835,8 @@ end
 
 local function mat_mul(a, b)
     return [
-        a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3], a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3],
+        a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3], a[2] * b[0] + a[3] * b[2],
+        a[2] * b[1] + a[3] * b[3],
         a[4] * b[0] + a[5] * b[2] + b[4], a[4] * b[1] + a[5] * b[3] + b[5],
     ]
 end
@@ -997,7 +1013,10 @@ local function text_runs(doc, content, resources, runs, depth)
                 end
             elseif t == "cm" and len(ops) >= 6 then
                 local n = len(ops)
-                ctm = mat_mul([ops[n - 6], ops[n - 5], ops[n - 4], ops[n - 3], ops[n - 2], ops[n - 1]], ctm)
+                ctm = mat_mul(
+                    [ops[n - 6], ops[n - 5], ops[n - 4], ops[n - 3], ops[n - 2], ops[n - 1]],
+                    ctm
+                )
             elseif t == "q" then
                 gstack[] = ctm
             elseif t == "Q" then
@@ -1010,7 +1029,8 @@ local function text_runs(doc, content, resources, runs, depth)
                 local xname = ops[len(ops) - 1]
                 if is_name(xname) then
                     local x = doc:resolve(xobjects[string.sub(xname, 2)])
-                    if type(x) == "table" and x.raw ~= nil and doc:get(x.dict, "Subtype") == "/Form" then
+                    if type(x) == "table" and x.raw ~= nil
+                            and doc:get(x.dict, "Subtype") == "/Form" then
                         local data = doc:stream_data(x)
                         if data ~= nil and not is_error(data) then
                             local res = doc:get(x.dict, "Resources") or resources
@@ -1021,8 +1041,8 @@ local function text_runs(doc, content, resources, runs, depth)
             elseif t == "BI" then
                 -- an inline image: skip to EI
                 local e = string.find(content, "EI", l.pos)
-                while e ~= nil and not (is_ws(string.byte(content, e - 1)) and
-                    (e + 2 > len(content) or is_ws(string.byte(content, e + 2)))) do
+                while e ~= nil and not (is_ws(string.byte(content, e - 1))
+                        and (e + 2 > len(content) or is_ws(string.byte(content, e + 2)))) do
                     e = string.find(content, "EI", e + 2)
                 end
                 l.pos = e ~= nil and e + 2 or len(content) + 1
@@ -1067,8 +1087,9 @@ local function layout(runs)
             if r.space then
                 if len(parts) > 0 and parts[len(parts) - 1] ~= " " then parts[] = " " end
             else
-                if last_end ~= nil and r.x - last_end > r.size * 0.15 and len(parts) > 0 and parts[len(parts) - 1] ~= " " and
-                    not string.starts_with(r.text, " ") then
+                if last_end ~= nil and r.x - last_end > r.size * 0.15 and len(parts) > 0
+                        and parts[len(parts) - 1] ~= " "
+                        and not string.starts_with(r.text, " ") then
                     parts[] = " "
                 end
                 parts[] = r.text
@@ -1131,7 +1152,8 @@ function Doc.page_images(doc, i)
                 elseif (doc:get(x.dict, "BitsPerComponent") or 8) == 8 then
                     local cs = doc:get(x.dict, "ColorSpace")
                     if type(cs) == "array" then cs = doc:resolve(cs[0]) end
-                    local nc = cs == "/DeviceRGB" and 3 or (cs == "/DeviceCMYK" and 4 or (cs == "/DeviceGray" and 1 or 0))
+                    local nc = cs == "/DeviceRGB" and 3
+                        or (cs == "/DeviceCMYK" and 4 or (cs == "/DeviceGray" and 1 or 0))
                     if nc > 0 and len(data) >= w * h * nc then
                         local px = []
                         for k = 0, w * h - 1 do
@@ -1140,7 +1162,10 @@ function Doc.page_images(doc, i)
                             if nc == 1 then
                                 v = string.byte(data, p)
                             elseif nc == 3 then
-                                v = (299 * string.byte(data, p) + 587 * string.byte(data, p + 1) + 114 * string.byte(data, p + 2)) // 1000
+                                v = (299 * string.byte(data, p) + 587 * string.byte(data, p + 1) + 114 * string.byte(
+                                    data,
+                                    p + 2
+                                )) // 1000
                             else
                                 local kk = string.byte(data, p + 3)
                                 local r = 255 - math.min(255, string.byte(data, p) + kk)
@@ -1165,7 +1190,9 @@ end
 
 -- pdf.open(bytes) → doc | error
 function M.open(s)
-    if type(s) ~= "string" or string.find(s, "%PDF-") == nil then return error("pdf: not a PDF file") end
+    if type(s) ~= "string" or string.find(s, "%PDF-") == nil then
+        return error("pdf: not a PDF file")
+    end
     local doc = {}
     doc.s = s
     doc.objects = {}
@@ -1205,7 +1232,9 @@ function M.open(s)
                     for _ = 1, doc:get(o.dict, "N") or 0 do
                         local num = token(l)
                         local _ = token(l)
-                        if is_num(num) and doc.in_objstm[math.floor(num)] == nil then doc.in_objstm[math.floor(num)] = n end
+                        if is_num(num) and doc.in_objstm[math.floor(num)] == nil then
+                            doc.in_objstm[math.floor(num)] = n
+                        end
                     end
                 end
             elseif ty == "/XRef" and (type(trailer) ~= "table" or trailer.Root == nil) then
@@ -1226,7 +1255,9 @@ function M.open(s)
             end
         end
     end
-    if type(trailer) ~= "table" or trailer.Root == nil then return error("pdf: no document catalog") end
+    if type(trailer) ~= "table" or trailer.Root == nil then
+        return error("pdf: no document catalog")
+    end
     if trailer.Encrypt ~= nil and trailer.Encrypt ~= NULL then
         return error("pdf: the file is encrypted (protected by a password)")
     end

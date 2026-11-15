@@ -3,7 +3,7 @@
 
 -- Test: the cycle collector (gc.collect / gc.stats, docs/memory.md)
 
-gc.collect()   -- start from an empty buffer
+gc.collect() -- start from an empty buffer
 
 -- 1. a two-object cycle, unreachable once the function returns
 local function make_pair()
@@ -13,7 +13,7 @@ local function make_pair()
     b.peer = a
 end
 make_pair()
-print(gc.collect())                         -- 2
+print(gc.collect()) -- 2
 
 -- 2. self-references: table, map, array, closure over its own table
 local function selfs()
@@ -24,10 +24,10 @@ local function selfs()
     local arr = []
     arr[] = arr
     local obj = {}
-    obj.f = function() return obj end      -- obj -> closure -> upvalue -> obj
+    obj.f = function() return obj end -- obj -> closure -> upvalue -> obj
 end
 selfs()
-print(gc.collect())                         -- 6
+print(gc.collect()) -- 6
 
 -- 3. a ring of 10 nodes plus a string each: all freed, strings included
 local function ring()
@@ -43,15 +43,15 @@ local function ring()
     prev.next = first
 end
 ring()
-print(gc.collect())                         -- 10
+print(gc.collect()) -- 10
 
 -- 4. live data is never freed: a cycle still referenced from a local
 local keep = {}
 keep.self = keep
 keep.value = 42
 local alias = keep
-alias = nil                                -- a release that leaves keep alive
-print(gc.collect(), keep.self.value)        -- 0  42
+alias = nil                          -- a release that leaves keep alive
+print(gc.collect(), keep.self.value) -- 0  42
 
 -- 5. a garbage cycle pointing at live data: only the cycle goes
 local shared = {}
@@ -64,8 +64,8 @@ local function dangling()
     y.data = shared
 end
 dangling()
-print(gc.collect(), shared.n)               -- 2  7
+print(gc.collect(), shared.n) -- 2  7
 
 -- 6. stats
 local s = gc.stats()
-print(s.collections >= 5, s.freed >= 20, s.candidates)   -- true  true  0
+print(s.collections >= 5, s.freed >= 20, s.candidates) -- true  true  0

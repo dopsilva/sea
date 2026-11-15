@@ -4,11 +4,11 @@
 -- Test the hello native library
 local h = require("./hello")
 
-h.greet("Sea")          -- Hello, Sea!
-h.greet()               -- Hello, world!
-print(h.add(10, 32))    -- 42
-print(h.version())      -- 1.0.0
+h.greet("Sea")       -- Hello, Sea!
+h.greet()            -- Hello, world!
+print(h.add(10, 32)) -- 42
+print(h.version())   -- 1.0.0
 
 -- Caching: same object on second require
 local h2 = require("./hello")
-print(h == h2)          -- true
+print(h == h2) -- true

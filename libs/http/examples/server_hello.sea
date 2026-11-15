@@ -16,8 +16,8 @@ local http = require("../http")
 http.serve(8080, function(req)
     print(req.method .. " " .. req.path)
     return {
-        status  = 200,
-        body    = "Hello, World!\n",
-        headers = { ["Content-Type"] = "text/plain; charset=utf-8" },
+        status = 200,
+        body = "Hello, World!\n",
+        headers = {["Content-Type"] = "text/plain; charset=utf-8"},
     }
 end)

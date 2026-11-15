@@ -10,7 +10,8 @@
 
 local crdb = require("../cockroach")
 
-local url = os.getenv("COCKROACH_URL") or "postgresql://root@localhost:26257/defaultdb?sslmode=disable"
+local url = os.getenv("COCKROACH_URL")
+    or "postgresql://root@localhost:26257/defaultdb?sslmode=disable"
 local db = crdb.open(url)
 if is_error(db) then
     print(db.message)
@@ -30,7 +31,8 @@ local _ = db:exec([[
         specs JSONB,
         added TIMESTAMPTZ DEFAULT now()
     )
-]])
+]]
+)
 
 -- one row, parameters $1, $2, ...: arrays go as SQL arrays, tables as JSON
 local n = db:exec("INSERT INTO products (sku, name, price, tags, specs) VALUES ($1, $2, $3, $4, $5)",
@@ -40,7 +42,13 @@ print("inserted:", n)
 -- many rows at once (one multi-row INSERT), getting the generated ids back
 local rows = db:insert("products", [
     {sku = "MS-01", name = "Mouse", price = 89.9, tags = ["usb"]},
-    {sku = "MN-27", name = "Monitor 27\"", price = 1899, tags = ["hdmi", "4k"], specs = {inches = 27, hz = 144}},
+    {
+        sku = "MN-27",
+        name = "Monitor 27\"",
+        price = 1899,
+        tags = ["hdmi", "4k"],
+        specs = {inches = 27, hz = 144},
+    },
     {sku = "HS-02", name = "Headset", price = 399.5},
 ], {returning = "id, sku"})
 for _, r in rows do
@@ -49,7 +57,11 @@ for _, r in rows do
 end
 
 -- UPSERT: insert or replace by primary key / unique column
-local _ = db:insert("products", [{sku = "MS-01", name = "Mouse", price = 79.9}], {on_conflict = "(sku) DO UPDATE SET price = excluded.price"})
+local _ = db:insert(
+    "products",
+    [{sku = "MS-01", name = "Mouse", price = 79.9}],
+    {on_conflict = "(sku) DO UPDATE SET price = excluded.price"}
+)
 print("mouse now costs", db:value("SELECT price FROM products WHERE sku = $1", "MS-01"))
 
 -- queries: rows are tables keyed by column name; JSONB and arrays are decoded
@@ -58,10 +70,16 @@ for _, p in db:query("SELECT name, price, tags, specs FROM products WHERE 'usb' 
     print(p.name, p.price, json.encode(p.tags), p.specs and json.encode(p.specs) or "-")
 end
 
-local cheap = db:row("SELECT name, price FROM products WHERE price < $1 ORDER BY price LIMIT 1", 100)
+local cheap = db:row(
+    "SELECT name, price FROM products WHERE price < $1 ORDER BY price LIMIT 1",
+    100
+)
 print("cheapest:", cheap.name, cheap.price)
 print("count:", db:value("SELECT count(*) FROM products"))
-print("in a list:", db:value("SELECT count(*) FROM products WHERE sku = ANY($1)", ["KB-01", "HS-02", "XX-99"]))
+print(
+    "in a list:",
+    db:value("SELECT count(*) FROM products WHERE sku = ANY($1)", ["KB-01", "HS-02", "XX-99"])
+)
 
 -- each: rows as they arrive (memory stays flat for big results)
 local total = 0
@@ -71,7 +89,12 @@ end)
 print("stock value:", total)
 
 -- errors are values carrying the SQLSTATE
-local dup = db:exec("INSERT INTO products (sku, name, price) VALUES ($1, $2, $3)", "KB-01", "Again", 1)
+local dup = db:exec(
+    "INSERT INTO products (sku, name, price) VALUES ($1, $2, $3)",
+    "KB-01",
+    "Again",
+    1
+)
 print(crdb.sqlstate(dup), dup.message)
 if crdb.sqlstate(dup) == "23505" then print("(23505: unique violation)") end
 

@@ -14,39 +14,39 @@ print(json.decode('"hello"')) -- hello
 
 -- array (returns SeaArray, 0-indexed)
 local arr = json.decode("[10, 20, 30]")
-print(arr[0], arr[1], arr[2])   -- 10  20  30
-print(len(arr))                  -- 3
+print(arr[0], arr[1], arr[2]) -- 10  20  30
+print(len(arr))               -- 3
 
 -- object (returns table)
 local user = json.decode('{"name":"alice","age":30,"active":true}')
-print(user["name"])    -- alice
-print(user["age"])     -- 30
-print(user["active"])  -- true
+print(user["name"])   -- alice
+print(user["age"])    -- 30
+print(user["active"]) -- true
 
 -- nested
 local resp = json.decode('{"ok":true,"data":{"items":[1,2,3],"total":3}}')
-print(resp["ok"])                    -- true
-print(resp["data"]["total"])         -- 3
-print(resp["data"]["items"][0])      -- 1
+print(resp["ok"])               -- true
+print(resp["data"]["total"])    -- 3
+print(resp["data"]["items"][0]) -- 1
 
 -- errors are error values (a JSON null is nil, a failure is not)
 local bad = json.decode("{invalid}")
-print(is_error(bad))   -- true
-print(bad.message)     -- json.decode: expected a string key at line 1, column 2
+print(is_error(bad)) -- true
+print(bad.message)   -- json.decode: expected a string key at line 1, column 2
 
 -- in a function returning errors, `?` passes the failure up
 local function load_config(text)
     local cfg = json.decode(text)?
     return cfg["port"]
 end
-print(load_config('{"port": 8080}'))      -- 8080
-print(load_config('{"port": }').message)  -- json.decode: unexpected character '}' ...
+print(load_config('{"port": 8080}'))     -- 8080
+print(load_config('{"port": }').message) -- json.decode: unexpected character '}' ...
 
 -- validate without building anything
-print(json.valid('{"a": [1, 2]}'), json.valid("[1,"))   -- true  false
+print(json.valid('{"a": [1, 2]}'), json.valid("[1,")) -- true  false
 
 -- round-trip
-local original = { x = 1, y = "hello", flags = {true, false, true} }
+local original = {x = 1, y = "hello", flags = {true, false, true}}
 local encoded  = json.encode(original)
 local decoded  = json.decode(encoded)
 print(decoded["x"])        -- 1

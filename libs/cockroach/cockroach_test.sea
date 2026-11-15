@@ -13,7 +13,10 @@ t.describe("offline", function()
     t.it("SCRAM-SHA-256 matches RFC 7677", function()
         local r = crdb.scram_final("pencil", "n=user,r=rOprNGfwEbeRWgbNEkqO",
             "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096")
-        t.eq(r.message, "c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ=")
+        t.eq(
+            r.message,
+            "c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ="
+        )
         t.eq(r.server_signature, "6rriTRBi23WpRR/wtup+mMhUZUn/dB5nLTJRsjl95G4=")
         t.is_error(crdb.scram_final("pencil", "n=user,r=abc", "r=other,s=AAAA,i=1"), "SCRAM")
     end)
@@ -90,7 +93,10 @@ server("server", function()
     end)
 
     t.it("inserts in bulk and upserts", function()
-        t.eq(db:insert("sea_crdb_test", [{id = 1, name = "bo", age = 25}, {id = 2, name = "cid"}]), 2)
+        t.eq(
+            db:insert("sea_crdb_test", [{id = 1, name = "bo", age = 25}, {id = 2, name = "cid"}]),
+            2
+        )
         t.eq(db:upsert("sea_crdb_test", [{id = 2, name = "cid", age = 40}]), 1)
         t.eq(db:value("SELECT age FROM sea_crdb_test WHERE id = 2"), 40)
         local back = db:insert("sea_crdb_test", [{id = 3, name = "dan"}], {returning = "id, name"})

@@ -3,7 +3,7 @@
 
 -- libs/sqlite test: make -C libs/sqlite test
 local sqlite = require("sqlite")
-local json = require("json")   -- built into sea
+local json = require("json") -- built into sea
 
 local function show(v)
     if is_error(v) then return "error: " .. v.message end
@@ -13,8 +13,14 @@ end
 print("-- open, exec, query")
 print(string.starts_with(sqlite.version(), "3."))
 local db = sqlite.open()
-print(db.path, db:exec("CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER, score REAL, photo BLOB)"))
-print(db:exec("INSERT INTO people (name, age, score) VALUES (?, ?, ?)", "ana", 31, 9.5), db:last_insert_id())
+print(
+    db.path,
+    db:exec("CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER, score REAL, photo BLOB)")
+)
+print(
+    db:exec("INSERT INTO people (name, age, score) VALUES (?, ?, ?)", "ana", 31, 9.5),
+    db:last_insert_id()
+)
 print(db:exec("INSERT INTO people (name, age, score) VALUES (?, ?, ?)", {"bo", 25, 7}))
 local p = {}
 p.n = "cid"
@@ -22,20 +28,48 @@ p.a = 40
 print(db:exec("INSERT INTO people (name, age) VALUES (:n, @a)", p), db:last_insert_id())
 print(show(db:query("SELECT id, name, age, score FROM people ORDER BY id")))
 print(show(db:row("SELECT name, age FROM people WHERE age > ? ORDER BY age", 30)))
-print(show(db:row("SELECT name FROM people WHERE age > 100")), db:value("SELECT count(*) FROM people"), db:value("SELECT name FROM people WHERE id = 99"))
-print(db:exec("UPDATE people SET age = age + 1"), db:exec("DELETE FROM people WHERE name = ?", "nobody"))
+print(
+    show(db:row("SELECT name FROM people WHERE age > 100")),
+    db:value("SELECT count(*) FROM people"),
+    db:value("SELECT name FROM people WHERE id = 99")
+)
+print(
+    db:exec("UPDATE people SET age = age + 1"),
+    db:exec("DELETE FROM people WHERE name = ?", "nobody")
+)
 print(db:exec("CREATE TABLE a (x); CREATE TABLE b (y); INSERT INTO a VALUES (1), (2); INSERT INTO b VALUES (3)"))
 print(show(db:query("SELECT 1 AS one; SELECT x FROM a ORDER BY x")))
 
 print("-- types")
 print(show(db:row("SELECT 140737488355327 AS i, 140737488355328 AS n, 9007199254740993 AS b, 1.5 AS r, 'é' AS t, NULL AS z, x'00ff' AS bl")))
-print(type(db:value("SELECT 9007199254740993")), db:value("SELECT 9007199254740993") == bigint.new("9007199254740993"))
-print(db:value("SELECT ?", true), db:value("SELECT ?", false), db:value("SELECT typeof(?)", 1.0), db:value("SELECT typeof(?)", "s"))
-print(db:value("SELECT typeof(?)", sqlite.blob("ab")), db:value("SELECT length(?)", sqlite.blob(string.char(0, 1, 2))), db:value("SELECT ?", nil))
-print(db:value("SELECT ? + 1", bigint.new("9223372036854775806")), db:value("SELECT typeof(?)", bigint.new("99999999999999999999")))
-db:exec("UPDATE people SET photo = ? WHERE name = 'ana'", sqlite.blob(string.char(137, 80, 78, 71, 0)))
+print(
+    type(db:value("SELECT 9007199254740993")),
+    db:value("SELECT 9007199254740993") == bigint.new("9007199254740993")
+)
+print(
+    db:value("SELECT ?", true),
+    db:value("SELECT ?", false),
+    db:value("SELECT typeof(?)", 1.0),
+    db:value("SELECT typeof(?)", "s")
+)
+print(
+    db:value("SELECT typeof(?)", sqlite.blob("ab")),
+    db:value("SELECT length(?)", sqlite.blob(string.char(0, 1, 2))),
+    db:value("SELECT ?", nil)
+)
+print(
+    db:value("SELECT ? + 1", bigint.new("9223372036854775806")),
+    db:value("SELECT typeof(?)", bigint.new("99999999999999999999"))
+)
+db:exec(
+    "UPDATE people SET photo = ? WHERE name = 'ana'",
+    sqlite.blob(string.char(137, 80, 78, 71, 0))
+)
 print(len(db:value("SELECT photo FROM people WHERE name = 'ana'")))
-print(show(db:value("SELECT json_object('a', 1, 'b', json_array(2, 3))")), db:value("SELECT sqrt(16.0)"))
+print(
+    show(db:value("SELECT json_object('a', 1, 'b', json_array(2, 3))")),
+    db:value("SELECT sqrt(16.0)")
+)
 
 print("-- errors")
 print(show(db:exec("SELECT * FROM nowhere")))
@@ -100,13 +134,13 @@ local f = sqlite.open(path, {wal = true})
 f:exec("CREATE TABLE log (n INTEGER)")
 local ch = chan(4)
 for g = 1, 4 do
-    go function()
+    go (function()
         local c = f:connect()
         for i = 1, 25 do c:exec("INSERT INTO log VALUES (?)", g * 100 + i) end
         local count = c:value("SELECT count(*) FROM log WHERE n / 100 = ?", g)
         c:close()
         ch <- count
-    end()
+    end)()
 end
 local total = 0
 for g = 1, 4 do total = total + <-ch end

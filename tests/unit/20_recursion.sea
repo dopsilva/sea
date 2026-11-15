@@ -5,7 +5,7 @@
 -- fibonacci
 local function fib(n)
     if n <= 1 then return n end
-    return fib(n-1) + fib(n-2)
+    return fib(n - 1) + fib(n - 2)
 end
 for i = 0, 10 do
     print(fib(i))
@@ -15,11 +15,11 @@ end
 -- factorial
 local function fact(n)
     if n <= 0 then return 1 end
-    return n * fact(n-1)
+    return n * fact(n - 1)
 end
-print(fact(0))   -- 1
-print(fact(5))   -- 120
-print(fact(10))  -- 3628800
+print(fact(0))  -- 1
+print(fact(5))  -- 120
+print(fact(10)) -- 3628800
 
 -- mutual recursion
 local is_even, is_odd
@@ -31,17 +31,17 @@ is_odd = function(n)
     if n == 0 then return false end
     return is_even(n - 1)
 end
-print(is_even(4))   -- true
-print(is_odd(7))    -- true
-print(is_even(3))   -- false
+print(is_even(4)) -- true
+print(is_odd(7))  -- true
+print(is_even(3)) -- false
 
 -- tower of hanoi (count moves)
 local moves = 0
 local function hanoi(n, from, to, via)
     if n == 0 then return end
-    hanoi(n-1, from, via, to)
+    hanoi(n - 1, from, via, to)
     moves = moves + 1
-    hanoi(n-1, via, to, from)
+    hanoi(n - 1, via, to, from)
 end
 hanoi(5, "A", "C", "B")
-print(moves)  -- 31
+print(moves) -- 31

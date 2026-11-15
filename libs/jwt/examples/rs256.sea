@@ -24,9 +24,9 @@ end
 
 -- assina com chave privada
 local token = jwt.sign(
-    { sub = "user:99", role = "service" },
+    {sub = "user:99", role = "service"},
     priv_key,
-    { alg = "RS256", exp = 7200, iss = "auth-service" }
+    {alg = "RS256", exp = 7200, iss = "auth-service"}
 )
 print("Token RS256:")
 print(token)
@@ -41,7 +41,7 @@ else
 end
 
 -- chave pública errada deve rejeitar
-local bad_key = os.readfile(priv_path)  -- chave privada ≠ pública no verify
+local bad_key = os.readfile(priv_path) -- chave privada ≠ pública no verify
 local bad, err2 = jwt.verify(token, bad_key)
 if not bad then
     print("Rejeitado corretamente com chave errada: " .. err2)

@@ -8,24 +8,24 @@
 -- Constant folding creates dead writes: LOAD_INT Rtmp, 2 is dead
 -- because the fold emits LOAD_INT dst, 5 directly.
 local x = 2 + 3
-print(x)   -- 5
+print(x) -- 5
 
 -- Chain: multiple folded constants
 local y = (10 - 4) * 2
-print(y)   -- 12
+print(y) -- 12
 
 -- Fold with local: LOAD_INT Rtmp, 3 is dead when added to a const local
 local base = 100
 local z = base + 3
-print(z)   -- 103 (ADDI fold: base.is_const=1, 100+3=103)
+print(z) -- 103 (ADDI fold: base.is_const=1, 100+3=103)
 
 -- Mutable variable: no dead write (x is read by every use)
 local a = 1
 a = a + 1
 a = a + 1
-print(a)   -- 3
+print(a) -- 3
 
 -- Mixed: function call result is not a const, no fold
 local function id(v) return v end
 local b = id(7)
-print(b)   -- 7
+print(b) -- 7

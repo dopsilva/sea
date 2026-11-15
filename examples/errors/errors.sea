@@ -22,12 +22,12 @@ print("── 1. Erros como valores ──────────────�
 local function parse_positivo(s)
     local n = tonumber(s)
     if n == nil then return error("'" .. s .. "' não é número") end
-    if n <= 0   then return error("esperado positivo, got " .. s) end
+    if n <= 0 then return error("esperado positivo, got " .. s) end
     return n
 end
 
 local function raiz(s)
-    local n = parse_positivo(s)?   -- propaga o erro para o chamador
+    local n = parse_positivo(s)? -- propaga o erro para o chamador
     return math.sqrt(n)
 end
 

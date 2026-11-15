@@ -6,20 +6,20 @@
 
 local console = require("./libs/console/console")
 
-console.writeln("=== Input demo ===", { bold = true })
+console.writeln("=== Input demo ===", {bold = true})
 console.writeln("")
 
 -- readline
 local name = console.readline("Enter your name: ")
 console.write("Hello, ")
-console.write(name, { color = "bright_green", bold = true })
+console.write(name, {color = "bright_green", bold = true})
 console.writeln("!")
 console.writeln("")
 
 -- readpass
 local pass = console.readpass("Password (hidden): ")
 console.write("You entered ")
-console.write(tostring(len(pass)), { bold = true })
+console.write(tostring(len(pass)), {bold = true})
 console.writeln(" characters.")
 console.writeln("")
 
@@ -28,4 +28,4 @@ console.write("Press any key to continue... ")
 local k = console.readkey()
 console.writeln("")
 console.write("You pressed: ")
-console.writeln('"' .. k .. '"', { color = "yellow" })
+console.writeln('"' .. k .. '"', {color = "yellow"})

@@ -8,7 +8,7 @@ local function try(f)
     local function run()
         defer function()
             local e = recover()
-            if e != nil then result = string.sub(e.message, string.find(e.message, ": re") + 2) end
+            if e ~= nil then result = string.sub(e.message, string.find(e.message, ": re") + 2) end
         end
         f()
     end
@@ -17,30 +17,87 @@ local function try(f)
 end
 
 print("-- test and match")
-print(re.test("a+b", "xxaaab"), re.test("^a+b$", "xxaaab"), re.test("(?i)HELLO", "say hello"), re.test("", ""))
+print(
+    re.test("a+b", "xxaaab"),
+    re.test("^a+b$", "xxaaab"),
+    re.test("(?i)HELLO", "say hello"),
+    re.test("", "")
+)
 local m = re.match("(\\w+)@(?P<host>[\\w.]+)", "mail: ana@example.com ok")
 print(m.text, m.start, m.stop, m.groups[0], m.groups[1], m.groups[2], m.named.host)
 print(m.spans[0][0], m.spans[0][1], m.spans[2][0], m.spans[2][1], len(m.groups))
 print(re.match("x", "abc"), re.match("(a)|(b)", "b").groups[1], re.match("(a)|(b)", "b").groups[2])
-print(re.match("\\d+", "a1 b22 c333", 4).text, re.match("\\d+", "a1 b22 c333", -3).text, re.match("\\d", "abc", 10))
+print(
+    re.match("\\d+", "a1 b22 c333", 4).text,
+    re.match("\\d+", "a1 b22 c333", -3).text,
+    re.match("\\d", "abc", 10)
+)
 
 print("-- syntax")
-print(re.match("a+?", "aaa").text, re.match("a{2,3}", "aaaa").text, re.match("a{2,}?", "aaaa").text, re.match("a{2}", "aaaa").text)
-print(re.match("(a|ab)(c|bcd)", "abcd").text, re.match("x{,2}", "x{,2}").text, re.match("a{1", "a{1").text)
-print(re.test("(?s)a.b", "a\nb"), re.test("a.b", "a\nb"), string.join(re.findall("(?m)^\\w+", "one\ntwo\nthree"), ","))
-print(string.join(re.findall("\\w+$", "one\ntwo"), ","), string.join(re.findall("(?m)\\w+$", "one\ntwo"), ","))
-print(re.match("\\bfoo\\b", "a foo b").start, re.test("\\Bfoo", "a foo"), re.test("\\Afoo\\z", "foo"), re.test("\\Afoo\\z", "foo\n"))
-print(re.test("[[:alpha:]]+[[:digit:]]", "abc1"), re.match("[^[:space:]]+", "  word  ").text, re.match("[[:^digit:]]+", "ab12").text)
-print(re.match("\\x41\\x{263A}\\u{1F600}", "A☺😀").text, re.match("[\\d\\-.]+", "x -1.5e").text, re.match("[]a]+", "]a]b").text)
-print(re.match("(?i)straße", "STRAßE").text, re.match("(?i:ab)c", "ABc").text, re.match("(?i:ab)c", "ABC"))
-print(re.match("((?i)a)a", "Aa").text, re.match("((?i)a)a", "AA"), re.match("(?U)a+", "aaa").text, re.match("(?U)a+?", "aaa").text)
-print(re.test("^.$", "日"), re.match("[à-ü]+", "xxçãoyy").text, re.test("(?i)ÇÃO", "ação"), re.match("\\w+", "日本abc").text)
+print(
+    re.match("a+?", "aaa").text,
+    re.match("a{2,3}", "aaaa").text,
+    re.match("a{2,}?", "aaaa").text,
+    re.match("a{2}", "aaaa").text
+)
+print(
+    re.match("(a|ab)(c|bcd)", "abcd").text,
+    re.match("x{,2}", "x{,2}").text,
+    re.match("a{1", "a{1").text
+)
+print(
+    re.test("(?s)a.b", "a\nb"),
+    re.test("a.b", "a\nb"),
+    string.join(re.findall("(?m)^\\w+", "one\ntwo\nthree"), ",")
+)
+print(
+    string.join(re.findall("\\w+$", "one\ntwo"), ","),
+    string.join(re.findall("(?m)\\w+$", "one\ntwo"), ",")
+)
+print(
+    re.match("\\bfoo\\b", "a foo b").start,
+    re.test("\\Bfoo", "a foo"),
+    re.test("\\Afoo\\z", "foo"),
+    re.test("\\Afoo\\z", "foo\n")
+)
+print(
+    re.test("[[:alpha:]]+[[:digit:]]", "abc1"),
+    re.match("[^[:space:]]+", "  word  ").text,
+    re.match("[[:^digit:]]+", "ab12").text
+)
+print(
+    re.match("\\x41\\x{263A}\\u{1F600}", "A☺😀").text,
+    re.match("[\\d\\-.]+", "x -1.5e").text,
+    re.match("[]a]+", "]a]b").text
+)
+print(
+    re.match("(?i)straße", "STRAßE").text,
+    re.match("(?i:ab)c", "ABc").text,
+    re.match("(?i:ab)c", "ABC")
+)
+print(
+    re.match("((?i)a)a", "Aa").text,
+    re.match("((?i)a)a", "AA"),
+    re.match("(?U)a+", "aaa").text,
+    re.match("(?U)a+?", "aaa").text
+)
+print(
+    re.test("^.$", "日"),
+    re.match("[à-ü]+", "xxçãoyy").text,
+    re.test("(?i)ÇÃO", "ação"),
+    re.match("\\w+", "日本abc").text
+)
 print(re.match("a.c", "a" .. string.char(0xFF) .. "c").stop, re.match("\\s+", "a \t\n b").stop)
 
 print("-- all and findall")
-print(string.join(re.findall("\\d+", "a1b22c333"), ","), string.join(re.findall("\\d+", "a1b22c333", 2), ","))
+print(
+    string.join(re.findall("\\d+", "a1b22c333"), ","),
+    string.join(re.findall("\\d+", "a1b22c333", 2), ",")
+)
 print(string.join(re.findall("a*", "baaac"), "|"), len(re.findall("x", "abc")))
-for _, mm in re.all("(\\w)(\\d)?", "a1 b c3") do print(mm.text, mm.start, mm.groups[1], mm.groups[2]) end
+for _, mm in re.all("(\\w)(\\d)?", "a1 b c3") do
+    print(mm.text, mm.start, mm.groups[1], mm.groups[2])
+end
 
 print("-- gsub")
 print(re.gsub("(\\w+) (\\w+)", "hello world foo bar", "$2 $1"))
@@ -53,22 +110,63 @@ print(re.gsub("\\d", "a1b2c3", keep_two))
 print(re.gsub("cat|dog", "cat and dog and cow", {cat = "gato", dog = "cão"}))
 print(re.gsub("o", "foo boo", "0", 2), re.gsub("x", "abc", "y"), re.gsub("", "abc", "-"))
 print(re.gsub("(?P<y>\\d{4})-(?P<m>\\d\\d)", "2026-10 e 1999-01", "${m}/${y} [$0] $$ ${1}x"))
-print(re.gsub("(a)|(b)", "ab", "[$1|$2]"), re.gsub("\\d+", "a1b22", function(mm) return tonumber(mm.text) * 2 end))
+print(
+    re.gsub("(a)|(b)", "ab", "[$1|$2]"),
+    re.gsub("\\d+", "a1b22", function(mm) return tonumber(mm.text) * 2 end)
+)
 print(try(function() local _ = re.gsub("x", "x", "$9") end))
 print(try(function() local _ = re.gsub("x", "x", "${nope}") end))
 print(try(function() local _ = re.gsub("x", "x", 5) end))
 
 print("-- split")
-print(string.join(re.split("\\s*,\\s*", "a , b,c ,  d"), "|"), string.join(re.split("", "abc"), "|"))
-print(string.join(re.split(",", "a,b,c", 2), "|"), len(re.split(",", "a,b", 0)), string.join(re.split("x*", "axbc"), "|"))
-print(len(re.split(",", "")), string.join(re.split(",", ",a,"), "|"), string.join(re.split("a", "a"), "|"))
+print(
+    string.join(re.split("\\s*,\\s*", "a , b,c ,  d"), "|"),
+    string.join(re.split("", "abc"), "|")
+)
+print(
+    string.join(re.split(",", "a,b,c", 2), "|"),
+    len(re.split(",", "a,b", 0)),
+    string.join(re.split("x*", "axbc"), "|")
+)
+print(
+    len(re.split(",", "")),
+    string.join(re.split(",", ",a,"), "|"),
+    string.join(re.split("a", "a"), "|")
+)
 
 print("-- compile")
 local rx = re.compile("(?P<a>\\d+)-(\\d+)")
 print(rx.pattern, rx.flags, rx.groups, rx.names.a, rx:test("10-20"), rx:match("x 10-20").groups[2])
-print(string.join(rx:findall("1-2 3-4"), ";"), len(rx:all("1-2 3-4")), rx:gsub("1-2", "$2-${a}"), string.join(rx:split("a1-2b"), "|"))
-print(re.test(rx, "5-6"), re.compile("ab", "i"):test("xAB"), re.compile("^b", "m"):test("a\nb"), re.compile(".", "s"):test("\n"))
-local bad = {"(a", "a)", "a**", "[z-a]", "x{2000}", "\\1", "(?=x)", "(?<!x)", "[", "\\", "*a", "(?P<1>x)", "(?P<n>a)(?P<n>b)", "\\q", "[[:nope:]]", "(?z)"}
+print(
+    string.join(rx:findall("1-2 3-4"), ";"),
+    len(rx:all("1-2 3-4")),
+    rx:gsub("1-2", "$2-${a}"),
+    string.join(rx:split("a1-2b"), "|")
+)
+print(
+    re.test(rx, "5-6"),
+    re.compile("ab", "i"):test("xAB"),
+    re.compile("^b", "m"):test("a\nb"),
+    re.compile(".", "s"):test("\n")
+)
+local bad = {
+    "(a",
+    "a)",
+    "a**",
+    "[z-a]",
+    "x{2000}",
+    "\\1",
+    "(?=x)",
+    "(?<!x)",
+    "[",
+    "\\",
+    "*a",
+    "(?P<1>x)",
+    "(?P<n>a)(?P<n>b)",
+    "\\q",
+    "[[:nope:]]",
+    "(?z)",
+}
 for i = 0, len(bad) - 1 do print(re.compile(bad[i]).message) end
 print(re.compile("a", "q").message)
 print(try(function() local _ = re.test("(a", "x") end))
@@ -82,6 +180,10 @@ local s = string.rep("a", 20000)
 print(re.test("(a*)*b", s), re.test("(a|aa)*c", s), re.test("(x+x+)+y", string.rep("x", 20000)))
 
 print("-- captures: the strings only")
-print(re.captures("(\\w+)=(\\d+)?", "x a= b=2"), re.captures("(a)|(b)", "xb"), re.captures("z", "abc"))
+print(
+    re.captures("(\\w+)=(\\d+)?", "x a= b=2"),
+    re.captures("(a)|(b)", "xb"),
+    re.captures("z", "abc")
+)
 print(rx:captures("x 10-20"), re.captures("\\d", "a1b2", 3), re.captures("\\d", "a1", 5))
 print(try(function() local _ = re.captures("a", 5) end))

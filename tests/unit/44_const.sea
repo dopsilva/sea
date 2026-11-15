@@ -5,28 +5,24 @@
 
 -- basic const
 const x = 42
-print(x)              -- 42
+print(x) -- 42
 
 -- const string
 const greeting = "hello"
-print(greeting)       -- hello
+print(greeting) -- hello
 
 -- block form (RHS all evaluated before any var is declared)
-const (
-    a = 10
-    b = 20
-    c = 30
-)
-print(a)              -- 10
-print(b)              -- 20
-print(c)              -- 30
+const a, b, c = 10, 20, 30
+print(a) -- 10
+print(b) -- 20
+print(c) -- 30
 
 -- const inside a function
 local function make_adder(n)
     const base = 100
     return base + n
 end
-print(make_adder(5))  -- 105
+print(make_adder(5)) -- 105
 
 -- const captured read-only by a closure
 const limit = 50
@@ -36,17 +32,17 @@ local function check(v)
     end
     return "ok"
 end
-print(check(30))      -- ok
-print(check(70))      -- over
+print(check(30)) -- ok
+print(check(70)) -- over
 
 -- shadowing: inner const with same name is allowed
 const val = 1
 do
     const val = 2
-    print(val)        -- 2
+    print(val) -- 2
 end
-print(val)            -- 1
+print(val) -- 1
 
 -- const with expression initializer
 const doubled = 7 * 2
-print(doubled)        -- 14
+print(doubled) -- 14

@@ -80,9 +80,9 @@ local function edit_distance(a, b)
         for j = 1, m do
             local cost = 1
             if char_at(a, i) == char_at(b, j) then cost = 0 end
-            t[i * w + j] = math.min(t[(i - 1) * w + j] + 1,          -- remoção
-                                    t[i * w + (j - 1)] + 1,          -- inserção
-                                    t[(i - 1) * w + (j - 1)] + cost) -- troca
+            t[i * w + j] = math.min(t[(i - 1) * w + j] + 1, -- remoção
+                t[i * w + (j - 1)] + 1,                     -- inserção
+                t[(i - 1) * w + (j - 1)] + cost)            -- troca
         end
     end
     return t[n * w + m]
@@ -102,13 +102,13 @@ print("")
 print("── 3. Mochila 0/1 (capacidade 15 kg) ────────")
 
 local itens = []
-itens[] = {nome = "barraca",   peso = 5, valor = 60}
+itens[] = {nome = "barraca", peso = 5, valor = 60}
 itens[] = {nome = "fogareiro", peso = 3, valor = 35}
-itens[] = {nome = "lanterna",  peso = 1, valor = 20}
-itens[] = {nome = "saco",      peso = 4, valor = 45}
-itens[] = {nome = "livro",     peso = 2, valor = 10}
-itens[] = {nome = "câmera",    peso = 2, valor = 40}
-itens[] = {nome = "panela",    peso = 6, valor = 30}
+itens[] = {nome = "lanterna", peso = 1, valor = 20}
+itens[] = {nome = "saco", peso = 4, valor = 45}
+itens[] = {nome = "livro", peso = 2, valor = 10}
+itens[] = {nome = "câmera", peso = 2, valor = 40}
+itens[] = {nome = "panela", peso = 6, valor = 30}
 
 local function knapsack(items, cap)
     local n = len(items)
@@ -118,7 +118,7 @@ local function knapsack(items, cap)
     for i = 1, n do
         local it = items[i - 1]
         for c = 0, cap do
-            local best = t[(i - 1) * w + c]                  -- sem o item i
+            local best = t[(i - 1) * w + c] -- sem o item i
             if it.peso <= c then
                 local com = t[(i - 1) * w + (c - it.peso)] + it.valor
                 if com > best then best = com end

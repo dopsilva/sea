@@ -5,22 +5,22 @@
 
 -- basic struct creation and field access
 local p = {x = 10, y = 20, name = "point"}
-print(type(p))        -- struct
-print(p.x)            -- 10
-print(p.y)            -- 20
-print(p.name)         -- point
+print(type(p)) -- struct
+print(p.x)     -- 10
+print(p.y)     -- 20
+print(p.name)  -- point
 
 -- field access via subscript
-print(p["x"])         -- 10
+print(p["x"]) -- 10
 
 -- update existing field
 p.x = 99
-print(p.x)            -- 99
+print(p.x) -- 99
 p["y"] = 42
-print(p.y)            -- 42
+print(p.y) -- 42
 
 -- len counts fields
-print(len(p))         -- 3
+print(len(p)) -- 3
 
 -- for-in iterates all fields
 local s = {a = 1, b = 2, c = 3}
@@ -28,11 +28,11 @@ local sum = 0
 for k, v in s do
     sum = sum + v
 end
-print(sum)            -- 6
+print(sum) -- 6
 
 -- nested struct
 local nested = {inner = {val = 7}}
-print(nested.inner.val)  -- 7
+print(nested.inner.val) -- 7
 
 -- struct as function closure (factory pattern)
 local function new_vec(x, y)
@@ -52,19 +52,19 @@ local function new_vec(x, y)
 end
 
 local v = new_vec(3, 4)
-print(v.mag())        -- 5
+print(v.mag()) -- 5
 v.scale(2)
-print(v.x)            -- 6
-print(v.y)            -- 8
+print(v.x) -- 6
+print(v.y) -- 8
 
 -- empty {} stays as TABLE_MAP (can add new fields)
 local dyn = {}
 dyn.x = 1
 dyn.y = 2
 dyn.z = 3
-print(dyn.x)          -- 1
-print(dyn.y)          -- 2
-print(dyn.z)          -- 3
+print(dyn.x) -- 1
+print(dyn.y) -- 2
+print(dyn.z) -- 3
 
 -- fields by a key built at run time (a string that is not interned)
 local opts = {steps = 1, samples = 2}

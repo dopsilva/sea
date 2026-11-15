@@ -151,7 +151,8 @@ local function hf_file(ref, progress)
     io.close(h)
     if is_error(r) or not r.ok then
         fs.remove(part)
-        return error(`embed: downloading ${url}: ${is_error(r) and r.message or (r.error or r.status)}`)
+        return error(`embed: downloading ${url}: ${is_error(r) and r.message
+            or (r.error or r.status)}`)
     end
     local _ = fs.rename(part, file)?
     return file
@@ -167,12 +168,16 @@ local function candidates(ref, progress)
         return [
             function()
                 local blob = ollama_blob(name)
-                if blob == nil then return error(`embed: ollama has no model ${name} (ollama pull ${name})`) end
+                if blob == nil then
+                    return error(`embed: ollama has no model ${name} (ollama pull ${name})`)
+                end
                 return blob
             end,
         ]
     end
-    if string.starts_with(ref, "hf:") then return [function() return hf_file(string.sub(ref, 4), progress) end] end
+    if string.starts_with(ref, "hf:") then
+        return [function() return hf_file(string.sub(ref, 4), progress) end]
+    end
     local spec = KNOWN[ref]
     if spec ~= nil then
         local out = []
@@ -231,7 +236,9 @@ end
 -- (default true), progress (function(bytes): called while a model downloads)
 function M.load(ref, opts)
     opts = opts or {}
-    if type(ref) ~= "string" or ref == "" then return error("embed.load: a model name or path expected") end
+    if type(ref) ~= "string" or ref == "" then
+        return error("embed.load: a model name or path expected")
+    end
     local pooling = -1
     if opts.pooling ~= nil then
         pooling = POOLING[opts.pooling]

@@ -71,11 +71,13 @@ end
 print("  range(1, 10, 3):       " .. take(range(1, 10, 3), 100))
 print("  fibonacci (12):        " .. take(fib_gen(), 12))
 print("  quadrados pares:       " .. take(gfilter(gmap(range(1, 100), function(x) return x * x end),
-                                                  function(x) return x % 2 == 0 end), 6))
+    function(x) return x % 2 == 0 end), 6))
 -- cada gerador tem estado próprio
 local g1 = fib_gen()
 local g2 = fib_gen()
-g1(); g1(); g1()
+g1()
+g1()
+g1()
 printf("  independentes: g1 → %d, g2 → %d\n", g1(), g2())
 print("")
 
@@ -131,7 +133,7 @@ partitions = p_fast
 printf("  p(20) recursivo simples: %d\n", p_slow(20))
 printf("  p(20) memoizado:         %d\n", p_fast(20))
 printf("  p(200) memoizado:        %d   (acertos %d, cálculos %d)\n",
-       p_fast(200), st.hits, st.misses)
+    p_fast(200), st.hits, st.misses)
 print("")
 
 -- ── 3. Uma variável por iteração ─────────────────────────────────────────────
@@ -162,7 +164,7 @@ for i = 1, 3 do
     contadores[] = inc
 end
 printf("  contadores: %d %d %d  (de novo: %d)\n",
-       contadores[0](), contadores[1](), contadores[2](), contadores[0]())
+    contadores[0](), contadores[1](), contadores[2](), contadores[0]())
 print("")
 
 -- ── 4. Goroutines por iteração ───────────────────────────────────────────────

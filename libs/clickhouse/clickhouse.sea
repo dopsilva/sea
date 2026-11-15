@@ -68,7 +68,11 @@ end
 local function param_text(v)
     if v == nil then return "\\N" end
     if type(v) == "string" then
-        return string.replace(string.replace(string.replace(v, "\\", "\\\\"), "\t", "\\t"), "\n", "\\n")
+        return string.replace(
+            string.replace(string.replace(v, "\\", "\\\\"), "\t", "\\t"),
+            "\n",
+            "\\n"
+        )
     end
     if is_time(v) then return time_text(v) end
     return literal(v)
@@ -99,7 +103,10 @@ end
 -- http(s)://user:password@host:port/database?key=value or
 -- clickhouse://... (secure=true for https). Other query keys are settings.
 function M.parse_url(url)
-    local m = re.match("^(https?|clickhouse)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$", url)
+    local m = re.match(
+        "^(https?|clickhouse)://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\\d+))?(?:/([^?]*))?(?:\\?(.*))?$",
+        url
+    )
     if m == nil then return error(`clickhouse: bad URL '${url}'`) end
     local g = m.groups
     local function dec(s)
@@ -181,7 +188,9 @@ local function failure(resp)
     if string.starts_with(text, "{") then
         -- a JSON format reports the exception inside the document
         local d = json.decode(text)
-        if not is_error(d) and type(d.exception) == "string" then text = string.trim(d.exception) end
+        if not is_error(d) and type(d.exception) == "string" then
+            text = string.trim(d.exception)
+        end
     end
     if text == "" then text = `HTTP ${resp.status} ${resp.reason}` end
     return error("clickhouse: " .. text)
@@ -247,7 +256,9 @@ function Db.result(db, sql, params, opts)
         return r
     end
     local d = decode(resp.body)
-    if is_error(d) then return error("clickhouse: bad JSON response: " .. string.sub(resp.body, -300)) end
+    if is_error(d) then
+        return error("clickhouse: bad JSON response: " .. string.sub(resp.body, -300))
+    end
     local r = {}
     r.columns = d.meta or []
     r.rows = d.data or []

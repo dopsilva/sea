@@ -46,8 +46,8 @@ end
 
 -- Letras ASCII, dígitos e bytes >= 128 (acentos em UTF-8) fazem parte da palavra.
 local function is_word_byte(b)
-    return (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or
-           (b >= 97 and b <= 122) or b >= 128
+    return (b >= 48 and b <= 57) or (b >= 65 and b <= 90)
+        or (b >= 97 and b <= 122) or b >= 128
 end
 
 local function words_of(line, out)
@@ -97,9 +97,11 @@ local function merge_sort(arr)
     local j = 0
     while i < len(left) and j < len(right) do
         if before(right[j], left[i]) then
-            out[] = right[j]; j = j + 1
+            out[] = right[j]
+            j = j + 1
         else
-            out[] = left[i]; i = i + 1
+            out[] = left[i]
+            i = i + 1
         end
     end
     while i < len(left) do out[] = left[i]; i = i + 1 end

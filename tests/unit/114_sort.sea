@@ -77,10 +77,10 @@ print("float_array", fs[0], fs[1], fs[2], "original first", fa[0])
 -- reverse, is_sorted, search (first index not less than x)
 print("reverse", string.join(sort.reverse(arr("1 2 3 4")), " "))
 print("is_sorted", sort.is_sorted(arr("1 2 2 3")), sort.is_sorted(arr("2 1")),
-      sort.is_sorted(arr("3 2 1"), sort.desc), sort.is_sorted([]))
+    sort.is_sorted(arr("3 2 1"), sort.desc), sort.is_sorted([]))
 local sorted = arr("1 3 3 5 8")
 print("search", sort.search(sorted, 3), sort.search(sorted, 4), sort.search(sorted, 0),
-      sort.search(sorted, 9), sort.search(ia, 5, function(x, y) return x > y end))
+    sort.search(sorted, 9), sort.search(ia, 5, function(x, y) return x > y end))
 
 -- errors are runtime errors, raised before the array changes
 local function try(f)
@@ -98,7 +98,12 @@ end
 local mixed = []
 mixed[] = 1
 mixed[] = "a"
-print("mixed", string.contains(try(function() sort.sort(mixed) end), "cannot compare"), mixed[0], mixed[1])
+print(
+    "mixed",
+    string.contains(try(function() sort.sort(mixed) end), "cannot compare"),
+    mixed[0],
+    mixed[1]
+)
 print("not an array", string.contains(try(function() sort.sort({}) end), "expected an array"))
 print("bad comparator", string.contains(try(function() sort.sort(arr("1 2"), 3) end), "comparator"))
 local victim = arr("3 1 2")
@@ -141,7 +146,12 @@ print("5000 with a comparator", sort.is_sorted(nums, sort.desc))
 
 -- several keys: an array of field names ("-name" descends), or a key
 -- function returning an array (compared like a Python tuple)
-local ppl = [{name = "ana", age = 31}, {name = "bob", age = 25}, {name = "caio", age = 31}, {name = "bia", age = 25}]
+local ppl = [
+    {name = "ana", age = 31},
+    {name = "bob", age = 25},
+    {name = "caio", age = 31},
+    {name = "bia", age = 25},
+]
 sort.by(ppl, ["-age", "name"])
 print(list.map(ppl, function(p) return p.name end))
 sort.by(ppl, ["age", "-name"])

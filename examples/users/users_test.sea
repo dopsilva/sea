@@ -78,9 +78,21 @@ t.describe("validation", function()
     end)
 
     t.it("rejects bad emails", function()
-        local bad = {"", "ana", "ana@", "@example.com", "ana@example", "a na@example.com", "a@b@c.com"}
+        local bad = {
+            "",
+            "ana",
+            "ana@",
+            "@example.com",
+            "ana@example",
+            "a na@example.com",
+            "a@b@c.com",
+        }
         for _, email in bad do
-            t.is_error(users.validate(email, "Ana", "12345678"), "invalid email", "email '" .. email .. "'")
+            t.is_error(
+                users.validate(email, "Ana", "12345678"),
+                "invalid email",
+                "email '" .. email .. "'"
+            )
         end
     end)
 
@@ -113,7 +125,10 @@ t.describe("register", function()
 
     t.it("refuses an email already registered", function()
         t.no_error(store:register("ana@example.com", "Ana", "correct horse"))
-        t.is_error(store:register("ANA@example.com", "Other Ana", "another one"), "email already registered")
+        t.is_error(
+            store:register("ANA@example.com", "Other Ana", "another one"),
+            "email already registered"
+        )
         t.eq(store:count(), 1)
     end)
 
@@ -125,7 +140,10 @@ t.describe("register", function()
 
     t.it("keeps the password hashed in the database", function()
         t.no_error(store:register("ana@example.com", "Ana", "correct horse"))
-        local stored = store.db:value("SELECT password FROM users WHERE email = ?", "ana@example.com")
+        local stored = store.db:value(
+            "SELECT password FROM users WHERE email = ?",
+            "ana@example.com"
+        )
         t.no(string.contains(stored, "correct horse"))
         t.ok(users.check_password("correct horse", stored))
     end)
@@ -178,7 +196,10 @@ t.describe("login", function()
         t.it("locks the account after MAX_ATTEMPTS wrong passwords", function()
             fail_times(users.MAX_ATTEMPTS)
             -- even the right password is refused while locked
-            t.is_error(store:login("ana@example.com", "correct horse"), "account locked, try again in 900 s")
+            t.is_error(
+                store:login("ana@example.com", "correct horse"),
+                "account locked, try again in 900 s"
+            )
             clock.advance(60)
             t.is_error(store:login("ana@example.com", "correct horse"), "try again in 840 s")
         end)
@@ -257,7 +278,10 @@ t.describe("change_password", function()
     end)
 
     t.it("needs the current password", function()
-        t.is_error(store:change_password("ana@example.com", "wrong horse", "battery staple"), "invalid email or password")
+        t.is_error(
+            store:change_password("ana@example.com", "wrong horse", "battery staple"),
+            "invalid email or password"
+        )
         t.no_error(store:login("ana@example.com", "correct horse"))
     end)
 

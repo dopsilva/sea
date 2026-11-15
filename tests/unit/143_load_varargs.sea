@@ -14,7 +14,7 @@ local g = load("local t = [...]\nreturn t")
 print(g(1, 2, 3))
 -- a loaded function outlives its goroutine
 local ch = chan(1)
-go function() ch <- load("return 42") end()
+go (function() ch <- load("return 42") end)()
 local h = <-ch
 print(h())
 
@@ -60,7 +60,10 @@ print(a1, b1, p1, q1, r1, x1, y1)
 -- require inside a function resolves against that function's file
 local dir = fs.tempdir("req-")
 fs.mkdir(path.join(dir, "lib", "sub"), {parents = true})?
-fs.write(path.join(dir, "lib", "m.sea"), "local M = {}\nfunction M.lazy()\n    return require(\"./sub/x\")\nend\nreturn M\n")?
+fs.write(
+    path.join(dir, "lib", "m.sea"),
+    "local M = {}\nfunction M.lazy()\n    return require(\"./sub/x\")\nend\nreturn M\n"
+)?
 fs.write(path.join(dir, "lib", "sub", "x.sea"), "return 42\n")?
 local m = require(path.join(dir, "lib", "m"))
 print(m.lazy())

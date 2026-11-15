@@ -83,12 +83,12 @@ local wg3 = sync.waitgroup()
 wg3.add(wg3, 20)
 
 for w = 1, 20 do
-    go function()
+    go (function()
         for task in tasks3 do
             results3 <- task * task
         end
         wg3.done(wg3)
-    end ()
+    end)()
 end
 
 for i = 1, 1000 do tasks3 <- i end

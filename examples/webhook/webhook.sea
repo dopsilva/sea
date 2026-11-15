@@ -24,8 +24,8 @@ print("")
 
 -- ── Servidor mock ─────────────────────────────────────────────────────────────
 -- Retorna 500 na 1ª requisição por rota, 200 nas seguintes.
-local call_mu   = sync.mutex()
-local call_cnt  = [=]   -- path → número de chamadas
+local call_mu  = sync.mutex()
+local call_cnt = [=] -- path → número de chamadas
 
 local PORT = 18383
 
@@ -40,18 +40,18 @@ local function mock_handler(req)
     if n == 1 then
         return {
             status = 500,
-            body   = '{"error":"server_error","retry":true}' .. "\n",
-            headers = { ["Content-Type"] = "application/json" },
+            body = '{"error":"server_error","retry":true}' .. "\n",
+            headers = {["Content-Type"] = "application/json"},
         }
     end
     return {
         status = 200,
-        body   = '{"ok":true,"path":"' .. path .. '"}' .. "\n",
-        headers = { ["Content-Type"] = "application/json" },
+        body = '{"ok":true,"path":"' .. path .. '"}' .. "\n",
+        headers = {["Content-Type"] = "application/json"},
     }
 end
 
-local srv = http.listen(PORT, mock_handler)   -- pronto ao retornar
+local srv = http.listen(PORT, mock_handler) -- pronto ao retornar
 print("Servidor mock em http://localhost:" .. PORT)
 print("")
 
@@ -66,7 +66,7 @@ local function send_webhook(url, payload, max_retries)
             return r, nil
         end
         if att < max_retries then
-            local wait_ms = att * 50   -- 50ms, 100ms, 150ms …
+            local wait_ms = att * 50 -- 50ms, 100ms, 150ms …
             time.sleep(wait_ms * time.Millisecond)
         end
     end
@@ -83,7 +83,7 @@ local function disparar(label, url, payload, results, wg)
             att_count = att2
             local r = http.post(url, payload, "application/json")
             if r.ok then
-                results <- { label = label, ok = true, tentativas = att_count }
+                results <- {label = label, ok = true, tentativas = att_count}
                 wg.done(wg)
                 return
             end
@@ -91,13 +91,13 @@ local function disparar(label, url, payload, results, wg)
                 time.sleep(att2 * 50 * time.Millisecond)
             end
         end
-        results <- { label = label, ok = false, tentativas = att_count }
+        results <- {label = label, ok = false, tentativas = att_count}
         wg.done(wg)
     end)()
 end
 
 -- ── Payload ───────────────────────────────────────────────────────────────────
-local evento = json.encode({ event = "order.created", order_id = 1001 })
+local evento = json.encode({event = "order.created", order_id = 1001})
 print("Payload: " .. evento)
 print("")
 
@@ -108,9 +108,9 @@ local results = chan(4)
 local wg      = sync.waitgroup()
 
 wg.add(wg, 3)
-disparar("pagamentos", base .. "/hook/payments",  evento, results, wg)
-disparar("pedidos",    base .. "/hook/orders",    evento, results, wg)
-disparar("estoque",    base .. "/hook/inventory", evento, results, wg)
+disparar("pagamentos", base .. "/hook/payments", evento, results, wg)
+disparar("pedidos", base .. "/hook/orders", evento, results, wg)
+disparar("estoque", base .. "/hook/inventory", evento, results, wg)
 
 wg.wait(wg)
 close(results)
@@ -121,7 +121,7 @@ print("── Resultados ──────────────────�
 for res in results do
     local status = res.ok and "OK " or "ERR"
     print("  [" .. status .. "] " .. string.pad_right(res.label, 12) ..
-          " tentativas=" .. res.tentativas)
+        " tentativas=" .. res.tentativas)
 end
 print("")
 

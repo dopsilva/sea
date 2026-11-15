@@ -99,7 +99,10 @@ t.describe("embed", function()
 
     t.it("adds the model's prompts to queries and documents", function()
         if not need() then return end
-        local m = t.no_error(embed.load(REF, {query_prompt = "query: ", document_prompt = "passage: "}))
+        local m = t.no_error(embed.load(
+            REF,
+            {query_prompt = "query: ", document_prompt = "passage: "}
+        ))
         local q = t.no_error(m:query("cat"))
         local plain = t.no_error(m:embed(["query: cat"]))[0]
         t.ok(embed.similarity(q, plain) > 0.9999)

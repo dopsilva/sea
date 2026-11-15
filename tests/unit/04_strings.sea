@@ -3,24 +3,24 @@
 
 -- Test: string operations
 local s = "hello"
-print(s)                        -- hello
-print(string.len(s))            -- 5
-print(string.upper(s))          -- HELLO
-print(string.lower("WORLD"))    -- world
-print(string.sub(s, 2, 4))      -- ell
-print(string.sub(s, 2))         -- ello
-print(string.find(s, "ll"))     -- 3
-print(string.contains(s, "ell")) -- true
-print(string.contains(s, "xyz")) -- false
-print(string.reverse(s))        -- olleh
-print(string.rep("ab", 3))      -- ababab
-print(string.trim("  hi  "))    -- hi
-print(string.starts_with(s, "hel")) -- true
-print(string.ends_with(s, "llo"))   -- true
+print(s)                               -- hello
+print(string.len(s))                   -- 5
+print(string.upper(s))                 -- HELLO
+print(string.lower("WORLD"))           -- world
+print(string.sub(s, 2, 4))             -- ell
+print(string.sub(s, 2))                -- ello
+print(string.find(s, "ll"))            -- 3
+print(string.contains(s, "ell"))       -- true
+print(string.contains(s, "xyz"))       -- false
+print(string.reverse(s))               -- olleh
+print(string.rep("ab", 3))             -- ababab
+print(string.trim("  hi  "))           -- hi
+print(string.starts_with(s, "hel"))    -- true
+print(string.ends_with(s, "llo"))      -- true
 print(string.replace(s, "ell", "ELL")) -- hELLo
-print(string.byte("A"))         -- 65
-print(string.char(65))          -- A
-print("hello" .. " " .. "world") -- hello world
+print(string.byte("A"))                -- 65
+print(string.char(65))                 -- A
+print("hello" .. " " .. "world")       -- hello world
 
 -- an unknown escape is a compile error (it used to drop the backslash)
 local parser = require("sea/parser")
@@ -33,4 +33,5 @@ print(check_src("local s = \"\\d+\""))
 print(check_src("local s = \"\\xG0\""))
 print(check_src("local s = \"\\x41\\u{E9}\\t\\\\\\0\""))
 print(check_src("local s = \"one\\\ntwo\""), len("one\
-two"))
+two"
+))

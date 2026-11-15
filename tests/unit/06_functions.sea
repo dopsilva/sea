@@ -6,36 +6,39 @@
 local function add(a, b)
     return a + b
 end
-print(add(3, 4))    -- 7
+print(add(3, 4)) -- 7
 
 -- multiple return values
 local function minmax(a, b)
-    if a < b then return a, b
-    else return b, a end
+    if a < b then
+        return a, b
+    else
+        return b, a
+    end
 end
 local lo, hi = minmax(5, 2)
-print(lo, hi)       -- 2	5
+print(lo, hi) -- 2	5
 
 -- default nil params
 local function greet(name)
     if name == nil then name = "world" end
     return "hello, " .. name
 end
-print(greet("sea"))  -- hello, sea
-print(greet())       -- hello, world
+print(greet("sea")) -- hello, sea
+print(greet())      -- hello, world
 
 -- recursive function
 local function fact(n)
     if n <= 1 then return 1 end
     return n * fact(n - 1)
 end
-print(fact(5))       -- 120
-print(fact(10))      -- 3628800
+print(fact(5))  -- 120
+print(fact(10)) -- 3628800
 
 -- function as first-class value
 local f = add
-print(f(10, 20))    -- 30
+print(f(10, 20)) -- 30
 
 -- anonymous function
 local double = function(x) return x * 2 end
-print(double(7))    -- 14
+print(double(7)) -- 14

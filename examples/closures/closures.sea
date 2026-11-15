@@ -22,9 +22,9 @@ print("── 1. Closure com upvalue mutável ───────────"
 local function make_contador(inicio)
     local n = inicio
     return {
-        inc  = function()  n = n + 1; return n end,
-        dec  = function()  n = n - 1; return n end,
-        get  = function()  return n end,
+        inc = function() n = n + 1; return n end,
+        dec = function() n = n - 1; return n end,
+        get = function() return n end,
         reset = function() n = inicio end,
     }
 end
@@ -32,12 +32,12 @@ end
 local c1 = make_contador(0)
 local c2 = make_contador(100)
 
-print("  c1.inc() = " .. c1.inc())   -- 1
-print("  c1.inc() = " .. c1.inc())   -- 2
-print("  c2.inc() = " .. c2.inc())   -- 101
-print("  c1.dec() = " .. c1.dec())   -- 1
+print("  c1.inc() = " .. c1.inc()) -- 1
+print("  c1.inc() = " .. c1.inc()) -- 2
+print("  c2.inc() = " .. c2.inc()) -- 101
+print("  c1.dec() = " .. c1.dec()) -- 1
 c1.reset()
-print("  c1 após reset = " .. c1.get())  -- 0
+print("  c1 após reset = " .. c1.get())   -- 0
 print("  c2 independente = " .. c2.get()) -- 101
 print("")
 
@@ -46,7 +46,7 @@ print("── 2. Funções variádicas (...) ───────────�
 
 local function soma(...)
     local total = 0
-    for _, v in {...} do   -- for-in em tabela de varargs (chaves 0..n-1)
+    for _, v in {...} do -- for-in em tabela de varargs (chaves 0..n-1)
         total = total + v
     end
     return total
@@ -68,9 +68,9 @@ local function concat_sep(sep, ...)
     return string.join(partes, sep)
 end
 
-print("  soma(1,2,3,4,5) = " .. soma(1, 2, 3, 4, 5))         -- 15
+print("  soma(1,2,3,4,5) = " .. soma(1, 2, 3, 4, 5))            -- 15
 print("  soma()          = " .. soma())                         -- 0
-print("  max(3,1,4,1,5,9)= " .. maximo(3, 1, 4, 1, 5, 9))    -- 9
+print("  max(3,1,4,1,5,9)= " .. maximo(3, 1, 4, 1, 5, 9))       -- 9
 print("  join('-', a,b,c)= " .. concat_sep("-", "a", "b", "c")) -- a-b-c
 print("")
 
@@ -151,7 +151,7 @@ local p_str = []
 for i = 0, len(pares) - 1 do p_str[] = tostring(pares[i]) end
 print("  pares:      " .. string.join(p_str, " "))
 
-print("  produto:    " .. produto)   -- 10! / ... = 3628800
+print("  produto:    " .. produto) -- 10! / ... = 3628800
 print("")
 
 -- ── 5. Memoização com closure ─────────────────────────────────────────────────
@@ -176,9 +176,9 @@ fib = memoize(function(n)
     return fib(n - 1) + fib(n - 2)
 end)
 
-print("  fib(10) = " .. fib(10))   -- 55
-print("  fib(10) = " .. fib(10))   -- 55 (cache hit, sem chamadas extras)
-print("  chamadas ao fn original: " .. chamadas)  -- 11 (0..10)
+print("  fib(10) = " .. fib(10))                 -- 55
+print("  fib(10) = " .. fib(10))                 -- 55 (cache hit, sem chamadas extras)
+print("  chamadas ao fn original: " .. chamadas) -- 11 (0..10)
 print("")
 
 print("── Resumo ───────────────────────────────────")

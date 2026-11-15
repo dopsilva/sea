@@ -43,7 +43,7 @@ print("")
 
 -- ── 3. Formatação ─────────────────────────────────────────────────────────────
 print("── 3. Formatação (Go reference time) ────────")
-local t = time.unix(1735689600, 0)   -- 2025-01-01 00:00:00 UTC
+local t = time.unix(1735689600, 0) -- 2025-01-01 00:00:00 UTC
 -- Nota: time.format usa timezone local; o Unix timestamp pode mudar com TZ
 print("  YYYY-MM-DD : " .. t.format(t, "2006-01-02"))
 print("  HH:MM:SS   : " .. t.format(t, "15:04:05"))
@@ -55,10 +55,10 @@ print("")
 -- Nota: time.add usa nanosegundos; max 48-bit signed int ≈ 140737s ≈ 39h.
 -- Para durações maiores (dias, semanas), use time.unix com segundos.
 print("── 4. Aritmética de datas ───────────────────")
-local base     = time.unix(0, 0)        -- epoch
-local uma_hora = base.add(base, 1 * time.Hour)   -- +1h em nanosegundos (ok)
-local um_dia   = time.unix(86400, 0)              -- +1 dia via unix segundos
-local uma_sem  = time.unix(7 * 24 * 3600, 0)     -- +1 semana via unix segundos
+local base     = time.unix(0, 0)               -- epoch
+local uma_hora = base.add(base, 1 * time.Hour) -- +1h em nanosegundos (ok)
+local um_dia   = time.unix(86400, 0)           -- +1 dia via unix segundos
+local uma_sem  = time.unix(7 * 24 * 3600, 0)   -- +1 semana via unix segundos
 
 print("  epoch      unix=" .. base.unix(base))
 print("  + 1 hora   unix=" .. uma_hora.unix(uma_hora) .. " s")
@@ -68,12 +68,12 @@ print("  + 1 semana unix=" .. uma_sem.unix(uma_sem) .. " s")
 -- Diferença em nanosegundos (safe: 1h = 3.6e12 ns < 2^47)
 local diff_1h = uma_hora.sub(uma_hora, base)
 print("  diff 1h = " .. time.seconds(diff_1h) .. " s = " ..
-      time.minutes(diff_1h) .. " min = " .. time.hours(diff_1h) .. " h")
+    time.minutes(diff_1h) .. " min = " .. time.hours(diff_1h) .. " h")
 
 -- Para diferenças grandes, use unix timestamps diretamente
 local dias_diff = uma_sem.unix(uma_sem) - base.unix(base)
 print("  semana - epoch = " .. dias_diff .. " s = " ..
-      dias_diff // 3600 .. " h = " .. dias_diff // 86400 .. " dias")
+    dias_diff // 3600 .. " h = " .. dias_diff // 86400 .. " dias")
 print("")
 
 -- ── 5. Comparação de instantes ────────────────────────────────────────────────
@@ -81,11 +81,11 @@ print("── 5. Comparação de instantes ────────────�
 local a = time.unix(100, 0)
 local b = time.unix(200, 0)
 print("  a.unix=" .. a.unix(a) .. "  b.unix=" .. b.unix(b))
-print("  a.before(b) = " .. tostring(a.before(a, b)))   -- true
-print("  a.after(b)  = " .. tostring(a.after(a, b)))    -- false
-print("  b.after(a)  = " .. tostring(b.after(b, a)))    -- true
-print("  a.equal(a)  = " .. tostring(a.equal(a, a)))    -- true
-print("  a.equal(b)  = " .. tostring(a.equal(a, b)))    -- false
+print("  a.before(b) = " .. tostring(a.before(a, b))) -- true
+print("  a.after(b)  = " .. tostring(a.after(a, b)))  -- false
+print("  b.after(a)  = " .. tostring(b.after(b, a)))  -- true
+print("  a.equal(a)  = " .. tostring(a.equal(a, a)))  -- true
+print("  a.equal(b)  = " .. tostring(a.equal(a, b)))  -- false
 print("")
 
 -- ── 6. Medição de elapsed time ────────────────────────────────────────────────

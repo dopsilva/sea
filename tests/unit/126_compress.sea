@@ -8,8 +8,14 @@ print("-- gzip and gunzip")
 local data = string.rep("hello world, hello sea! ", 1000)
 local gz = compress.gzip(data)
 print(len(data), len(gz) < 300, string.byte(gz, 1), string.byte(gz, 2), compress.gunzip(gz) == data)
-print(len(compress.gzip(data, 1)) >= len(compress.gzip(data, {level = 9})), len(compress.gzip(data, 0)) > len(data))
-print(compress.gunzip(compress.gzip("a") .. compress.gzip("b")), compress.gunzip(compress.gzip("")) == "")
+print(
+    len(compress.gzip(data, 1)) >= len(compress.gzip(data, {level = 9})),
+    len(compress.gzip(data, 0)) > len(data)
+)
+print(
+    compress.gunzip(compress.gzip("a") .. compress.gzip("b")),
+    compress.gunzip(compress.gzip("")) == ""
+)
 local bin = ""
 for i = 0, 255 do bin = bin .. string.char(i) end
 print(compress.gunzip(compress.gzip(bin)) == bin)
@@ -18,8 +24,16 @@ print("-- deflate and inflate")
 local z = compress.deflate(data)
 local raw = compress.deflate(data, {format = "raw"})
 local g2 = compress.deflate(data, {format = "gzip"})
-print(len(raw) < len(z), compress.inflate(z) == data, compress.inflate(g2) == data, compress.inflate(raw, {format = "raw"}) == data)
-print(compress.inflate(z, {format = "zlib"}) == data, compress.inflate(g2, {format = "gzip"}) == data)
+print(
+    len(raw) < len(z),
+    compress.inflate(z) == data,
+    compress.inflate(g2) == data,
+    compress.inflate(raw, {format = "raw"}) == data
+)
+print(
+    compress.inflate(z, {format = "zlib"}) == data,
+    compress.inflate(g2, {format = "gzip"}) == data
+)
 
 print("-- errors")
 print(compress.gunzip("not gzip"))
@@ -38,7 +52,10 @@ local src = dir .. "/data.txt"
 fs.write(src, string.rep("line of text\n", 20000))
 local n = compress.gzip_file(src, dir .. "/data.txt.gz", {level = 9})
 print(n > 0, n == fs.stat(dir .. "/data.txt.gz").size, n < 2000)
-print(compress.gunzip_file(dir .. "/data.txt.gz", dir .. "/back.txt"), fs.read(dir .. "/back.txt") == fs.read(src))
+print(
+    compress.gunzip_file(dir .. "/data.txt.gz", dir .. "/back.txt"),
+    fs.read(dir .. "/back.txt") == fs.read(src)
+)
 print(compress.gunzip(fs.read(dir .. "/data.txt.gz")) == fs.read(src))
 fs.write(dir .. "/two.gz", compress.gzip("one ") .. compress.gzip("two"))
 print(compress.gunzip_file(dir .. "/two.gz", dir .. "/two.txt"), fs.read(dir .. "/two.txt"))
@@ -55,7 +72,12 @@ fs.mkdir(path.join(src, "empty"))?
 fs.write(path.join(src, "a.txt"), "hello\n")?
 fs.write(path.join(src, "sub", "deep", "nums.txt"), string.rep("1234567890\n", 5000))?
 local long = string.rep("d", 120) .. "/" .. string.rep("f", 120) .. ".txt"
-local entries = ["src", {name = "notes/x.md", data = "# hi\n"}, {name = long, data = "long"}, {name = "copy.txt", path = "src/a.txt"}]
+local entries = [
+    "src",
+    {name = "notes/x.md", data = "# hi\n"},
+    {name = long, data = "long"},
+    {name = "copy.txt", path = "src/a.txt"},
+]
 for _, kind in ["zip", "tar", "tgz"] do
     local file = path.join(dir, "out." .. (kind == "tgz" and "tar.gz" or kind))
     local w = kind == "zip" and compress.zip_write or compress.tar_write
@@ -65,16 +87,27 @@ for _, kind in ["zip", "tar", "tgz"] do
     print(kind, w(file, entries, {base = dir, mtime = 1700000000}))
     local names = list.map(l(file)?, function(e) return `${e.name}:${e.type}:${e.size}` end)
     print(string.join(list.map(names, function(n) return string.sub(n, 1, 40) end), " "))
-    print(r(file, "notes/x.md")?, r(file, long)?, len(r(file, "src/sub/deep/nums.txt")?), l(file)?[0].mtime)
+    print(
+        r(file, "notes/x.md")?,
+        r(file, long)?,
+        len(r(file, "src/sub/deep/nums.txt")?),
+        l(file)?[0].mtime
+    )
     local out = path.join(dir, "x_" .. kind)
     print(len(x(file, out)?), fs.read(path.join(out, "src", "a.txt"))?, fs.read(path.join(out, long))?,
-          fs.isdir(path.join(out, "src", "empty")))
+        fs.isdir(path.join(out, "src", "empty")))
     print(x(file, path.join(dir, "only_" .. kind), {names = ["copy.txt"]})?)
 end
-print(string.byte(fs.read(path.join(dir, "out.tar.gz"))?, 1), string.sub(fs.read(path.join(dir, "out.zip"))?, 1, 2))
+print(
+    string.byte(fs.read(path.join(dir, "out.tar.gz"))?, 1),
+    string.sub(fs.read(path.join(dir, "out.zip"))?, 1, 2)
+)
 local function msg(e) return string.replace(e.message, dir, "<tmp>") end
 print(msg(compress.zip_read(path.join(dir, "out.zip"), "nope")))
-print(msg(compress.zip_list(path.join(dir, "src", "a.txt"))), msg(compress.tar_list(path.join(dir, "src", "a.txt"))))
+print(
+    msg(compress.zip_list(path.join(dir, "src", "a.txt"))),
+    msg(compress.tar_list(path.join(dir, "src", "a.txt")))
+)
 print(msg(compress.zip_write(path.join(dir, "bad.zip"), [{name = "../x", data = "x"}])))
 print(msg(compress.tar_write(path.join(dir, "bad.tar"), ["no/such/file"], {base = dir})))
 fs.remove(dir, {recursive = true})

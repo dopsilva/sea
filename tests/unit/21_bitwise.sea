@@ -2,31 +2,31 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 
 -- Test: bitwise operations
-print(0xFF & 0x0F)    -- 15
-print(0xF0 | 0x0F)    -- 255
-print(0xFF ~ 0x0F)    -- 240   (xor)
-print(~0)             -- -1   (bitwise not)
-print(1 << 4)         -- 16
-print(256 >> 4)       -- 16
-print(1 << 0)         -- 1
-print(1 << 1)         -- 2
-print(1 << 7)         -- 128
-print(128 >> 7)       -- 1
+print(0xFF & 0x0F) -- 15
+print(0xF0 | 0x0F) -- 255
+print(0xFF ~ 0x0F) -- 240   (xor)
+print(~0)          -- -1   (bitwise not)
+print(1 << 4)      -- 16
+print(256 >> 4)    -- 16
+print(1 << 0)      -- 1
+print(1 << 1)      -- 2
+print(1 << 7)      -- 128
+print(128 >> 7)    -- 1
 
 -- combining ops
-print((0xAB & 0xF0) >> 4)  -- 10  (extract high nibble of 0xAB = 0xA = 10)
-print(0xAB & 0x0F)          -- 11  (extract low nibble = 0xB = 11)
+print((0xAB & 0xF0) >> 4) -- 10  (extract high nibble of 0xAB = 0xA = 10)
+print(0xAB & 0x0F)        -- 11  (extract low nibble = 0xB = 11)
 
 -- bitwise not of specific values
 print(~1)    -- -2
 print(~(-1)) -- 0
 
 -- flags / bitmask pattern
-local READ    = 1 << 0  -- 1
-local WRITE   = 1 << 1  -- 2
-local EXECUTE = 1 << 2  -- 4
+local READ    = 1 << 0 -- 1
+local WRITE   = 1 << 1 -- 2
+local EXECUTE = 1 << 2 -- 4
 
 local perms = READ | WRITE
-print(perms & READ ~= 0)     -- true
-print(perms & WRITE ~= 0)    -- true
-print(perms & EXECUTE ~= 0)  -- false
+print(perms & READ ~= 0)    -- true
+print(perms & WRITE ~= 0)   -- true
+print(perms & EXECUTE ~= 0) -- false

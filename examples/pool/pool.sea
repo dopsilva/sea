@@ -18,10 +18,10 @@
 --
 
 -- ─── Configuração ────────────────────────────────────────────────────────────
-local MAX_CONN  = 3     -- máximo de conexões simultâneas ao banco
-local N_CLIENTS = 700   -- total de requisições concorrentes (tente 500, 1000…)
-local PROC_MIN  = 50    -- tempo mínimo de processamento por query (ms)
-local PROC_MAX  = 100   -- tempo máximo de processamento por query (ms)
+local MAX_CONN  = 3   -- máximo de conexões simultâneas ao banco
+local N_CLIENTS = 700 -- total de requisições concorrentes (tente 500, 1000…)
+local PROC_MIN  = 50  -- tempo mínimo de processamento por query (ms)
+local PROC_MAX  = 100 -- tempo máximo de processamento por query (ms)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 math.randomseed(time.time())
@@ -81,12 +81,12 @@ local wall_ms = time.milliseconds(time.since(wall_start))
 close(wait_ch)
 
 -- ─── Coleta de estatísticas ──────────────────────────────────────────────────
-local total_served  = 0
-local total_waited  = 0   -- conexões com waited_ms > 0
-local sum_wait_all  = 0
-local sum_wait_q    = 0   -- soma apenas de quem waited_ms > 0
-local max_wait      = 0
-local min_wait_q    = -1
+local total_served = 0
+local total_waited = 0 -- conexões com waited_ms > 0
+local sum_wait_all = 0
+local sum_wait_q   = 0 -- soma apenas de quem waited_ms > 0
+local max_wait     = 0
+local min_wait_q   = -1
 
 for w in wait_ch do
     total_served = total_served + 1
@@ -136,9 +136,9 @@ print("  Conexões sem espera (imediatas): " .. immediate)
 print("  Conexões que aguardaram        : " .. total_waited)
 print("───────────────────────────────────────────")
 print("  Espera média (todas)           : " .. avg_wait_all .. " ms")
-print("  Espera média (quem esperou)    : " .. avg_wait_q   .. " ms")
-print("  Espera mínima (quem esperou)   : " .. min_wait_q   .. " ms")
-print("  Espera máxima                  : " .. max_wait     .. " ms")
+print("  Espera média (quem esperou)    : " .. avg_wait_q .. " ms")
+print("  Espera mínima (quem esperou)   : " .. min_wait_q .. " ms")
+print("  Espera máxima                  : " .. max_wait .. " ms")
 print("───────────────────────────────────────────")
 print("  Proc. médio (teórico)          : " .. avg_proc_theory .. " ms")
 print("  Throughput                     : " .. throughput .. " conn/s")

@@ -10,7 +10,14 @@ print(img.width, img.height, img:get(0, 0), img:get(9, 9), img.binary)
 img:set(1, 1, 300)
 img:set(2, 1, -5)
 img:set(3, 2, 99.7)
-print(img:get(1, 1), img:get(2, 1), img:get(3, 2), img:is_dark(2, 1), img:is_ink(1, 1), img:is_dark(3, 2, 100))
+print(
+    img:get(1, 1),
+    img:get(2, 1),
+    img:get(3, 2),
+    img:is_dark(2, 1),
+    img:is_ink(1, 1),
+    img:is_dark(3, 2, 100)
+)
 local copy = img:clone()
 copy:set(0, 0, 0)
 print(img:get(0, 0), copy:get(0, 0), copy:get(2, 1))
@@ -19,14 +26,24 @@ print("-- ASCII art")
 local art = image.from_ascii([[
 #.%+
 -:█░
-]])
+]]
+)
 print(art.width, art.height, art:get(0, 0), art:get(1, 0), art:get(2, 0), art:get(3, 0))
 print(art:get(0, 1), art:get(1, 1), art:get(2, 1), art:get(3, 1))
 print(art:to_ascii())
 print(art:to_ascii({threshold = 128}))
 print(art:to_ascii({dark = "X", light = " "}))
 local bin = image.from_ascii("#-\n.:", {binary = true, scale = 2, pad = 1})
-print(bin.width, bin.height, bin.binary, bin:get(0, 0), bin:get(1, 1), bin:get(3, 1), bin:get(1, 3), bin:get(3, 3))
+print(
+    bin.width,
+    bin.height,
+    bin.binary,
+    bin:get(0, 0),
+    bin:get(1, 1),
+    bin:get(3, 1),
+    bin:get(1, 3),
+    bin:get(3, 3)
+)
 
 print("-- encode and decode")
 local function same(a, b)

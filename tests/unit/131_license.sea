@@ -12,7 +12,9 @@ local function run(args)
     cmd[] = TOOL
     for i = 0, len(args) - 1 do cmd[] = args[i] end
     local r = process.run(cmd, {cwd = dir})
-    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= "" and (" | " .. string.trim(r.stderr)) or "")
+    return "[" .. tostring(r.code) .. "] " .. string.trim(r.stdout) .. (r.stderr ~= ""
+        and (" | " .. string.trim(r.stderr))
+        or "")
 end
 
 fs.mkdir(dir .. "/src")
@@ -26,7 +28,9 @@ fs.write(dir .. "/src/other.c", "/* Copyright 2020 Someone Else */\nint o;\n")
 fs.write(dir .. "/vendor/v.c", "int v;\n")
 fs.write(dir .. "/notes.txt", "text\n")
 local originals = {}
-for _, f in {"src/a.c", "src/a.h", "m.sea", "run.sh", "Makefile"} do originals[f] = fs.read(dir .. "/" .. f) end
+for _, f in {"src/a.c", "src/a.h", "m.sea", "run.sh", "Makefile"} do
+    originals[f] = fs.read(dir .. "/" .. f)
+end
 
 print(run({"-check"}))
 print(run({"-l", "MIT", "-c", "Ana Silva", "-y", "2026", "-n"}))

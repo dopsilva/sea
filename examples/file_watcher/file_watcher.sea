@@ -34,7 +34,7 @@ local function novo_watcher(dir, sufixo, intervalo_ms)
         end
 
         local iteracoes = 0
-        local MAX_ITER  = 6   -- para o watcher após N polls (demo finito)
+        local MAX_ITER  = 6 -- para o watcher após N polls (demo finito)
 
         while iteracoes < MAX_ITER do
             time.sleep(intervalo_ms * time.Millisecond)
@@ -55,9 +55,9 @@ local function novo_watcher(dir, sufixo, intervalo_ms)
                 local sz = curr[p]
                 local prev_sz, existe = snapshot[p]
                 if not existe then
-                    eventos <- { tipo = "CREATED", path = p, size = sz }
+                    eventos <- {tipo = "CREATED", path = p, size = sz}
                 elseif prev_sz ~= sz then
-                    eventos <- { tipo = "MODIFIED", path = p, size = sz }
+                    eventos <- {tipo = "MODIFIED", path = p, size = sz}
                 end
             end
 
@@ -68,7 +68,7 @@ local function novo_watcher(dir, sufixo, intervalo_ms)
             for k, _ in snapshot do
                 local _, ok = curr[k]
                 if not ok then
-                    eventos <- { tipo = "DELETED", path = k, size = 0 }
+                    eventos <- {tipo = "DELETED", path = k, size = 0}
                     to_remove[k] = true
                 end
             end
@@ -83,7 +83,7 @@ local function novo_watcher(dir, sufixo, intervalo_ms)
             end
         end
 
-        close(eventos)   -- sinaliza fim ao handler
+        close(eventos) -- sinaliza fim ao handler
     end)()
 
     return eventos
@@ -93,7 +93,7 @@ end
 -- Usa /tmp/fw (caminho curto) para manter comandos os.exec abaixo de 64 chars
 local WATCH_DIR = "/tmp/fw"
 os.exec("mkdir -p " .. WATCH_DIR)
-os.exec("rm -f " .. WATCH_DIR .. "/*.txt")   -- limpa de runs anteriores
+os.exec("rm -f " .. WATCH_DIR .. "/*.txt") -- limpa de runs anteriores
 
 -- Cria arquivos iniciais (echo com conteúdo curto para manter comando < 64 chars)
 os.exec("echo 'linha1' > " .. WATCH_DIR .. "/alpha.txt")
@@ -111,18 +111,18 @@ local handler_done = chan(1)
 go (function()
     for ev in eventos do
         local icon = "?"
-        if ev.tipo == "CREATED"  then icon = "+" end
+        if ev.tipo == "CREATED" then icon = "+" end
         if ev.tipo == "MODIFIED" then icon = "~" end
-        if ev.tipo == "DELETED"  then icon = "-" end
-        local nome = string.sub(ev.path, len(WATCH_DIR) + 2)   -- extrai só o nome
+        if ev.tipo == "DELETED" then icon = "-" end
+        local nome = string.sub(ev.path, len(WATCH_DIR) + 2) -- extrai só o nome
         print("  [" .. icon .. "] " .. ev.tipo .. "  " .. string.pad_right(nome, 12) ..
-              "  size=" .. ev.size)
+            "  size=" .. ev.size)
     end
     handler_done <- true
 end)()
 
 -- ── Simula mudanças no diretório ─────────────────────────────────────────────
-time.sleep(250 * time.Millisecond)   -- deixa primeiro poll acontecer
+time.sleep(250 * time.Millisecond) -- deixa primeiro poll acontecer
 
 -- Poll 2: cria gamma.txt
 os.exec("echo 'gamma' > " .. WATCH_DIR .. "/gamma.txt")

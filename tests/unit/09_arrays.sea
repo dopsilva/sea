@@ -6,16 +6,16 @@ local a = []
 a[] = 10
 a[] = 20
 a[] = 30
-print(len(a))   -- 3
-print(a[0])     -- 10
-print(a[1])     -- 20
-print(a[2])     -- 30
+print(len(a)) -- 3
+print(a[0])   -- 10
+print(a[1])   -- 20
+print(a[2])   -- 30
 
 -- remove last element
-local last = a[len(a)-1]
-del a[len(a)-1]
-print(last)     -- 30
-print(len(a))   -- 2
+local last = a[len(a) - 1]
+del a[len(a) - 1]
+print(last)   -- 30
+print(len(a)) -- 2
 
 -- for-in over array
 local b = []
@@ -33,19 +33,19 @@ end
 local c = [10]
 c[] = 1
 c[] = 2
-print(len(c))   -- 3
-print(c[0])     -- 10
-print(c[1])     -- 1
+print(len(c)) -- 3
+print(c[0])   -- 10
+print(c[1])   -- 1
 
 -- negative index access
-print(b[-1])    -- z
-print(b[-2])    -- y
+print(b[-1]) -- z
+print(b[-2]) -- y
 
 -- replace at index
 a[] = 99
 a[0] = 42
-print(a[0])     -- 42
-print(a[1])     -- 99
+print(a[0]) -- 42
+print(a[1]) -- 99
 
 -- del removes at index and shifts
 local d = []
@@ -53,19 +53,19 @@ d[] = "a"
 d[] = "b"
 d[] = "c"
 del d[1]
-print(len(d))   -- 2
-print(d[0])     -- a
-print(d[1])     -- c
+print(len(d)) -- 2
+print(d[0])   -- a
+print(d[1])   -- c
 
 -- array literals with elements
 local lit = [1, "two", 3.5, true, nil, {k = 1}]
 print(len(lit), lit[1], lit[3], lit[4], lit[5].k)
-local grid = [ [1, 2], [3, 4] ]          -- "[[" would start a long string
+local grid = [ [1, 2], [3, 4] ] -- "[[" would start a long string
 print(grid[1][0], len(grid[0]))
-local trailing = ["a", "b",]
+local trailing = ["a", "b"]
 print(len(trailing), string.join(trailing, ""))
 local function pair() return "x", "y" end
-local first_only = [pair(), pair()]     -- a call gives one value in a list
+local first_only = [pair(), pair()] -- a call gives one value in a list
 print(string.join(first_only, ","))
 local total = 0
 for _, v in [10, 20, 30] do total = total + v end
