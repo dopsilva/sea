@@ -1,0 +1,60 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- re: Unicode classes (\p{L}, \pL, \P{..}, inside [...]) and re.each (a callback per match).
+
+print(re.findall("\\p{L}+", "ação, olá! 123 Привет 日本語"))
+print(re.findall("\\p{Lu}", "Água É"))
+print(re.findall("\\p{Ll}+", "Água É"))
+print(re.findall("[\\p{Ll}\\d]+", "abcÉdé 12x"))
+print(re.findall("\\P{L}+", "ab12 cd"))
+print(re.findall("\\pL+", "é ab"))
+print(re.findall("\\p{^L}+", "ab12 cd"))
+print(re.findall("\\p{Cyrillic}+", "ab Привет"))
+print(re.findall("\\p{Nd}+", "a١٢٣b45"))
+print(re.findall("\\p{P}", "a, b! c?"))
+local function bad()
+    defer function()
+        recover()
+    end
+    re.test("\\p{Foo}", "x")
+    return "no error"
+end
+print(bad())
+
+-- re.each: one match at a time
+local words = []
+local n = re.each("[a-z]+", "ab cd ef", function(m)
+    words[] = m.text
+end)
+print(n, string.join(words, ","))
+-- false from the callback stops
+local seen = 0
+print(re.each("\\d", "1 2 3 4", function(m)
+    seen += 1
+    return seen < 2
+end))
+-- a limit, and the compiled form
+local c = re.compile("\\d+")
+local got = []
+print(c:each("1 22 333", function(m)
+    got[] = m.text
+end))
+print(string.join(got, ","))
+print(re.each("x", "abc", function(m) end))
+
+-- a panic in the callback stops the loop and is caught by the caller's recover
+local function boom()
+    defer function()
+        print("recovered:", recover() ~= nil)
+    end
+    re.each("\\d", "1 2 3", function(m)
+        local t = nil
+        return t.x
+    end)
+    print("not reached")
+end
+boom()
+
+-- case-insensitive flag with a class and with the escape alone
+print(re.test("(?i)\\p{Lu}", "a"), re.test("(?i)[\\p{Lu}]", "a"))

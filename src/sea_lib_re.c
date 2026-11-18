@@ -41,6 +41,7 @@
 #include "sea_rope.h"
 #include "sea_stdlib.h"
 #include "sea_struct.h"
+#include "sea_unicode.h"
 #include "sea_utf8.h"
 #include "sea_vm.h"
 
@@ -278,6 +279,70 @@ static const struct { const char *name; const char *spec; } POSIX[] = {
     { "word", "09AZ__az" }, { "xdigit", "09AFaf" },
 };
 
+/* Unicode properties: \p{L} \pL \P{Lu} ... (a subset: letters, case, digits, punctuation
+ * and a few scripts). The tables of L, Lu, Ll and Nd are generated (src/sea_unicode.h). */
+#define UNI_TABLE(t) t, sizeof t / sizeof t[0]
+static const uint32_t UNI_P[][2] = {
+    {0x21, 0x23}, {0x25, 0x2A}, {0x2C, 0x2F}, {0x3A, 0x3B}, {0x3F, 0x40}, {0x5B, 0x5D}, {0x5F, 0x5F},
+    {0x7B, 0x7B}, {0x7D, 0x7D}, {0xA1, 0xA1}, {0xA7, 0xA7}, {0xAB, 0xAB}, {0xB6, 0xB7}, {0xBB, 0xBB},
+    {0xBF, 0xBF}, {0x2010, 0x2027}, {0x2030, 0x205E}, {0x3001, 0x3003}, {0x3008, 0x3011}, {0xFF01, 0xFF03},
+    {0xFF05, 0xFF0A}, {0xFF0C, 0xFF0F}, {0xFF1A, 0xFF1B}, {0xFF1F, 0xFF20},
+};
+static const uint32_t UNI_LATIN[][2] = {
+    {0x41, 0x5A}, {0x61, 0x7A}, {0xAA, 0xAA}, {0xBA, 0xBA}, {0xC0, 0xD6}, {0xD8, 0xF6}, {0xF8, 0x2B8},
+    {0x1E00, 0x1EFF}, {0x2C60, 0x2C7F}, {0xA720, 0xA7FF}, {0xFF21, 0xFF3A}, {0xFF41, 0xFF5A},
+};
+static const uint32_t UNI_GREEK[][2] = { {0x370, 0x3FF}, {0x1F00, 0x1FFF} };
+static const uint32_t UNI_CYRILLIC[][2] = { {0x400, 0x52F}, {0x1C80, 0x1C8F}, {0x2DE0, 0x2DFF}, {0xA640, 0xA69F} };
+static const uint32_t UNI_HEBREW[][2] = { {0x591, 0x5F4}, {0xFB1D, 0xFB4F} };
+static const uint32_t UNI_ARABIC[][2] = { {0x600, 0x6FF}, {0x750, 0x77F}, {0xFB50, 0xFDFF}, {0xFE70, 0xFEFF} };
+static const uint32_t UNI_HAN[][2] = { {0x2E80, 0x2FDF}, {0x3005, 0x3007}, {0x3400, 0x4DBF}, {0x4E00, 0x9FFF}, {0xF900, 0xFAFF}, {0x20000, 0x2FA1F} };
+static const uint32_t UNI_HIRAGANA[][2] = { {0x3041, 0x309F} };
+static const uint32_t UNI_KATAKANA[][2] = { {0x30A0, 0x30FF}, {0x31F0, 0x31FF}, {0xFF66, 0xFF9F} };
+static const uint32_t UNI_HANGUL[][2] = { {0x1100, 0x11FF}, {0x3130, 0x318F}, {0xAC00, 0xD7AF} };
+
+static const struct { const char *name; const uint32_t (*r)[2]; size_t n; const char *alias; } UNI_PROPS[] = {
+    { "L", UNI_TABLE(SEA_UNI_L), "Letter" },       { "Lu", UNI_TABLE(SEA_UNI_LU), "Uppercase_Letter" },
+    { "Ll", UNI_TABLE(SEA_UNI_LL), "Lowercase_Letter" },
+    { "N", UNI_TABLE(SEA_UNI_ND), "Number" },      { "Nd", UNI_TABLE(SEA_UNI_ND), "Decimal_Number" },
+    { "P", UNI_TABLE(UNI_P), "Punctuation" },
+    { "Latin", UNI_TABLE(UNI_LATIN), NULL },       { "Greek", UNI_TABLE(UNI_GREEK), NULL },
+    { "Cyrillic", UNI_TABLE(UNI_CYRILLIC), NULL }, { "Hebrew", UNI_TABLE(UNI_HEBREW), NULL },
+    { "Arabic", UNI_TABLE(UNI_ARABIC), NULL },     { "Han", UNI_TABLE(UNI_HAN), NULL },
+    { "Hiragana", UNI_TABLE(UNI_HIRAGANA), NULL }, { "Katakana", UNI_TABLE(UNI_KATAKANA), NULL },
+    { "Hangul", UNI_TABLE(UNI_HANGUL), NULL },
+};
+
+/* After "\p" or "\P" (negate): `{Name}` or one letter. Adds the property to cs; false with
+ * the error set on a name that is not known. */
+static bool uni_prop(Parser *p, CharSet *cs, bool negate) {
+    char name[24];
+    size_t n = 0;
+    if (peekc(p) == '{') {
+        p->pos++;
+        if (peekc(p) == '^') { negate = !negate; p->pos++; }
+        while (more(p) && peekc(p) != '}' && n < sizeof name - 1) name[n++] = p->s[p->pos++];
+        if (peekc(p) != '}') { perr(p, "invalid or unsupported Unicode class"); return false; }
+        p->pos++;
+    } else if (more(p)) {
+        name[n++] = p->s[p->pos++];
+    }
+    name[n] = 0;
+    for (size_t i = 0; i < sizeof UNI_PROPS / sizeof *UNI_PROPS; i++) {
+        if (strcmp(UNI_PROPS[i].name, name) != 0 && !(UNI_PROPS[i].alias && strcmp(UNI_PROPS[i].alias, name) == 0))
+            continue;
+        CharSet tmp = { 0 };
+        for (size_t k = 0; k < UNI_PROPS[i].n; k++) set_add(&tmp, UNI_PROPS[i].r[k][0], UNI_PROPS[i].r[k][1]);
+        set_normalize(&tmp);
+        if (negate) set_add_negated(cs, tmp.r, tmp.n);
+        else for (size_t k = 0; k < tmp.n; k++) set_add(cs, tmp.r[k].lo, tmp.r[k].hi);
+        free(tmp.r);
+        return true;
+    }
+    perr(p, "unknown Unicode class (supported: L Lu Ll N Nd P, and the scripts Latin Greek Cyrillic Hebrew Arabic Han Hiragana Katakana Hangul)");
+    return false;
+}
+
 /* [ ... ] after the '[' */
 static Node *parse_class(Parser *p) {
     size_t start = p->pos - 1;
@@ -325,6 +390,10 @@ static Node *parse_class(Parser *p) {
             int e = peekc(p);
             p->pos++;
             if (perl_class(&p->sets[idx], e)) continue;
+            if (e == 'p' || e == 'P') {
+                if (!uni_prop(p, &p->sets[idx], e == 'P')) return NULL;
+                continue;
+            }
             int r = escape_cp(p, e, &lo);
             if (r < 0) return NULL;
             if (r == 0) { p->pos -= 1; return perr(p, "invalid escape in character class"); }
@@ -498,6 +567,16 @@ static Node *parse_atom(Parser *p, bool *none) {
             return n;
         }
         int idx = new_set(p);
+        if (e == 'p' || e == 'P') {
+            if (!uni_prop(p, &p->sets[idx], e == 'P')) return NULL;
+            set_normalize(&p->sets[idx]);
+            p->sets[idx].fold = p->fold;
+            Node *n = node_new(p, N_CLASS);
+            if (!n) return perr(p, "out of memory");
+            n->klass = idx;
+            n->fold = p->fold;
+            return n;
+        }
         if (perl_class(&p->sets[idx], e)) {
             set_normalize(&p->sets[idx]);
             Node *n = node_new(p, N_CLASS);
@@ -1810,6 +1889,7 @@ static SeaValue re_match(SeaVM *vm, int argc, SeaValue *args);
 static SeaValue re_captures(SeaVM *vm, int argc, SeaValue *args);
 static SeaValue re_all(SeaVM *vm, int argc, SeaValue *args);
 static SeaValue re_findall(SeaVM *vm, int argc, SeaValue *args);
+static SeaValue re_each(SeaVM *vm, int argc, SeaValue *args);
 static SeaValue re_gsub(SeaVM *vm, int argc, SeaValue *args);
 static SeaValue re_split(SeaVM *vm, int argc, SeaValue *args);
 
@@ -1837,6 +1917,7 @@ static SeaValue re_compile(SeaVM *vm, int argc, SeaValue *args) {
         mod_set(vm, t, "captures", re_captures);
         mod_set(vm, t, "all",     re_all);
         mod_set(vm, t, "findall", re_findall);
+        mod_set(vm, t, "each",    re_each);
         mod_set(vm, t, "gsub",    re_gsub);
         mod_set(vm, t, "split",   re_split);
         result = sea_obj_val(&t->obj);
@@ -1946,6 +2027,39 @@ static SeaValue all_impl(SeaVM *vm, const char *fn, int argc, SeaValue *args, bo
 
 static SeaValue re_all(SeaVM *vm, int argc, SeaValue *args) { return all_impl(vm, "all", argc, args, true); }
 static SeaValue re_findall(SeaVM *vm, int argc, SeaValue *args) { return all_impl(vm, "findall", argc, args, false); }
+
+/* re.each(p, s, fn [, n]): fn(match) for each successive match (as in re.all), one at a
+ * time: no array of every match is built. fn returning false stops; the result is how many
+ * matches fn saw. */
+typedef struct { SeaVM *vm; Rx *r; SeaString *s; SeaValue fn; int64_t count; } EachCtx;
+
+static bool each_cb(void *ctx, const int *caps) {
+    EachCtx *e = ctx;
+    SeaValue m = make_match(e->r, e->s, caps);
+    e->count++;
+    SeaValue ret = sea_vm_call(e->vm, e->fn, &m, 1);
+    sea_obj_release(sea_as_obj(m));
+    bool halt = sea_is_bool(ret) && !sea_as_bool(ret);
+    if (sea_is_obj(ret)) sea_obj_release(sea_as_obj(ret));
+    return !halt && !e->vm->panic_propagating;
+}
+
+static SeaValue re_each(SeaVM *vm, int argc, SeaValue *args) {
+    if (argc < 3 || !sea_is_obj(args[2]))
+        return sea_make_error_str(vm, "re.each: a function expected as the third argument");
+    Rx r;
+    get_rx(vm, "each", argc, args, &r);
+    SeaString *s = subject_arg(vm, "each", &r, argc, args, 1);
+    int64_t limit = int_opt(argc, args, 3, -1);
+    VM v;
+    vm_init(&v, &r.pg, s->data, s->len, 2 * ((int)r.pg.ngroups + 1));
+    EachCtx ctx = { vm, &r, s, args[2], 0 };
+    each_match(&v, limit, each_cb, &ctx);
+    vm_free(&v);
+    sea_obj_release(&s->obj);
+    rx_free(&r);
+    return sea_int_val(ctx.count);
+}
 
 /* ---- gsub ---------------------------------------------------------------------- */
 
@@ -2186,6 +2300,7 @@ void sea_lib_re_register(SeaVM *vm) {
     mod_set(vm, mod, "captures", re_captures);
     mod_set(vm, mod, "all",     re_all);
     mod_set(vm, mod, "findall", re_findall);
+    mod_set(vm, mod, "each", re_each);
     mod_set(vm, mod, "gsub",    re_gsub);
     mod_set(vm, mod, "split",   re_split);
     mod_set(vm, mod, "escape",  re_escape);
