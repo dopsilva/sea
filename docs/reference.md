@@ -65,6 +65,10 @@ operator (other operators end the line); a broken `if`/`while` condition goes on
 level deeper than the body. Line breaks the source already has are kept.
 Consecutive one-line `local x = ...` / `x = ...` lines keep their `=` aligned
 where the author lined the values up (the formatter never imposes the columns).
+A `for` or `while` loop whose body is one simple statement (assignment, call, `return`,
+`break`...) or an `if` already on one line, with no comment inside, goes on one line
+(`for _, f in files do print(f) end`) when it fits the width; with more statements, a
+block or a comment it stays as it is.
 Formatting twice changes nothing, and the parsed tree is the same as before.
 
 A file with a syntax error is reported as `file:line:col: message` (on
@@ -1399,6 +1403,7 @@ character. Results are checked against Go's `regexp` (same semantics).
 | `re.captures` | `captures(p, s [, init]) → array\|nil` | The first match's strings only: `[whole, group 1, ...]` (`nil` for a group that did not take part), like Go's `FindStringSubmatch` or Python's `m.groups()`. About twice as fast as `match`, which also builds `spans` and `named`: use it to parse lines |
 | `re.all` | `all(p, s [, n]) → array` | Successive non-overlapping matches (at most `n`), as match tables. An empty match right after the previous match is skipped |
 | `re.findall` | `findall(p, s [, n]) → array` | The same, as strings (the whole match) |
+| `re.each` | `each(p, s, fn [, n]) → int` | Calls `fn(match)` for each match (as `re.all`), one at a time, without building the array; `fn` returning `false` stops. Returns how many matches `fn` saw. Also `rx:each(s, fn [, n])` |
 | `re.gsub` | `gsub(p, s, repl [, n]) → string` | Replace every match (or the first `n`). `repl`: a string where `$0`/`$1`/`${12}`/`${name}` insert groups and `$$` is a `$`; a function `fn(match)` returning the replacement (`nil` or `false` keeps the match; other values go through `tostring`); or a table from matched text to replacement (missing: kept) |
 | `re.split` | `split(p, s [, n]) → array` | The pieces between matches (`n > 0`: at most `n` pieces, the last holding the rest; `n = 0`: none), like Go's `regexp.Split`: `split("x*", "axbc")` is `{"a", "b", "c"}` |
 | `re.escape` | `escape(s) → string` | `s` with the metacharacters `\ . + * ? ( ) \| [ ] { } ^ $` escaped, to match it literally |
@@ -1420,6 +1425,7 @@ whole match, `[i]` group `i`, `nil` when it did not take part), `spans`
 |-|-|
 | Characters | literal; `.` any but `\n`; `\n \t \r \f \v \a \e \0`; `\x41`, `\x{263A}`, `\u{1F600}`; `\` before punctuation makes it literal |
 | Classes | `[abc]`, `[^a-z]`, `[\d\-.]`, `[[:alpha:]]` (also `alnum ascii blank cntrl digit graph lower print punct space upper word xdigit`, `[[:^digit:]]`); `\d \w \s` (ASCII: `[0-9]`, `[0-9A-Za-z_]`, `[\t\n\f\r ]`) and `\D \W \S` |
+| Unicode classes | `\p{L}` (letters, any script), `\p{Lu}`, `\p{Ll}`, `\p{N}`/`\p{Nd}` (decimal digits), `\p{P}` (punctuation) and the scripts `Latin Greek Cyrillic Hebrew Arabic Han Hiragana Katakana Hangul`; `\pL` for one letter, `\P{..}` or `\p{^..}` negate; also inside `[...]`. Tables from the C library (the letters, case) and short lists (digits, punctuation, scripts): a subset of the Unicode categories. An unknown name is a compile error |
 | Anchors | `^` `$` (text start/end; line start/end with `m`), `\A` `\z` (always text), `\b` `\B` (ASCII word boundary) |
 | Groups | `(x)` capturing, `(?P<name>x)` or `(?<name>x)` named, `(?:x)` non-capturing, `x\|y` alternation |
 | Repeats | `*` `+` `?` `{n}` `{n,}` `{n,m}` (counts up to 1000), lazy with a trailing `?` (`*?`, `{2,5}?`); `{` that is not a valid repeat is literal |

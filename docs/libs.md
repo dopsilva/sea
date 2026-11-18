@@ -1676,6 +1676,8 @@ argument of the wrong type, is a runtime error (a panic).
 | `matvec_back(dout, doo, x, xo, w, dw, nin, nout, dx, dxo)` | `dw += x ⊗ dout`, `dx += w · dout` |
 | `quantize_q8(w, wo, nin, nout, scales, so) → bytes` | the `nin × nout` matrix at `w[wo..]` as int8 by input row, `q = round(w / s)` with `s = max\|row\| / 127`: a string of `nin·nout` bytes, the scales in `scales[so..so+nin)` — a quarter of the memory of floats |
 | `matvec_q8(x, xo, q, qo, scales, so, nin, nout, out, oo)` | `matvec` on quantized weights: `out[oo+j] = Σ_i x[xo+i]·scales[so+i]·q[qo + i·nout + j]` (`qo` a byte offset); split across the pool like `matvec` |
+| `to_half(w, wo, n, format) → bytes` | `n` floats of `w[wo..]` as 2·`n` little-endian bytes, `format` `"f16"` (IEEE half: 5 exponent bits, finer) or `"bf16"` (bfloat16: float32's range, coarser); round to nearest even — half the memory of float32, for storing weights and shards |
+| `from_half(bytes, bo, out, oo, n, format)` | the `n` values at byte offset `bo` of the bytes of `to_half` back into `out[oo..oo+n)` (float32 or float64), to compute on them |
 | `matvec_cols(x, xo, w, nin, nout, cols, ncols, out, oo)` | only the outputs listed in `cols` (an `int_array`): `out[oo+k] = Σ_i x[xo+i]·w[i·nout+cols[k]]` |
 | `matvec_cols_back(dout, doo, x, xo, w, dw, nin, nout, cols, ncols, dx, dxo)` | its backward |
 | `matmul(x, xo, w, T, nin, nout, out, oo)` | `matvec` for `T` rows at once (`x` and `out` hold `T` rows of `nin` and `nout`): `out[oo+t·nout+j] = Σ_i x[xo+t·nin+i]·w[i·nout+j]`. Blocked for the cache: several times faster than `T` calls of `matvec` |

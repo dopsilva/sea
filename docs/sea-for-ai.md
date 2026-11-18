@@ -550,9 +550,12 @@ codepoints chars sub(s,i[,j]) offset upper lower reverse width`.
 `test(p,s) → bool`, `match(p,s[,init]) → m|nil` (`m.text`, `m.start`,
 `m.stop`, `m.groups[1]`, `m.named.name`), `captures(p,s[,init]) → [whole, g1, ...]|nil`
 (strings only, 2× faster than `match`: use it to parse lines), `all(p,s[,n])`,
-`findall(p,s[,n]) → strings`, `gsub(p,s,repl[,n])` (repl: string with
+`findall(p,s[,n]) → strings`, `each(p,s,fn[,n])` (fn(m) per match, `false` stops: the
+replacement for `gmatch`), `gsub(p,s,repl[,n])` (repl: string with
 `$1`, a function of the match, or a table), `split(p,s[,n])`, `escape(s)`.
-Double the backslashes in normal strings: `"\\d+"`, or use `[[\d+]]`.
+Double the backslashes in normal strings: `"\\d+"`, or use `[[\d+]]` (`[=[...]=]` if the
+pattern has `]]`). Unicode classes: `\p{L}` letters of any script, `\p{Lu}`, `\p{Ll}`,
+`\p{Nd}`, `\p{P}`, `\P{L}` negated (`"\\p{L}+"` finds `ação`).
 
 **math**: `pi huge maxinteger mininteger abs ceil floor round trunc sqrt
 exp log(x[,base]) log2 log10 pow fmod sin cos tan asin acos atan

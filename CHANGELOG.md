@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- `sea fmt`: a `for` or `while` loop whose body is one simple statement (or an `if` on one line) and has no
+  comment goes on one line when it fits the width.
+- `re`: Unicode classes `\p{L}` `\p{Lu}` `\p{Ll}` `\p{N}`/`\p{Nd}` `\p{P}` and the scripts Latin, Greek,
+  Cyrillic, Hebrew, Arabic, Han, Hiragana, Katakana, Hangul (`\pL`, `\P{..}`, inside `[...]`); `re.each(p, s, fn)`
+  calls `fn` for each match without building the array.
+- `tensor.to_half` / `tensor.from_half`: float16 and bfloat16 stored as bytes (half the memory of float32).
+- `sea check` / runtime hints for `string.has_suffix`, `string.has_prefix` and `io.stderr`.
+
 ## 0.3.1
 
 - `sea fmt`: wraps one-line tables, arrays, calls (arguments packed row by row) and `and`/`or` chains wider than

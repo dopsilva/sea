@@ -13,6 +13,7 @@ format	use string.format
 int	use tonumber(x) (it returns an int for integer text)
 ipairs	iterate directly: for i, v in list do ... end
 join	use string.join(list, sep)
+io.stderr	use io.write_err(...) to write to stderr
 list.append	append with list[] = v
 list.insert	append with list[] = v
 list.join	use string.join(list, sep)
@@ -42,7 +43,9 @@ split	use string.split(s, sep)
 sprintf	use string.format
 str	use tostring(x)
 string.endswith	use string.ends_with
-string.gmatch	use re.all(pattern, s) or string.split
+string.gmatch	use re.each(pattern, s, fn) (callback per match), re.all(pattern, s) (an array) or string.split
+string.has_prefix	use string.starts_with
+string.has_suffix	use string.ends_with
 string.gsub	use string.replace(s, old, new) for plain text, or re.gsub(pattern, s, repl)
 string.lines	use string.splitlines
 string.lstrip	use string.trim
