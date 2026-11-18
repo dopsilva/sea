@@ -291,6 +291,114 @@ static SeaValue t_matvec_q8(SeaVM *vm, int argc, SeaValue *args) {
     return SEA_NIL_VAL;
 }
 
+/* ---- half precision (storage: float16 and bfloat16 as little-endian bytes) ---- */
+
+static uint16_t f32_to_f16(float f) {
+    uint32_t x;
+    memcpy(&x, &f, 4);
+    uint32_t sign = (x >> 16) & 0x8000u;
+    int32_t exp = (int32_t)((x >> 23) & 0xFF);
+    uint32_t man = x & 0x7FFFFFu;
+    if (exp == 0xFF) return (uint16_t)(sign | 0x7C00u | (man ? 0x200u | (man >> 13) : 0));   /* inf, nan */
+    exp = exp - 127 + 15;
+    if (exp >= 0x1F) return (uint16_t)(sign | 0x7C00u);                    /* too big: inf */
+    if (exp <= 0) {                                                        /* subnormal or zero */
+        if (exp < -10) return (uint16_t)sign;
+        man |= 0x800000u;
+        int shift = 14 - exp;
+        uint32_t half = man >> shift;
+        uint32_t rem = man & ((1u << shift) - 1), mid = 1u << (shift - 1);
+        if (rem > mid || (rem == mid && (half & 1))) half++;
+        return (uint16_t)(sign | half);
+    }
+    uint32_t h = ((uint32_t)exp << 10) | (man >> 13);
+    uint32_t rem = man & 0x1FFFu;
+    if (rem > 0x1000u || (rem == 0x1000u && (h & 1))) h++;                 /* round to nearest even (a carry may reach the exponent: right) */
+    return (uint16_t)(sign | h);
+}
+
+static float f16_to_f32(uint16_t h) {
+    uint32_t sign = ((uint32_t)h & 0x8000u) << 16;
+    uint32_t exp = (h >> 10) & 0x1F, man = h & 0x3FFu, x;
+    if (exp == 0) {
+        if (man == 0) x = sign;
+        else {                                                             /* subnormal: normalize */
+            int e = -1;
+            do { e++; man <<= 1; } while (!(man & 0x400u));
+            x = sign | ((uint32_t)(127 - 15 - e) << 23) | ((man & 0x3FFu) << 13);
+        }
+    } else if (exp == 0x1F) {
+        x = sign | 0x7F800000u | (man << 13);
+    } else {
+        x = sign | ((exp - 15 + 127) << 23) | (man << 13);
+    }
+    float f;
+    memcpy(&f, &x, 4);
+    return f;
+}
+
+static uint16_t f32_to_bf16(float f) {
+    uint32_t x;
+    memcpy(&x, &f, 4);
+    if ((x & 0x7FFFFFFFu) > 0x7F800000u) return (uint16_t)((x >> 16) | 0x40u);   /* nan stays nan */
+    x += 0x7FFFu + ((x >> 16) & 1);                                             /* round to nearest even */
+    return (uint16_t)(x >> 16);
+}
+
+static float bf16_to_f32(uint16_t h) {
+    uint32_t x = (uint32_t)h << 16;
+    float f;
+    memcpy(&f, &x, 4);
+    return f;
+}
+
+/* to_half(w, wo, n, format) → bytes: n floats of w[wo..] as 2n bytes, format "f16" or "bf16" */
+static SeaValue t_to_half(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "to_half";
+    need(vm, argc, 4, FN);
+    int kd = kind_of(vm, args[0], FN);
+    int64_t wo = iv(args[1]), n = iv(args[2]);
+    bool bf = sea_is_string(args[3]) && strcmp(SEA_AS_STRING(args[3])->data, "bf16") == 0;
+    if (!bf && !(sea_is_string(args[3]) && strcmp(SEA_AS_STRING(args[3])->data, "f16") == 0))
+        sea_vm_error_noreturn(vm, "tensor.%s: format must be \"f16\" or \"bf16\"", FN);
+    if (n < 0) sea_vm_error_noreturn(vm, "tensor.%s: negative size", FN);
+    SeaString *s = sea_string_alloc((size_t)n * 2);
+    const float *wf = kd == 8 ? NULL : F(0, wo, n);
+    const double *wd = kd == 8 ? D(0, wo, n) : NULL;
+    for (int64_t i = 0; i < n; i++) {
+        float v = wd ? (float)wd[i] : wf[i];
+        uint16_t h = bf ? f32_to_bf16(v) : f32_to_f16(v);
+        s->data[2 * i] = (char)(h & 0xFF);
+        s->data[2 * i + 1] = (char)(h >> 8);
+    }
+    s->data[n * 2] = 0;
+    return sea_obj_val(&s->obj);
+}
+
+/* from_half(bytes, bo, out, oo, n, format): out[oo..oo+n) = the n values at byte offset bo */
+static SeaValue t_from_half(SeaVM *vm, int argc, SeaValue *args) {
+    const char *FN = "from_half";
+    need(vm, argc, 6, FN);
+    if (!sea_is_string(args[0])) sea_vm_error_noreturn(vm, "tensor.%s: expected the bytes of to_half, got %s", FN, sea_type_name(args[0]));
+    int kd = kind_of(vm, args[2], FN);
+    int64_t bo = iv(args[1]), oo = iv(args[3]), n = iv(args[4]);
+    bool bf = sea_is_string(args[5]) && strcmp(SEA_AS_STRING(args[5])->data, "bf16") == 0;
+    if (!bf && !(sea_is_string(args[5]) && strcmp(SEA_AS_STRING(args[5])->data, "f16") == 0))
+        sea_vm_error_noreturn(vm, "tensor.%s: format must be \"f16\" or \"bf16\"", FN);
+    SeaString *s = SEA_AS_STRING(args[0]);
+    if (bo < 0 || n < 0 || bo + n * 2 > (int64_t)s->len)
+        sea_vm_error_noreturn(vm, "tensor.%s: range %lld+%lld values outside %u bytes", FN, (long long)bo, (long long)n, s->len);
+    const unsigned char *b = (const unsigned char *)s->data + bo;
+    float *of = kd == 8 ? NULL : F(2, oo, n);
+    double *od = kd == 8 ? D(2, oo, n) : NULL;
+    for (int64_t i = 0; i < n; i++) {
+        uint16_t h = (uint16_t)(b[2 * i] | (b[2 * i + 1] << 8));
+        float v = bf ? bf16_to_f32(h) : f16_to_f32(h);
+        if (od) od[i] = v; else of[i] = v;
+    }
+    return SEA_NIL_VAL;
+}
+
 /* ---- linear algebra ---- */
 
 /* matvec(x, xo, w, nin, nout, out, oo): out[oo..] = x[xo..] @ w */
@@ -830,6 +938,8 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     SeaTable *mod = sea_mod_new();
     sea_mod_set(mod, "matvec",           t_matvec);
     sea_mod_set(mod, "quantize_q8",      t_quantize_q8);
+    sea_mod_set(mod, "to_half",          t_to_half);
+    sea_mod_set(mod, "from_half",        t_from_half);
     sea_mod_set(mod, "matvec_q8",        t_matvec_q8);
     sea_mod_set(mod, "matvec_back",      t_matvec_back);
     sea_mod_set(mod, "matmul",           t_matmul);

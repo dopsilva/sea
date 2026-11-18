@@ -1,0 +1,25 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- tensor.to_half / tensor.from_half: float16 and bfloat16 as bytes (half the memory of float32).
+
+local tensor = require("tensor")
+
+local a = float32_array(8)
+local vals = [0.0, 1.0, -2.5, 3.14159, 65504.0, 1e-8, 0.333333, 1e10]
+for _, v in vals do a[] = v end
+for _, f in ["f16", "bf16"] do
+    local b = tensor.to_half(a, 0, 8, f)
+    print(f, len(b))
+    local o = float32_array(8)
+    for i = 1, 8 do o[] = 0.0 end
+    tensor.from_half(b, 0, o, 0, 8, f)
+    for i = 0, 7 do print(vals[i], o[i]) end
+end
+
+-- from a byte offset, into a float_array
+local b = tensor.to_half(a, 1, 3, "f16")
+local d = float_array(3)
+for i = 1, 3 do d[] = 0.0 end
+tensor.from_half(b, 2, d, 0, 2, "f16")
+print(d[0], d[1], d[2])
