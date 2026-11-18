@@ -4,9 +4,7 @@
 -- Test: string split and advanced string ops
 -- split by comma
 local parts = string.split("a,b,c,d", ",")
-for i, v in parts do
-    print(v)
-end
+for i, v in parts do print(v) end
 -- a
 -- b
 -- c
@@ -14,9 +12,7 @@ end
 
 -- split by multi-char separator
 local words = string.split("hello world foo", " ")
-for i, v in words do
-    print(v)
-end
+for i, v in words do print(v) end
 -- hello
 -- world
 -- foo

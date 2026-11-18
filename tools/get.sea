@@ -478,9 +478,7 @@ elseif mode == "remove" then
         print("removed " .. n .. " from sea.toml")
     end
     local kept = []
-    for _, n in order do
-        if deps[n] ~= nil then kept[] = n end
-    end
+    for _, n in order do if deps[n] ~= nil then kept[] = n end end
     order = kept
     install_all()
 end

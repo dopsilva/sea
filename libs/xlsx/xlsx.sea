@@ -106,24 +106,18 @@ end
 
 local function children(node, name)
     local out = []
-    for _, c in node.children or [] do
-        if local_name(c.tag) == name then out[] = c end
-    end
+    for _, c in node.children or [] do if local_name(c.tag) == name then out[] = c end end
     return out
 end
 
 local function child(node, name)
-    for _, c in node.children or [] do
-        if local_name(c.tag) == name then return c end
-    end
+    for _, c in node.children or [] do if local_name(c.tag) == name then return c end end
     return nil
 end
 
 local function attr(node, name)
     if node == nil or node.attrs == nil then return nil end
-    for k, v in node.attrs do
-        if k == name or local_name(k) == name then return v end
-    end
+    for k, v in node.attrs do if k == name or local_name(k) == name then return v end end
     return nil
 end
 

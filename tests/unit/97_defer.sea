@@ -41,9 +41,7 @@ print(temp_obj(41))
 
 -- 5. defers registered in a loop run LIFO at function exit
 local function in_loop()
-    for i = 1, 3 do
-        defer print("loop defer", i)
-    end
+    for i = 1, 3 do defer print("loop defer", i) end
     print("loop body done")
 end
 in_loop()

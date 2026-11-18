@@ -52,9 +52,7 @@ local function add3(p, q, r) return p + q + r end
 local function call_loop()
     local keep1, keep2 = 7, 11
     local s = 0
-    for i = 1, 5000 do
-        s = s + add3(i, keep1, keep2)
-    end
+    for i = 1, 5000 do s = s + add3(i, keep1, keep2) end
     return s, keep1, keep2
 end
 local c1, c2, c3 = call_loop()

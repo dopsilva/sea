@@ -40,9 +40,7 @@ wg.wait(wg)
 close(results)
 
 local sum = 0
-for v in results do
-    sum = sum + v
-end
+for v in results do sum = sum + v end
 assert(sum == 15, "sum of 1..5 from goroutines should be 15")
 
 -- 4. Goroutine synchronization: producer/consumer pipeline
@@ -59,9 +57,7 @@ go (function()
 end)()
 
 go (function()
-    for v in nums do
-        doubled <- v * 2
-    end
+    for v in nums do doubled <- v * 2 end
     close(doubled)
     wg2.done(wg2)
 end)()

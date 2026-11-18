@@ -36,9 +36,7 @@ print("── 2. Iteração sobre struct ─────────────
 
 local config = {host = "localhost", port = 8080, debug = true}
 local pares = []
-for k, v in config do
-    pares[] = "    " .. k .. " = " .. tostring(v)
-end
+for k, v in config do pares[] = "    " .. k .. " = " .. tostring(v) end
 -- ordena para output determinístico
 for i = 0, len(pares) - 2 do
     for j = i + 1, len(pares) - 1 do
@@ -97,9 +95,7 @@ print("  ia[-2] = " .. ia[-2]) -- 81
 
 -- soma via int_array
 local soma = 0
-for i = 0, len(ia) - 1 do
-    soma = soma + ia[i]
-end
+for i = 0, len(ia) - 1 do soma = soma + ia[i] end
 print("  soma i² (1..10) = " .. soma) -- 385
 print("")
 
@@ -108,9 +104,7 @@ print("── 5. float_array ─────────────────
 
 local N = 1000
 local fa = float_array(N)
-for i = 0, N - 1 do
-    fa[] = math.sin(i * math.pi / N)
-end
+for i = 0, N - 1 do fa[] = math.sin(i * math.pi / N) end
 print("  type: " .. type(fa))
 print("  len:  " .. len(fa))
 print("  fa[0]   = " .. fa[0])                             -- 0.0
@@ -118,9 +112,7 @@ print("  fa[500] ≈ " .. math.floor(fa[500] * 1000) / 1000) -- ≈ 1.0
 
 -- soma numérica de alta performance
 local total = 0.0
-for i = 0, len(fa) - 1 do
-    total = total + fa[i]
-end
+for i = 0, len(fa) - 1 do total = total + fa[i] end
 print("  soma sin(0..π) ≈ " .. math.floor(total * 100) / 100) -- ≈ 636.62
 print("")
 

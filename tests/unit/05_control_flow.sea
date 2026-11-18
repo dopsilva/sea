@@ -30,15 +30,11 @@ end
 print(j) -- 3
 
 -- numeric for
-for k = 1, 5 do
-    print(k)
-end
+for k = 1, 5 do print(k) end
 -- 1 2 3 4 5
 
 -- for with step
-for k = 10, 2, -3 do
-    print(k)
-end
+for k = 10, 2, -3 do print(k) end
 -- 10 7 4
 
 -- break in for

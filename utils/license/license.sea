@@ -213,9 +213,7 @@ for _, d in {"bin", "obj", "obj-jit", "gen", "sea_modules", "vendor", "node_modu
 end
 
 local function excluded(f)
-    for _, x in excludes do
-        if string.contains(f, x) then return true end
-    end
+    for _, x in excludes do if string.contains(f, x) then return true end end
     return false
 end
 

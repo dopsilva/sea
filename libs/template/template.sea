@@ -277,9 +277,7 @@ local function is_list(v)
     if ty ~= "table" then return false end
     local n = len(v)
     if n == 0 then return false end
-    for k, _ in v do
-        if type(k) ~= "int" or k < 0 or k >= n then return false end
-    end
+    for k, _ in v do if type(k) ~= "int" or k < 0 or k >= n then return false end end
     return true
 end
 
@@ -467,9 +465,7 @@ render_nodes = function(R, nodes, ctx, out)
             if src ~= nil then
                 -- the blocks this tag defines, under the ones from further out
                 local blocks = [=]
-                for _, c in t.children do
-                    if c.kind == "block" then blocks[c.name] = c end
-                end
+                for _, c in t.children do if c.kind == "block" then blocks[c.name] = c end end
                 if R.blocks ~= nil then
                     for bname, b in R.blocks do blocks[bname] = b end
                 end

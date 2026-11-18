@@ -140,9 +140,7 @@ print("")
 print("── 3. Closures criadas num laço ─────────────")
 
 local handlers = []
-for i = 1, 4 do
-    handlers[] = function() return "handler " .. i end
-end
+for i = 1, 4 do handlers[] = function() return "handler " .. i end end
 local nomes = []
 for _, h in handlers do nomes[] = h() end
 print("  " .. string.join(nomes, ", "))
@@ -150,9 +148,7 @@ print("  " .. string.join(nomes, ", "))
 -- vale também para o for-in (as duas variáveis)
 local cores = {"vermelho", "verde", "azul"}
 local mostra = []
-for idx, cor in cores do
-    mostra[] = function() return idx .. ":" .. cor end
-end
+for idx, cor in cores do mostra[] = function() return idx .. ":" .. cor end end
 local partes = []
 for _, f in mostra do partes[] = f() end
 print("  " .. string.join(partes, "  "))

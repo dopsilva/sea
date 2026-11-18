@@ -55,9 +55,7 @@ io.write_line(a, "appended")
 io.close(a)
 
 local sc2 = io.scanner(PATH)
-while io.scan(sc2) do
-    print(io.scan_text(sc2))
-end
+while io.scan(sc2) do print(io.scan_text(sc2)) end
 io.close(sc2)
 
 -- ---- nil para arquivo inexistente ------------------------------------------

@@ -72,9 +72,7 @@ local function novo_watcher(dir, sufixo, intervalo_ms)
                     to_remove[k] = true
                 end
             end
-            for k, _ in to_remove do
-                del snapshot[k]
-            end
+            for k, _ in to_remove do del snapshot[k] end
 
             -- Atualiza snapshot in-place com tamanhos atuais
             for i = 0, len(atual) - 1 do

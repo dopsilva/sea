@@ -17,9 +17,7 @@ print("background white", img:get(5, 5) > 245, img:get(700, 300) > 245)
 -- the text is dark: the first line's ink, between y 30 and 65
 local dark = 0
 for y = 30, 65 do
-    for x = 30, 540 do
-        if img:get(x, y) < 80 then dark += 1 end
-    end
+    for x = 30, 540 do if img:get(x, y) < 80 then dark += 1 end end
 end
 print("ink in the title", dark > 2000)
 

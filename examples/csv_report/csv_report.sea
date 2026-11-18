@@ -118,9 +118,7 @@ local function keys_by(m, value_of)
     for k, _ in m do ks[] = k end
     for i = 0, len(ks) - 2 do
         local best = i
-        for j = i + 1, len(ks) - 1 do
-            if value_of(ks[j]) > value_of(ks[best]) then best = j end
-        end
+        for j = i + 1, len(ks) - 1 do if value_of(ks[j]) > value_of(ks[best]) then best = j end end
         ks[i], ks[best] = ks[best], ks[i]
     end
     return ks

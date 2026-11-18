@@ -93,9 +93,7 @@ palavras[] = {a = "kitten", b = "sitting"}
 palavras[] = {a = "casa", b = "caso"}
 palavras[] = {a = "flor", b = "florescer"}
 palavras[] = {a = "sea", b = "lua"}
-for _, p in palavras do
-    printf("  %-10s → %-10s : %d\n", p.a, p.b, edit_distance(p.a, p.b))
-end
+for _, p in palavras do printf("  %-10s → %-10s : %d\n", p.a, p.b, edit_distance(p.a, p.b)) end
 print("")
 
 -- ── 3. Mochila 0/1 ───────────────────────────────────────────────────────────

@@ -102,9 +102,7 @@ go (function()
         -- ── Roteia mensagem para todos os subscribers do tópico ─────────
         local inboxes = subs[evt.topic]
         if inboxes ~= nil then
-            for i = 0, len(inboxes) - 1 do
-                inboxes[i] <- evt.msg
-            end
+            for i = 0, len(inboxes) - 1 do inboxes[i] <- evt.msg end
             routed = routed + len(inboxes)
         end
 
@@ -118,9 +116,7 @@ go (function()
         case default then
     end
     -- Fecha todos os inboxes → subscribers terminam seus for-in loops
-    for i = 0, len(all_inboxes) - 1 do
-        close(all_inboxes[i])
-    end
+    for i = 0, len(all_inboxes) - 1 do close(all_inboxes[i]) end
     broker_done <- routed
 end)()
 
@@ -130,9 +126,7 @@ local results_ch = chan(5)
 local function start_sub(name, inbox)
     go (function()
         local count = 0
-        for _ in inbox do
-            count = count + 1
-        end
+        for _ in inbox do count = count + 1 end
         results_ch <- {name = name, count = count}
     end)()
 end
@@ -169,14 +163,10 @@ print("")
 
 local t_start = time.now()
 
-for p = 1, N_PUBS do
-    start_pub(p)
-end
+for p = 1, N_PUBS do start_pub(p) end
 
 -- Aguarda todos os publishers despejarem suas mensagens em pub_ch
-for i = 1, N_PUBS do
-    local _ = <-pub_done
-end
+for i = 1, N_PUBS do local _ = <-pub_done end
 
 -- Snapshot ao vivo: broker ainda está processando a fila de mensagens.
 -- O select não-bloqueante no broker atende esta query entre as mensagens.

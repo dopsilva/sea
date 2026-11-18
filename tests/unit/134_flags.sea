@@ -6,9 +6,7 @@ local flags = require("sea/flags")
 
 local function args(s)
     local a = []
-    for _, w in string.split(s, " ") do
-        if w ~= "" then a[] = w end
-    end
+    for _, w in string.split(s, " ") do if w ~= "" then a[] = w end end
     return a
 end
 

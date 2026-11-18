@@ -93,7 +93,5 @@ end
 
 -- accumulate in a hot loop mixing the ops
 local acc = 0
-for i = 1, 20000 do
-    acc = (acc + (i % 7) * (i // 3) + (i & 15) - (i >> 2)) % 1000003
-end
+for i = 1, 20000 do acc = (acc + (i % 7) * (i // 3) + (i & 15) - (i >> 2)) % 1000003 end
 print("acc", acc)

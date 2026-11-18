@@ -27,9 +27,7 @@ print("  byte(1)=" .. string.byte(s, 1) .. -- 83 = 'S'
 
 -- Reconstrói a string de bytes
 local chars = []
-for i = 1, len(s) do
-    chars[] = string.char(string.byte(s, i))
-end
+for i = 1, len(s) do chars[] = string.char(string.byte(s, i)) end
 print("  reconstruído: " .. string.join(chars, ""))
 
 -- ROT13 via byte manipulation
@@ -122,9 +120,7 @@ print("  colunas: " .. string.join(cabecalho, " | "))
 for i = 1, len(linhas) - 1 do
     local campos = string.split(linhas[i], ",")
     local linha_str = []
-    for j = 0, len(campos) - 1 do
-        linha_str[] = string.pad_right(string.trim(campos[j]), 12)
-    end
+    for j = 0, len(campos) - 1 do linha_str[] = string.pad_right(string.trim(campos[j]), 12) end
     print("  " .. string.join(linha_str, ""))
 end
 print("")

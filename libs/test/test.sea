@@ -305,13 +305,9 @@ function T.contains(hay, needle, msg)
     if type(hay) == "string" then
         if type(needle) == "string" and string.contains(hay, needle) then return hay end
     elseif is_list(hay) then
-        for _, v in hay do
-            if T.equal(v, needle) then return hay end
-        end
+        for _, v in hay do if T.equal(v, needle) then return hay end end
     elseif is_record(hay) then
-        for _, v in hay do
-            if T.equal(v, needle) then return hay end
-        end
+        for _, v in hay do if T.equal(v, needle) then return hay end end
     end
     failure(show(hay) .. " does not contain " .. show(needle), msg)
 end
@@ -612,9 +608,7 @@ function T.run(opts)
     if bench ~= nil and bench ~= "" then
         local budget = (opts.benchtime or tonumber(os.getenv("SEA_BENCHTIME") or "") or 1) * time.Second
         local width = 0
-        for _, b in benches do
-            if len(full_name(b)) > width then width = len(full_name(b)) end
-        end
+        for _, b in benches do if len(full_name(b)) > width then width = len(full_name(b)) end end
         if format == "pretty" and len(benches) > 0 then say("") end
         for _, b in benches do
             local name = full_name(b)

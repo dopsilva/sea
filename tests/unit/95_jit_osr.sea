@@ -9,9 +9,7 @@
 --    run ends in RETURN and completes through the interpreter's return path.
 local function sum_to(n)
     local s = 0
-    for i = 1, n do
-        s = s + i
-    end
+    for i = 1, n do s = s + i end
     return s
 end
 print(sum_to(100000))
@@ -33,9 +31,7 @@ print(q, r)
 local function labelled(n)
     local tag = "sum:" .. n
     local s = 0
-    for i = 0, n do
-        s = s + i * 2
-    end
+    for i = 0, n do s = s + i * 2 end
     return tag .. "=" .. s
 end
 print(labelled(5000))
@@ -44,22 +40,16 @@ print(labelled(5000))
 --    body): the inner loop runs natively, the outer one is interpreted.
 for i = 1, 3 do
     local acc = 0
-    for j = 1, 20000 do
-        acc = acc + j % 7
-    end
+    for j = 1, 20000 do acc = acc + j % 7 end
     print(i, acc)
 end
 
 -- 5. Call inside a loop (forced bailout at the call) feeding a clean loop.
 local function sq(x) return x * x end
 local total = 0
-for i = 1, 2000 do
-    total = total + sq(i)
-end
+for i = 1, 2000 do total = total + sq(i) end
 local t2 = 0
-for i = 1, 2000 do
-    t2 = t2 + i
-end
+for i = 1, 2000 do t2 = t2 + i end
 print(total, t2)
 
 -- 6. Type change mid-loop: int arithmetic turns float, so native code bails
@@ -124,7 +114,5 @@ print(gcount)
 
 local parts = []
 local str = ""
-for i = 1, 300 do
-    str = str .. (i % 10)
-end
+for i = 1, 300 do str = str .. (i % 10) end
 print(string.len(str), string.sub(str, 1, 12))

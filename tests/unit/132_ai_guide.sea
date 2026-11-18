@@ -72,9 +72,7 @@ for n, b in blocks do
         local want = expected_of(b.code)
         local same = r.ok and len(got) == len(want)
         if same then
-            for k = 0, len(want) - 1 do
-                if got[k] ~= want[k] then same = false end
-            end
+            for k = 0, len(want) - 1 do if got[k] ~= want[k] then same = false end end
         end
         if not same then
             failures = failures + 1

@@ -49,9 +49,7 @@ local p = process.run({SEA, "doc", "m.sea"}, {cwd = dir})
 print(string.contains(p.stdout, "m — a module"), string.contains(p.stdout, "Copyright"))
 print(run({"-remove"}))
 local same = true
-for f, text in originals do
-    if fs.read(dir .. "/" .. f) ~= text then same = false end
-end
+for f, text in originals do if fs.read(dir .. "/" .. f) ~= text then same = false end end
 print("restored:", same)
 print(run({"-l", "MIT", "-c", "X", "-force", "src/other.c"}))
 print(run({"-l", "bad id!"}))

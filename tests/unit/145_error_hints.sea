@@ -33,6 +33,4 @@ local cases = [
     "local x = 1\nif !x then end",
     "print(math.atan2(1, 1) > 0.78, os.time() > 1700000000)",
 ]
-for _, src in cases do
-    print(run_src(src))
-end
+for _, src in cases do print(run_src(src)) end

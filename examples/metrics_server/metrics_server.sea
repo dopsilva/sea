@@ -63,9 +63,7 @@ local function handler(req)
         local obj = [=]
         obj["total"] = total
         local counts = [=]
-        for k, v in counters do
-            counts[k] = v
-        end
+        for k, v in counters do counts[k] = v end
         obj["counters"] = counts
         mu.release(mu)
         local body = json.encode(obj) .. "\n"
@@ -103,9 +101,7 @@ local N  = 10 -- requisições por contador
 
 -- Incrementa "login" N vezes em paralelo
 local function fire(nome, n)
-    for _ = 1, n do
-        http.post(base .. "/increment", nome, "text/plain")
-    end
+    for _ = 1, n do http.post(base .. "/increment", nome, "text/plain") end
     wg.done(wg)
 end
 
@@ -126,9 +122,7 @@ if rm.ok then
     local data = json.decode(rm.body)
     print("  total: " .. data["total"])
     local cs = data["counters"]
-    for k, v in cs do
-        print("    " .. string.pad_right(k, 10) .. " = " .. v)
-    end
+    for k, v in cs do print("    " .. string.pad_right(k, 10) .. " = " .. v) end
 end
 print("")
 

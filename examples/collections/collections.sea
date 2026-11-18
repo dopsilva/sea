@@ -132,9 +132,7 @@ end
 
 -- Coleta pares e ordena por frequência decrescente
 local pares = []
-for palavra, cnt in freq do
-    pares[] = {p = palavra, n = cnt}
-end
+for palavra, cnt in freq do pares[] = {p = palavra, n = cnt} end
 
 for i = 0, len(pares) - 2 do
     for j = i + 1, len(pares) - 1 do

@@ -28,9 +28,7 @@ local function novo_limiter(cap, intervalo_ms)
     wg.add(wg, 1)
 
     -- Preenche o bucket inicialmente
-    for _ = 1, cap do
-        tokens <- true
-    end
+    for _ = 1, cap do tokens <- true end
 
     -- Goroutine repositor: adiciona 1 token a cada intervalo
     go (function()

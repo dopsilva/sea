@@ -356,9 +356,7 @@ end
 local function doc_comment(ast, line)
     if ast == nil or ast.comments == nil then return nil end
     local by_line = {}
-    for _, c in ast.comments do
-        if not c.inline then by_line[c.line] = c.text end
-    end
+    for _, c in ast.comments do if not c.inline then by_line[c.line] = c.text end end
     local out = []
     local l = line - 1
     while by_line[l] ~= nil do
@@ -400,9 +398,7 @@ local function declarations(ast, src_lines)
     end
     local function params_of(f)
         local ps = []
-        for _, p in f.params do
-            if p.is_vararg then ps[] = "..." else ps[] = p.name end
-        end
+        for _, p in f.params do if p.is_vararg then ps[] = "..." else ps[] = p.name end end
         return ps
     end
     local function add(name, owner, kind, line, col, end_line, value)

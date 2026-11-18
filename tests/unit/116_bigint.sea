@@ -64,9 +64,7 @@ print(tonumber("140737488355328"), tonumber("9999999999999999999"), tonumber("12
 -- comparisons inside a loop (the JIT bails to the interpreter on bigints)
 local big = bigint.new("1000000000000000000000")
 local count = 0
-for i = 1, 300 do
-    if big > i and i < big and not (big == i) then count = count + 1 end
-end
+for i = 1, 300 do if big > i and i < big and not (big == i) then count = count + 1 end end
 print("loop", count)
 -- factorial of 30 and a round trip through strings
 local f = bigint.new(1)

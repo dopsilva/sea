@@ -2,11 +2,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 
 local m = [=]
-for i = 1, 10000000 do
-    m[tostring(i)] = i
-end
+for i = 1, 10000000 do m[tostring(i)] = i end
 local sum = 0
-for i = 1, 10000000 do
-    sum = sum + m[tostring(i)]
-end
+for i = 1, 10000000 do sum = sum + m[tostring(i)] end
 print(sum)

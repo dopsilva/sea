@@ -23,9 +23,7 @@ local function msg(e)
     local m = e.message
     local colon = string.find(m, ":") or 0
     local cut = 0
-    for i = 1, colon do
-        if string.sub(m, i, i) == "/" then cut = i end
-    end
+    for i = 1, colon do if string.sub(m, i, i) == "/" then cut = i end end
     return "error: " .. string.sub(m, cut + 1)
 end
 

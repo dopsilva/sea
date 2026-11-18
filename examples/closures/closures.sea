@@ -54,17 +54,13 @@ end
 
 local function maximo(primeiro, ...)
     local m = primeiro
-    for _, v in {...} do
-        if v > m then m = v end
-    end
+    for _, v in {...} do if v > m then m = v end end
     return m
 end
 
 local function concat_sep(sep, ...)
     local partes = []
-    for _, v in {...} do
-        partes[] = tostring(v)
-    end
+    for _, v in {...} do partes[] = tostring(v) end
     return string.join(partes, sep)
 end
 
@@ -116,24 +112,18 @@ print("── 4. map / filter / reduce ─────────────�
 
 local function map_fn(arr, fn)
     local out = []
-    for i = 0, len(arr) - 1 do
-        out[] = fn(arr[i])
-    end
+    for i = 0, len(arr) - 1 do out[] = fn(arr[i]) end
     return out
 end
 
 local function filter_fn(arr, fn)
     local out = []
-    for i = 0, len(arr) - 1 do
-        if fn(arr[i]) then out[] = arr[i] end
-    end
+    for i = 0, len(arr) - 1 do if fn(arr[i]) then out[] = arr[i] end end
     return out
 end
 
 local function reduce_fn(arr, fn, acc)
-    for i = 0, len(arr) - 1 do
-        acc = fn(acc, arr[i])
-    end
+    for i = 0, len(arr) - 1 do acc = fn(acc, arr[i]) end
     return acc
 end
 

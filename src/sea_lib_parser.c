@@ -2286,6 +2286,41 @@ static void print_inline_stmts(Printer *P, SeaArray *stmts) {
     outc(P, ' ');
 }
 
+/* A `for` or `while` loop whose body is one simple statement (or an `if` that is on one
+ * line), with no comment inside: it is written on one line
+ * (`for _, f in files do print(f) end`). */
+static bool lone_stmt_loop(Printer *P, Obj *s) {
+    const char *type = tget_str(s, "type");
+    if (strcmp(type, "for_num") != 0 && strcmp(type, "for_in") != 0 && strcmp(type, "while") != 0) return false;
+    Obj *body = as_node(tget(s, "body"));
+    SeaArray *stmts = body ? block_stmts(body) : NULL;
+    if (!stmts || stmts->len != 1) return false;
+    Obj *st = as_node(stmts->data[0]);
+    if (!st) return false;
+    const char *st_type = tget_str(st, "type");
+    static const char *const SIMPLE[] = {"local", "assign", "expr_stmt", "return", "break",
+                                         "continue", "go", "defer", "panic", "del", "if"};
+    bool simple = false;
+    for (size_t k = 0; k < sizeof SIMPLE / sizeof SIMPLE[0]; k++)
+        if (strcmp(st_type, SIMPLE[k]) == 0) simple = true;
+    if (!simple || !one_line(st)) return false;
+    int line = node_line(s), last = max_line(s, 0);
+    if (line <= 0 || last <= 0) return false;
+    /* the header (condition, bounds, iterator) must be on the line of the keyword */
+    static const char *const HDR[] = {"cond", "start", "limit", "step", "iter"};
+    for (size_t k = 0; k < sizeof HDR / sizeof HDR[0]; k++) {
+        Obj *h = as_node(tget(s, HDR[k]));
+        if (h && max_line(h, 0) > line) return false;
+    }
+    for (uint32_t i = P->ci; P->comments && i < P->comments->len; i++) {
+        SeaValue v = P->comments->data[i];
+        if (!is_record(v)) continue;
+        int cl = node_line(as_record(v));
+        if (cl >= line && cl <= last) return false;
+    }
+    return true;
+}
+
 static void print_stmt(Printer *P, Obj *s, int limit) {
     if (P->failed) return;
     if (++P->nest > FMT_MAX_NEST) { fail(P, "tree too deep (a cycle?)"); P->nest--; return; }
@@ -2298,7 +2333,7 @@ static void print_stmt(Printer *P, Obj *s, int limit) {
     begin_item(P, line);
     note_line(P, line);
 
-    bool inl = one_line(s);
+    bool inl = one_line(s) || lone_stmt_loop(P, s);
     if (inl && !P->dry && P->width > 0) {      /* `if x then ... end` too wide for a line: expand it */
         Snap sn = snap(P);
         P->dry++;

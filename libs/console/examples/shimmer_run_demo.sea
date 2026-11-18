@@ -16,9 +16,7 @@ console.write("   ")
 
 local soma = console.shimmer_run("Somando 1..10M", function()
     local s = 0
-    for i = 1, 10000000 do
-        s = s + i
-    end
+    for i = 1, 10000000 do s = s + i end
     time.sleep(time.second * 2)
     return s
 end)

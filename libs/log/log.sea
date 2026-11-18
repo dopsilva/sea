@@ -116,9 +116,7 @@ function Logger.log(self, level, msg, fields)
     local line = NAMES[n] .. " " .. tostring(msg)
     if st.time then line = time.now():format("2006-01-02 15:04:05") .. " " .. line end
     for _, fs in [self.fields, fields] do
-        for _, k in field_names(fs) do
-            line ..= ` ${k}=${text_value(fs[k])}`
-        end
+        for _, k in field_names(fs) do line ..= ` ${k}=${text_value(fs[k])}` end
     end
     st.write(line)
 end

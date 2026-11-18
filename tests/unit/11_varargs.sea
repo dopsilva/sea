@@ -4,9 +4,7 @@
 -- Test: varargs
 local function sum(...)
     local total = 0
-    for i, v in {...} do
-        total = total + v
-    end
+    for i, v in {...} do total = total + v end
     return total
 end
 

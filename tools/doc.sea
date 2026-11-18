@@ -808,15 +808,11 @@ for _, a in args do
         paths[] = a
     else
         local is_builtin = false
-        for _, b in BUILTINS do
-            if b == a then is_builtin = true end
-        end
+        for _, b in BUILTINS do if b == a then is_builtin = true end end
         local dot = string.find(a, ".", 1, true)
         local prefix = dot ~= nil and string.sub(a, 1, dot - 1) or nil
         local prefix_builtin = false
-        for _, b in BUILTINS do
-            if b == prefix then prefix_builtin = true end
-        end
+        for _, b in BUILTINS do if b == prefix then prefix_builtin = true end end
         if is_builtin then
             builtin = a
         elseif prefix_builtin and builtin == nil and filter == nil then
@@ -926,9 +922,7 @@ local function route(target)
     elseif string.starts_with(p, "/builtin/") then
         local name = string.sub(p, 10)
         local known = false
-        for _, b in BUILTINS do
-            if b == name then known = true end
-        end
+        for _, b in BUILTINS do if b == name then known = true end end
         if known then
             page_module(builtin_module(name))
         else

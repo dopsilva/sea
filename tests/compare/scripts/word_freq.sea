@@ -4,9 +4,7 @@
 -- Word frequencies of a text: totals and the 20 most common words.
 local counts = [=]
 local text = fs.read(os.args[1])?
-for _, word in re.findall("[a-z]+", string.lower(text)) do
-    list.inc(counts, word)
-end
+for _, word in re.findall("[a-z]+", string.lower(text)) do list.inc(counts, word) end
 
 local total = list.sum(list.values(counts))
 print(`words: ${total}, distinct: ${len(counts)}`)

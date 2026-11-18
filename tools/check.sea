@@ -26,9 +26,7 @@ local function code_set(s)
         c = string.trim(c)
         if c ~= "" then
             local okc = false
-            for _, k in check.CODES do
-                if k == c then okc = true end
-            end
+            for _, k in check.CODES do if k == c then okc = true end end
             if not okc then
                 io.write_err("sea check: unknown check " .. c .. "\n")
                 os.exit(2)
@@ -97,9 +95,7 @@ local format = format_flag.value
 local warn_ok = warn_flag.value
 if len(paths) == 0 then paths[] = "." end
 if only ~= nil then
-    for _, c in check.CODES do
-        if not only[c] then disable[c] = true end
-    end
+    for _, c in check.CODES do if not only[c] then disable[c] = true end end
 end
 
 local files = []

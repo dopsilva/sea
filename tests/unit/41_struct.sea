@@ -25,9 +25,7 @@ print(len(p)) -- 3
 -- for-in iterates all fields
 local s = {a = 1, b = 2, c = 3}
 local sum = 0
-for k, v in s do
-    sum = sum + v
-end
+for k, v in s do sum = sum + v end
 print(sum) -- 6
 
 -- nested struct

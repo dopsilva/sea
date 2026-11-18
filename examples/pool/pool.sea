@@ -39,9 +39,7 @@ print("Disparando " .. N_CLIENTS .. " requisições simultâneas...")
 -- Receber do canal = adquirir uma vaga no pool.
 -- Enviar de volta  = liberar a vaga.
 local pool = chan(MAX_CONN)
-for i = 1, MAX_CONN do
-    pool <- true
-end
+for i = 1, MAX_CONN do pool <- true end
 
 -- Canal de resultados: cada goroutine envia seu waited_ms (inteiro).
 local wait_ch = chan(N_CLIENTS)

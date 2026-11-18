@@ -142,9 +142,7 @@ local function apply(self, f, text)
     if f.kind == "string" or f.kind == "list" then
         if f.choices ~= nil then
             local ok = false
-            for _, c in f.choices do
-                if c == text then ok = true end
-            end
+            for _, c in f.choices do if c == text then ok = true end end
             if not ok then
                 return fail(self,
                     show(f) .. " must be one of " .. string.join(f.choices, ", ") .. " (got '" .. text .. "')")
@@ -290,12 +288,8 @@ function Set.help(self)
             local all = []
             all[] = f.name
             for _, a in f.aliases do all[] = a end
-            for _, a in all do
-                if len(a) == 1 then names[] = dashed(self, a) end
-            end
-            for _, a in all do
-                if len(a) > 1 then names[] = dashed(self, a) end
-            end
+            for _, a in all do if len(a) == 1 then names[] = dashed(self, a) end end
+            for _, a in all do if len(a) > 1 then names[] = dashed(self, a) end end
             local left = string.join(names, ", ")
             if f.kind ~= "bool" then left = left .. " " .. string.upper(f.arg) end
             if len(left) > width then width = len(left) end

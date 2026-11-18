@@ -1,0 +1,48 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- sea fmt: a `for` or `while` loop whose body is one simple statement (or an `if` already on
+-- one line) goes on one line, unless the body has a comment, more than one statement, a
+-- block, or the line would be too wide.
+
+local parser = require("sea/parser")
+
+local src = string.join({
+    "for _, f in files do",
+    "    print(f)",
+    "end",
+    "for i = 0, 9 do",
+    "    -- keep",
+    "    total += i",
+    "end",
+    "for i = 0, 9 do",
+    "    total += i",
+    "end -- trailing",
+    "for k, v in t do",
+    "    print(k)",
+    "    print(v)",
+    "end",
+    "for k, v in t do",
+    "    if v then print(k) end",
+    "end",
+    "for _, name in names do",
+    "    local some_very_long_function_name_here = another_long_function_name(first_argument_x, second_argument)",
+    "end",
+    "-- before",
+    "for _, f in files do",
+    "    out[] = f",
+    "end",
+    "-- after",
+    "while i < 3 do",
+    "    i += 1",
+    "end",
+    "while x do",
+    "    if a then",
+    "        b()",
+    "    end",
+    "end",
+}, "\n") .. "\n"
+
+local out = parser.format(src)
+print(out)
+print(parser.format(out) == out)

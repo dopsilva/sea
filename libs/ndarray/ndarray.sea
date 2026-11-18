@@ -262,9 +262,7 @@ function M.moveaxis(a, src, dst)
     if src < 0 then src += n end
     if dst < 0 then dst += n end
     local rest = []
-    for i = 0, n - 1 do
-        if i ~= src then rest[] = i end
-    end
+    for i = 0, n - 1 do if i ~= src then rest[] = i end end
     local order = []
     for i = 0, n - 1 do
         if i == dst then
@@ -582,9 +580,7 @@ function M.array_equal(a, b)
     a = M.asarray(a)
     b = M.asarray(b)
     if a.ndim ~= b.ndim then return false end
-    for i, s in a.shape do
-        if b.shape[i] ~= s then return false end
-    end
+    for i, s in a.shape do if b.shape[i] ~= s then return false end end
     return native.all(native.equal(a, b))
 end
 
@@ -1252,9 +1248,7 @@ end
 local function sum_out(a, labels, keep)
     local axes = []
     local rest = []
-    for i, l in labels do
-        if keep[l] then rest[] = l else axes[] = i end
-    end
+    for i, l in labels do if keep[l] then rest[] = l else axes[] = i end end
     if len(axes) == 0 then return a, labels end
     return M.asarray(native.sum(a, axes)), rest
 end
@@ -1292,9 +1286,7 @@ local function contract(a, la, b, lb, out)
             bkeep[] = l
         end
     end
-    for _, l in la do
-        if inb[l] and not want[l] then contr[] = l end
-    end
+    for _, l in la do if inb[l] and not want[l] then contr[] = l end end
     local at = native.transpose(a, perm(la, list.concat(batch, akeep, contr)))
     local bt = native.transpose(b, perm(lb, list.concat(batch, contr, bkeep)))
     local nb = len(batch)

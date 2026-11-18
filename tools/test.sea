@@ -303,9 +303,7 @@ if cover then
         return is_error(r) and f or r
     end
     local width = 5
-    for _, f in names do
-        if len(show(f)) > width then width = len(show(f)) end
-    end
+    for _, f in names do if len(show(f)) > width then width = len(show(f)) end end
     local all_n = 0
     local all_ran = 0
     local lcov = []

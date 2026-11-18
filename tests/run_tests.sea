@@ -25,9 +25,7 @@ local filter = os.args[1]
 
 local function trim_trailing_newline(s)
     local n = len(s)
-    while n > 0 and (string.sub(s, n, n) == "\n" or string.sub(s, n, n) == "\r") do
-        n = n - 1
-    end
+    while n > 0 and (string.sub(s, n, n) == "\n" or string.sub(s, n, n) == "\r") do n = n - 1 end
     return string.sub(s, 1, n)
 end
 
@@ -56,9 +54,7 @@ end
 
 local all = os.glob(UNIT, ".sea")
 local files = []
-for _, f in all do
-    if filter == nil or string.contains(f, filter) then files[] = f end
-end
+for _, f in all do if filter == nil or string.contains(f, filter) then files[] = f end end
 local total = len(files)
 print(total .. " testes em " .. UNIT .. "/ (limite " .. timeout_s .. " s cada)")
 

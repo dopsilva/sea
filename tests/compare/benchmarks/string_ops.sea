@@ -3,9 +3,7 @@
 
 -- string concat: build a large string by appending
 local s = ""
-for i = 1, 50000 do
-    s = s .. "hello world "
-end
+for i = 1, 50000 do s = s .. "hello world " end
 print(len(s))
 
 -- string upper/lower: repeated case conversion

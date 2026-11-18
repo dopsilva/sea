@@ -53,12 +53,8 @@ local function merge_sort(arr)
     local mid = n // 2
     local left = {}
     local right = {}
-    for i = 0, mid - 1 do
-        left[i] = arr[i]
-    end
-    for i = mid, n - 1 do
-        right[i - mid] = arr[i]
-    end
+    for i = 0, mid - 1 do left[i] = arr[i] end
+    for i = mid, n - 1 do right[i - mid] = arr[i] end
     left = merge_sort(left)
     right = merge_sort(right)
     -- merge
@@ -110,9 +106,7 @@ local function make_emitter()
         end,
         emit = function(event, data)
             if handlers[event] == nil then return end
-            for i, fn in handlers[event] do
-                fn(data)
-            end
+            for i, fn in handlers[event] do fn(data) end
         end,
     }
 end

@@ -4,9 +4,7 @@
 -- Test: for-in loops
 -- over table literal (integer keys, 0-based)
 local t = {10, 20, 30}
-for i, v in t do
-    print(i, v)
-end
+for i, v in t do print(i, v) end
 -- 0	10
 -- 1	20
 -- 2	30
@@ -21,9 +19,7 @@ for k, v in m do
 end
 -- sum of values
 local sum = 0
-for i, v in vals do
-    sum = sum + v
-end
+for i, v in vals do sum = sum + v end
 print(sum) -- 6
 
 -- for-in with array
@@ -31,17 +27,13 @@ local arr = []
 arr[] = "p"
 arr[] = "q"
 arr[] = "r"
-for i, v in arr do
-    print(v)
-end
+for i, v in arr do print(v) end
 -- p
 -- q
 -- r
 
 -- single variable for-in (index only or value only)
-for i in {100, 200, 300} do
-    print(i)
-end
+for i in {100, 200, 300} do print(i) end
 -- 0
 -- 1
 -- 2

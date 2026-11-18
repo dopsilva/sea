@@ -207,9 +207,7 @@ end
 function M.load(p, opts)
     opts = opts or {}
     local vars = read(p, opts)?
-    for k, v in vars do
-        if opts.override or os.getenv(k) == nil then os.setenv(k, v)? end
-    end
+    for k, v in vars do if opts.override or os.getenv(k) == nil then os.setenv(k, v)? end end
     return vars
 end
 

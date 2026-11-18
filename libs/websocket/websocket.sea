@@ -317,9 +317,7 @@ function M.upgrade(req, fn, opts)
         for _, p in string.split(offered, ",") do
             local name = string.trim(p)
             if chosen == nil then
-                for _, w in wanted do
-                    if w == name then chosen = name end
-                end
+                for _, w in wanted do if w == name then chosen = name end end
             end
         end
     end
@@ -458,9 +456,7 @@ function M.connect(url, opts)
     if proto ~= nil then
         local offered = false
         if protocols ~= nil then
-            for _, p in protocols do
-                if p == proto then offered = true end
-            end
+            for _, p in protocols do if p == proto then offered = true end end
         end
         if not offered then
             s.shutdown()

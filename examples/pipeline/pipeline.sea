@@ -33,9 +33,7 @@ local function run_pipeline(n_workers)
     -- Emite N_JOBS tarefas e fecha o canal.
     -- Como jobs é totalmente bufferizado, o Source completa sem bloquear.
     go (function()
-        for i = 1, N_JOBS do
-            jobs <- i
-        end
+        for i = 1, N_JOBS do jobs <- i end
         close(jobs)
     end)()
 
@@ -56,9 +54,7 @@ local function run_pipeline(n_workers)
     -- Espera todos os workers e fecha results para que o Sink saiba que acabou.
     -- Fica SUSPENSA no canal (não ocupa thread do SO enquanto aguarda).
     go (function()
-        for i = 1, n_workers do
-            local _ = <-done
-        end
+        for i = 1, n_workers do local _ = <-done end
         close(results)
     end)()
 

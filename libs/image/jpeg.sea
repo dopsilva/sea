@@ -630,9 +630,7 @@ function M.decode(s, opts)
                     local cid = string.byte(s, seg + 1 + k * 2)
                     local tables = string.byte(s, seg + 2 + k * 2)
                     local comp = nil
-                    for _, c in frame.comps do
-                        if c.id == cid then comp = c end
-                    end
+                    for _, c in frame.comps do if c.id == cid then comp = c end end
                     if comp == nil then return error("jpeg: a scan of an unknown component") end
                     comp.dc = dc_tables[tables >> 4]
                     comp.ac = ac_tables[tables & 15]

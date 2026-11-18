@@ -34,9 +34,7 @@ print(bin.width, bin.height, bin.binary, bin:get(0, 0), bin:get(1, 1), bin:get(3
 print("-- encode and decode")
 local function same(a, b)
     if a.width ~= b.width or a.height ~= b.height then return false end
-    for i = 0, a.width * a.height - 1 do
-        if a.data[i] ~= b.data[i] then return false end
-    end
+    for i = 0, a.width * a.height - 1 do if a.data[i] ~= b.data[i] then return false end end
     return true
 end
 for _, fmt in ["png", "bmp", "pgm"] do

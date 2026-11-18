@@ -35,9 +35,7 @@ local function executar_pool(n_workers)
     -- Workers
     for _ = 1, n_workers do
         go (function()
-            for job in jobs do
-                results <- processar(job)
-            end
+            for job in jobs do results <- processar(job) end
             wg.done(wg)
         end)()
     end
@@ -50,9 +48,7 @@ local function executar_pool(n_workers)
 
     -- Produtor: envia N_JOBS e fecha jobs
     local t_start = time.now()
-    for i = 1, N_JOBS do
-        jobs <- i
-    end
+    for i = 1, N_JOBS do jobs <- i end
     close(jobs)
 
     -- Consumidor: agrega resultados

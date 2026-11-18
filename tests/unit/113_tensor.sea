@@ -21,9 +21,7 @@ end
 
 local function close(a, b)
     if len(a) ~= len(b) then return false end
-    for i = 0, len(a) - 1 do
-        if math.abs(a[i] - b[i]) > 1e-12 then return false end
-    end
+    for i = 0, len(a) - 1 do if math.abs(a[i] - b[i]) > 1e-12 then return false end end
     return true
 end
 
@@ -289,9 +287,7 @@ print("f32 mixed", mix ~= nil and string.contains(mix, "mixes float_array and fl
 -- the result); each element is computed the same way, so the results are identical
 local function same(a, b)
     if len(a) ~= len(b) then return false end
-    for i = 0, len(a) - 1 do
-        if a[i] ~= b[i] then return false end
-    end
+    for i = 0, len(a) - 1 do if a[i] ~= b[i] then return false end end
     return true
 end
 local function product(mk, T, nin, nout, nthreads)
@@ -481,9 +477,7 @@ do
     local s = zeros(12)
     tensor.swiglu(a, 0, b, 0, s, 2, 10)
     local ok = true
-    for i = 0, 9 do
-        if math.abs(s[2 + i] - a[i] * sig(a[i]) * b[i]) > 1e-12 then ok = false end
-    end
+    for i = 0, 9 do if math.abs(s[2 + i] - a[i] * sig(a[i]) * b[i]) > 1e-12 then ok = false end end
     local ds = rnd(10, 73)
     local da, db = zeros(10), zeros(10)
     tensor.swiglu_back(ds, 0, a, 0, b, 0, da, 0, db, 0, 10)
@@ -505,9 +499,7 @@ do
     tensor.copy(r, 0, x, 0, T * C)
     tensor.rope(r, 0, T, C, H, 0)
     local zero_same = true
-    for i = 0, C - 1 do
-        if r[i] ~= x[i] then zero_same = false end
-    end
+    for i = 0, C - 1 do if r[i] ~= x[i] then zero_same = false end end
     -- row 3, head 1, pair 2: angle 3·10000^(−4/8)
     local HS = C // H
     local ang = 3 * math.pow(10000, -2 * 2 / HS)
@@ -525,9 +517,7 @@ do
     tensor.copy(full, 0, x, 0, T * C)
     tensor.rope(full, 0, T, C, H, 0)
     local same_row = true
-    for i = 0, C - 1 do
-        if math.abs(one[i] - full[3 * C + i]) > 1e-12 then same_row = false end
-    end
+    for i = 0, C - 1 do if math.abs(one[i] - full[3 * C + i]) > 1e-12 then same_row = false end end
     print("rope pos0", same_row)
 
     -- cross_entropy: loss and gradient, a skipped row, float32
@@ -663,12 +653,8 @@ do
         tensor.threads(4)
         tensor.rmsnorm_rows(x, 3, y2, 1, T, n, r2, 2)
         local ok = true
-        for t = 0, T - 1 do
-            if r1[t] ~= r2[2 + t] then ok = false end
-        end
-        for i = 0, T * n - 1 do
-            if y1[i] ~= y2[1 + i] then ok = false end
-        end
+        for t = 0, T - 1 do if r1[t] ~= r2[2 + t] then ok = false end end
+        for i = 0, T * n - 1 do if y1[i] ~= y2[1 + i] then ok = false end end
         local d1, d2 = mk(rnd(T * n, 103)), mk(rnd(T * n, 103))
         for t = 0, T - 1 do tensor.rmsnorm_back(dy, t * n, x, 3 + t * n, r1[t], n, d1, t * n) end
         tensor.rmsnorm_back_rows(dy, 0, x, 3, r2, 2, T, n, d2, 0)

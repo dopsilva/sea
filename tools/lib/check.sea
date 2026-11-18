@@ -116,9 +116,7 @@ end
 local function collect_globals(ast, out)
     parser.walk(ast, function(n)
         if n.type == "assign" then
-            for _, t in n.targets do
-                if t.type == "ident" then out[t.name] = true end
-            end
+            for _, t in n.targets do if t.type == "ident" then out[t.name] = true end end
         end
     end)
     return out
@@ -482,9 +480,7 @@ function M.source(src, opts)
     local function func(n)
         open_scope(true)
         if n.params ~= nil then
-            for _, p in n.params do
-                if not p.is_vararg then declare(p.name, n, "param") end
-            end
+            for _, p in n.params do if not p.is_vararg then declare(p.name, n, "param") end end
         end
         block(n.body, true)
         close_scope()

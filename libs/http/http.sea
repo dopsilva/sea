@@ -832,9 +832,7 @@ function M.listen(port, handler, opts)
         net.shutdown(lfd)
         local mu = srv.mu
         mu.acquire(mu)
-        for _, st in srv.conns do
-            if st ~= nil and st.idle then net.shutdown(st.conn.fd) end
-        end
+        for _, st in srv.conns do if st ~= nil and st.idle then net.shutdown(st.conn.fd) end end
         mu.release(mu)
     end
     srv["wait"] = function()

@@ -35,7 +35,5 @@ local rest = flags.args()
 local narg = flags.narg()
 print("argumentos posicionais (" .. narg .. "):")
 if narg > 0 then
-    for i = 0, narg - 1 do
-        print("  [" .. i .. "] " .. rest[i])
-    end
+    for i = 0, narg - 1 do print("  [" .. i .. "] " .. rest[i]) end
 end

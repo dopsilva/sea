@@ -11,9 +11,7 @@ m["b"] = 20
 m["c"] = 30
 
 local n = 0
-for k, v in m do
-    n = n + 1
-end
+for k, v in m do n = n + 1 end
 print(n)
 -- 3
 
@@ -21,9 +19,7 @@ print(n)
 local t = {x = 1, y = 2}
 local count = 0
 local dummy = 0
-for k, v in t do
-    count = count + 1
-end
+for k, v in t do count = count + 1 end
 print(count)
 -- 2
 
@@ -33,9 +29,7 @@ arr[] = "p"
 arr[] = "q"
 arr[] = "r"
 local idx = 0
-for i, v in arr do
-    idx = idx + 1
-end
+for i, v in arr do idx = idx + 1 end
 print(idx)
 -- 3
 

@@ -26,9 +26,7 @@ for iter = 1, 50 do
         local ci = c[i]
         for j = 0, N - 1 do
             local s = 0
-            for k = 0, N - 1 do
-                s = s + ai[k] * b[k][j]
-            end
+            for k = 0, N - 1 do s = s + ai[k] * b[k][j] end
             ci[j] = s
         end
     end
@@ -36,8 +34,6 @@ end
 
 local sum = 0
 for i = 0, N - 1 do
-    for j = 0, N - 1 do
-        sum = sum + c[i][j]
-    end
+    for j = 0, N - 1 do sum = sum + c[i][j] end
 end
 print(sum)

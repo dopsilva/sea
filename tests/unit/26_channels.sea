@@ -17,9 +17,7 @@ assert(<-ch == 40, "buffered recv 4")
 
 -- 2. Buffered channel preserves FIFO order
 local fifo = chan(5)
-for i = 1, 5 do
-    fifo <- i
-end
+for i = 1, 5 do fifo <- i end
 for i = 1, 5 do
     local v = <-fifo
     assert(v == i, "FIFO order violated")
@@ -33,9 +31,7 @@ src <- 300
 close(src)
 
 local items = []
-for v in src do
-    items[] = v
-end
+for v in src do items[] = v end
 assert(len(items) == 3, "should receive exactly 3 items")
 assert(items[0] == 100, "item 0")
 assert(items[1] == 200, "item 1")
@@ -59,16 +55,12 @@ wg.add(wg, 1)
 
 go (function()
     local total = 0
-    for i = 0, 9 do
-        total = total + (<-pipe)
-    end
+    for i = 0, 9 do total = total + (<-pipe) end
     pipe <- total
     wg.done(wg)
 end)()
 
-for i = 0, 9 do
-    pipe <- i
-end
+for i = 0, 9 do pipe <- i end
 wg.wait(wg)
 local total_result = <-pipe
 assert(total_result == 45, "sum of 0..9 = 45")

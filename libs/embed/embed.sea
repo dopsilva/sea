@@ -220,9 +220,7 @@ local function prompts_of(ref)
     local spec = KNOWN[ref]
     if spec == nil then
         local low = string.lower(ref)
-        for name, s in KNOWN do
-            if string.contains(low, name) then spec = s end
-        end
+        for name, s in KNOWN do if string.contains(low, name) then spec = s end end
     end
     if spec == nil then return ["", ""] end
     return [spec.query, spec.document]

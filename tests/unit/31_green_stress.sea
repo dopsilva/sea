@@ -21,9 +21,7 @@ wg1.wait(wg1)
 close(ch1)
 
 local sum1 = 0
-for v in ch1 do
-    sum1 = sum1 + v
-end
+for v in ch1 do sum1 = sum1 + v end
 -- sum(1..5000) = 5000*5001/2 = 12502500
 assert(sum1 == 12502500, "test1: expected 12502500, got " .. sum1)
 print("test1 ok")
@@ -84,9 +82,7 @@ wg3.add(wg3, 20)
 
 for w = 1, 20 do
     go (function()
-        for task in tasks3 do
-            results3 <- task * task
-        end
+        for task in tasks3 do results3 <- task * task end
         wg3.done(wg3)
     end)()
 end
@@ -141,9 +137,7 @@ wg5.add(wg5, 50)
 for i = 1, 50 do
     local base = (i - 1) * 100
     go (function()
-        for j = 1, 100 do
-            chin <- base + j
-        end
+        for j = 1, 100 do chin <- base + j end
         wg5.done(wg5)
     end)()
 end

@@ -127,9 +127,7 @@ print("")
 
 -- ── Verifica contadores do mock ────────────────────────────────────────────────
 print("── Chamadas no servidor mock ────────────────")
-for k, v in call_cnt do
-    print("  " .. string.pad_right(k, 20) .. " = " .. v .. " chamada(s)")
-end
+for k, v in call_cnt do print("  " .. string.pad_right(k, 20) .. " = " .. v .. " chamada(s)") end
 print("")
 
 print("── Padrão ───────────────────────────────────")

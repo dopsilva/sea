@@ -40,9 +40,7 @@ print(dyn.z) -- 99
 -- for-in over struct
 local counts = {a = 1, b = 2, c = 3}
 local total = 0
-for k, v in counts do
-    total = total + v
-end
+for k, v in counts do total = total + v end
 print(total) -- 6
 
 -- len of struct

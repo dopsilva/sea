@@ -93,9 +93,7 @@ print("── 6. Medição de elapsed time ────────────�
 
 local function trabalho_pesado(n)
     local soma = 0
-    for i = 1, n do
-        soma = soma + math.sqrt(i)
-    end
+    for i = 1, n do soma = soma + math.sqrt(i) end
     return soma
 end
 

@@ -1,17 +1,17 @@
-index nil:	nil	error: 110_panic_recover.sea:35: attempt to index a nil value
-arith:	nil	error: 110_panic_recover.sea:38: attempt to perform arithmetic on table
-call nil:	nil	error: 110_panic_recover.sea:42: attempt to call a nil value
+index nil:	nil	error: 110_panic_recover.sea:33: attempt to index a nil value
+arith:	nil	error: 110_panic_recover.sea:36: attempt to perform arithmetic on table
+call nil:	nil	error: 110_panic_recover.sea:40: attempt to call a nil value
 no panic:	ok	nil
 inner defer
 middle defer
 outer defer 2
 outer recovers: boom
 safe_div:	5	nil	continues
-panic in defer:	nil	error: 110_panic_recover.sea:82: attempt to index a nil value
+panic in defer:	nil	error: 110_panic_recover.sea:80: attempt to index a nil value
 re-panic:	nil	second
 native callback:	nil	in once
 module body:	nil	error: 110_panic_mod.sea:9: attempt to index a nil value
-goroutine:	error: 110_panic_recover.sea:111: attempt to index a nil value (field 'b')
+goroutine:	error: 110_panic_recover.sea:109: attempt to index a nil value (field 'b')
 hot ok:	4501500	nil
-hot fails:	nil	error: 110_panic_recover.sea:121: attempt to perform arithmetic on nil
+hot fails:	nil	error: 110_panic_recover.sea:119: attempt to perform arithmetic on nil
 after:	5050

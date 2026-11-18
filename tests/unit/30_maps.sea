@@ -109,17 +109,13 @@ print(count) -- 3
 
 -- ---- 12. for-in single variable (key only) ----------------------------------
 local key_count = 0
-for k in nums do
-    key_count = key_count + 1
-end
+for k in nums do key_count = key_count + 1 end
 print(key_count) -- 3
 
 -- ---- 13. for-in over empty map ----------------------------------------------
 local empty = [=]
 local hit = false
-for k, v in empty do
-    hit = true
-end
+for k, v in empty do hit = true end
 print(hit) -- false
 
 -- ---- 14. collect keys via for-in --------------------------------------------
@@ -151,9 +147,7 @@ for _mk, mv in mk do vals[] = mv end
 print(len(vals)) -- 3
 
 local vsum = 0
-for i, v in vals do
-    vsum = vsum + v
-end
+for i, v in vals do vsum = vsum + v end
 print(vsum) -- 6
 
 -- ---- 16. collect on empty map -----------------------------------------------
@@ -220,9 +214,7 @@ print(registry["u1"]["score"]) -- 42
 
 -- ---- 21. Stress: 100 integer keys -------------------------------------------
 local big = [=]
-for i = 0, 99 do
-    big[i] = i * 2
-end
+for i = 0, 99 do big[i] = i * 2 end
 print(len(big)) -- 100
 print(big[0])   -- 0
 print(big[1])   -- 2
@@ -231,15 +223,11 @@ print(big[99])  -- 198
 
 -- Verify all present
 local all_ok = true
-for i = 0, 99 do
-    if big[i] == nil then all_ok = false end
-end
+for i = 0, 99 do if big[i] == nil then all_ok = false end end
 print(all_ok) -- true
 
 -- Delete even keys (50 deletions)
-for i = 0, 98, 2 do
-    del big[i]
-end
+for i = 0, 98, 2 do del big[i] end
 print(len(big))       -- 50
 print(big[0] ~= nil)  -- false
 print(big[1] ~= nil)  -- true
@@ -250,15 +238,11 @@ print(big[99] ~= nil) -- true
 -- Sum = 2+6+10+...+198 = sum of 2*(2k-1) for k=1..50 = 2*(1+3+...+99)
 -- 1+3+...+99 = 50^2 = 2500, so sum = 5000
 local odd_sum = 0
-for k, v in big do
-    odd_sum = odd_sum + v
-end
+for k, v in big do odd_sum = odd_sum + v end
 print(odd_sum) -- 5000
 
 -- Re-insert even keys (verify tombstone reuse works at scale)
-for i = 0, 98, 2 do
-    big[i] = i * 3
-end
+for i = 0, 98, 2 do big[i] = i * 3 end
 print(len(big)) -- 100
 print(big[0])   -- 0
 print(big[2])   -- 6
@@ -279,7 +263,5 @@ print(smap["key_100"] ~= nil) -- false
 
 -- Sum all values: 0+1+2+...+99 = 4950
 local str_sum = 0
-for k, v in smap do
-    str_sum = str_sum + v
-end
+for k, v in smap do str_sum = str_sum + v end
 print(str_sum) -- 4950

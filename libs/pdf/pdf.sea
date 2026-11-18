@@ -903,9 +903,7 @@ local function text_runs(doc, content, resources, runs, depth)
         local glyphs = len(s) // f.bytes
         local spaces = 0
         if f.bytes == 1 then
-            for i = 1, len(s) do
-                if string.byte(s, i) == 32 then spaces += 1 end
-            end
+            for i = 1, len(s) do if string.byte(s, i) == 32 then spaces += 1 end end
         end
         local adv = (r.width / 1000 * size + tc * glyphs + tw * spaces) * th
         local m0 = mat_mul(tm, ctm)

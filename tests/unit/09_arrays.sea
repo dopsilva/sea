@@ -22,9 +22,7 @@ local b = []
 b[] = "x"
 b[] = "y"
 b[] = "z"
-for i, v in b do
-    print(i, v)
-end
+for i, v in b do print(i, v) end
 -- 0	x
 -- 1	y
 -- 2	z

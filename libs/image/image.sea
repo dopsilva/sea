@@ -50,9 +50,7 @@ function Image.clone(self)
     local out = M.new(self.width, self.height, 255)
     out.binary = self.binary
     local n = self.width * self.height
-    for i = 0, n - 1 do
-        out.data[i] = self.data[i]
-    end
+    for i = 0, n - 1 do out.data[i] = self.data[i] end
     return out
 end
 
@@ -109,17 +107,13 @@ function M.new(width, height, fill)
     if bg == nil then bg = 255 end
     local n = width * height
     local data = int_array(n)
-    for _ = 0, n - 1 do
-        data[] = bg
-    end
+    for _ = 0, n - 1 do data[] = bg end
     local img = {}
     img.width = width
     img.height = height
     img.data = data
     img.binary = false
-    for k, fn in Image do
-        img[k] = fn
-    end
+    for k, fn in Image do img[k] = fn end
     return img
 end
 
@@ -153,9 +147,7 @@ function M.from_ascii(art, opts)
     end
     local h = len(lines)
     local w = 0
-    for _, line in lines do
-        if len(line) > w then w = len(line) end
-    end
+    for _, line in lines do if len(line) > w then w = len(line) end end
     local scale = opts.scale or 1
     local pad = opts.pad or 0
     local binary = opts.binary == true
@@ -167,9 +159,7 @@ function M.from_ascii(art, opts)
             local v = ascii_gray(line[x])
             if binary and v ~= 255 then v = 0 end
             for sy = 0, scale - 1 do
-                for sx = 0, scale - 1 do
-                    img:set(pad + x * scale + sx, pad + y * scale + sy, v)
-                end
+                for sx = 0, scale - 1 do img:set(pad + x * scale + sx, pad + y * scale + sy, v) end
             end
         end
     end
@@ -246,9 +236,7 @@ function M.decode_pnm(bytes)
         while pos <= n do
             local b = string.byte(bytes, pos)
             if b == 35 then
-                while pos <= n and string.byte(bytes, pos) ~= 10 do
-                    pos += 1
-                end
+                while pos <= n and string.byte(bytes, pos) ~= 10 do pos += 1 end
             elseif b == 32 or b == 9 or b == 10 or b == 13 then
                 pos += 1
             else
@@ -368,9 +356,7 @@ function M.encode_pgm(img)
     for y = 0, h - 1 do
         local row = []
         local base = y * w
-        for x = 0, w - 1 do
-            row[] = string.char(img.data[base + x])
-        end
+        for x = 0, w - 1 do row[] = string.char(img.data[base + x]) end
         chunks[] = string.join(row, "")
     end
     return string.join(chunks, "")
@@ -668,9 +654,7 @@ function M.decode_png(bytes)
                 end
             end
         elseif color_type == 0 then
-            for x = 0, w - 1 do
-                img.data[y * w + x] = curr_row[x]
-            end
+            for x = 0, w - 1 do img.data[y * w + x] = curr_row[x] end
         elseif color_type == 3 then
             for x = 0, w - 1 do
                 local idx = curr_row[x]
@@ -697,9 +681,7 @@ function M.decode_png(bytes)
             end
         end
 
-        for i = 0, stride - 1 do
-            prev_row[i] = curr_row[i]
-        end
+        for i = 0, stride - 1 do prev_row[i] = curr_row[i] end
     end
 
     return img
@@ -720,9 +702,7 @@ function M.encode_png(img)
     for y = 0, h - 1 do
         local line = ["\0"]
         local base = y * w
-        for x = 0, w - 1 do
-            line[] = string.char(img.data[base + x])
-        end
+        for x = 0, w - 1 do line[] = string.char(img.data[base + x]) end
         rows[] = string.join(line, "")
     end
     local raw = string.join(rows, "")

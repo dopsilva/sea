@@ -68,9 +68,7 @@ function M.sign(claims, key, opts)
 
     -- monta payload
     local payload = {}
-    for k, v in claims do
-        payload[k] = v
-    end
+    for k, v in claims do payload[k] = v end
 
     local now_t = time.now()
     local now   = now_t.unix(now_t)

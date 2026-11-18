@@ -29,9 +29,7 @@ local df = os.exec("df -h /tmp 2>/dev/null || df -h /")
 if df.code == 0 then
     local linhas = string.split(string.trim(df.output), "\n")
     print("  df /tmp:")
-    for i = 0, len(linhas) - 1 do
-        print("    " .. linhas[i])
-    end
+    for i = 0, len(linhas) - 1 do print("    " .. linhas[i]) end
 end
 print("")
 
@@ -58,9 +56,7 @@ local conteudo = os.readfile(tmpfile)
 if conteudo ~= nil then
     local linhas = string.split(string.trim(conteudo), "\n")
     print("  " .. len(linhas) .. " linhas:")
-    for i = 0, len(linhas) - 1 do
-        print("    [" .. i .. "] " .. linhas[i])
-    end
+    for i = 0, len(linhas) - 1 do print("    [" .. i .. "] " .. linhas[i]) end
 end
 
 -- Arquivo inexistente → nil
@@ -129,9 +125,7 @@ local git_log = os.exec("git log --oneline -5 2>/dev/null || echo 'sem git'")
 if git_log.code == 0 then
     local commits = string.split(string.trim(git_log.output), "\n")
     print("  Últimos " .. len(commits) .. " commits:")
-    for i = 0, len(commits) - 1 do
-        print("    " .. commits[i])
-    end
+    for i = 0, len(commits) - 1 do print("    " .. commits[i]) end
 else
     print("  (sem repositório git)")
 end
