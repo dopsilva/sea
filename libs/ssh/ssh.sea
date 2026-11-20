@@ -1,0 +1,826 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- ssh — an SSH 2 client (and a small test server) over the net module and libs/ssl
+--
+--   local ssh = require("ssh")
+--   local c = ssh.dial("host:22", {user = "deploy", key = key_pem, host_key = "SHA256:..."})?
+--   local r = c:exec("systemctl is-active promptus")?
+--   print(r.code, r.stdout, r.stderr)
+--   c:close()
+--
+--   ssh.hostkey("host:22")  → {type, fingerprint, blob}: what the server presents, to be compared with a
+--                             real fingerprint and then given as opts.host_key
+--   ssh.keygen("comment")   → {private, public, fingerprint}: a new Ed25519 key in OpenSSH's formats
+--
+-- What it speaks: key exchange curve25519-sha256, host key ssh-ed25519, cipher aes256-gcm@openssh.com
+-- (its own authentication: no MAC), no compression; user authentication by public key (ssh-ed25519); the
+-- "session" channel with "exec" (stdin, stdout, stderr, exit status or signal). No shell, no pty, no
+-- forwarding, no SFTP; private keys must be unencrypted OpenSSH keys ("BEGIN OPENSSH PRIVATE KEY").
+--
+-- A server's host key is never taken on trust: dial wants opts.host_key (the fingerprint "SHA256:...") or
+-- opts.verify(fingerprint, blob) → bool; opts.insecure_any_host_key = true skips the check (tests only).
+--
+-- Every wait goes through the netpoller; opts.timeout (ms, default 30000) applies to each wait.
+
+local ssl = require("../ssl/ssl")
+
+local M = {}
+
+M.VERSION = "SSH-2.0-sea_ssh"
+M.TIMEOUT = 30000
+
+-- ---- the wire format (RFC 4251) ----
+
+local function u32(n)
+    return string.char((n >> 24) & 255, (n >> 16) & 255, (n >> 8) & 255, n & 255)
+end
+
+local function str(s)
+    return u32(len(s)) .. s
+end
+
+local function byte(n)
+    return string.char(n)
+end
+
+-- a big-endian unsigned number as an mpint
+local function mpint(bytes)
+    local i = 1
+    while i <= len(bytes) and string.byte(bytes, i) == 0 do i += 1 end
+    local b = string.sub(bytes, i)
+    if b ~= "" and string.byte(b, 1) >= 128 then b = "\0" .. b end
+    return str(b)
+end
+
+local function namelist(names)
+    return str(string.join(names, ","))
+end
+
+local function read_u32(s, i)
+    return (string.byte(s, i) << 24) | (string.byte(s, i + 1) << 16) | (string.byte(s, i + 2) << 8) | string.byte(s,
+        i + 3)
+end
+
+-- a reader of one message's fields
+local Reader = {}
+
+function Reader.byte(r)
+    if r.i > len(r.s) then return error("ssh: the message is too short") end
+    local b = string.byte(r.s, r.i)
+    r.i += 1
+    return b
+end
+
+function Reader.u32(r)
+    if r.i + 3 > len(r.s) then return error("ssh: the message is too short") end
+    local n = read_u32(r.s, r.i)
+    r.i += 4
+    return n
+end
+
+function Reader.string(r)
+    local n = r:u32()?
+    if r.i + n - 1 > len(r.s) then return error("ssh: the message is too short") end
+    local v = string.sub(r.s, r.i, r.i + n - 1)
+    r.i += n
+    return v
+end
+
+function Reader.rest(r)
+    return string.sub(r.s, r.i)
+end
+
+local function reader(s, i)
+    local r = {}
+    r.s = s
+    r.i = i or 1
+    for k, f in Reader do r[k] = f end
+    return r
+end
+
+-- ---- keys ----
+
+local function b64(s)
+    return string.replace(encoding.base64_encode(s), "=", "")
+end
+
+-- ssh.fingerprint(blob) → "SHA256:..." (a public key's wire blob)
+function M.fingerprint(blob)
+    return "SHA256:" .. b64(ssl.hash_raw("sha256", blob))
+end
+
+local function public_blob(pub)
+    return str("ssh-ed25519") .. str(pub)
+end
+
+local MAGIC = "openssh-key-v1\0"
+
+-- ssh.parse_key(pem) → {key, public, blob, comment} | error: an unencrypted OpenSSH Ed25519 private key.
+-- key is a libs/ssl handle (free it with ssl.key_free).
+function M.parse_key(pem)
+    local m = re.match("-----BEGIN OPENSSH PRIVATE KEY-----([^-]*)-----END OPENSSH PRIVATE KEY-----",
+        pem or "")
+    if m == nil then return error("ssh: not an OpenSSH private key (BEGIN OPENSSH PRIVATE KEY)") end
+    local body = encoding.base64_decode(re.gsub("\\s+", m.groups[1], ""))
+    if is_error(body) then return error("ssh: the private key is not valid base64") end
+    if string.sub(body, 1, len(MAGIC)) ~= MAGIC then
+        return error("ssh: not an OpenSSH private key")
+    end
+    local r = reader(body, len(MAGIC) + 1)
+    local cipher = r:string()?
+    local kdf = r:string()?
+    local _ = r:string()?
+    if cipher ~= "none" or kdf ~= "none" then
+        return error("ssh: the private key is encrypted: use one without a passphrase")
+    end
+    local n = r:u32()?
+    if n ~= 1 then return error("ssh: a file with several keys is not supported") end
+    local _ = r:string()?
+    local p = reader(r:string()?)
+    local c1 = p:u32()?
+    local c2 = p:u32()?
+    if c1 ~= c2 then return error("ssh: the private key is damaged") end
+    local kind = p:string()?
+    if kind ~= "ssh-ed25519" then
+        return error(`ssh: only ssh-ed25519 keys are supported (this one is ${kind})`)
+    end
+    local pub = p:string()?
+    local priv = p:string()?
+    local comment = p:string()?
+    if len(pub) ~= 32 or len(priv) ~= 64 then return error("ssh: the private key is damaged") end
+    local key = ssl.key_from_raw("ed25519", string.sub(priv, 1, 32), true)
+    if key == nil then return error("ssh: the private key cannot be loaded") end
+    local out = {}
+    out.key = key
+    out.public = pub
+    out.blob = public_blob(pub)
+    out.comment = comment
+    return out
+end
+
+-- ssh.parse_public(line) → {blob, fingerprint, comment} | error: "ssh-ed25519 AAAA... comment"
+function M.parse_public(line)
+    local m = re.match("^\\s*ssh-ed25519\\s+([A-Za-z0-9+/=]+)\\s*(.*)$", line or "")
+    if m == nil then return error("ssh: not an ssh-ed25519 public key line") end
+    local blob = encoding.base64_decode(m.groups[1])
+    if is_error(blob) then return error("ssh: the public key is not valid base64") end
+    local r = reader(blob)
+    local kind = r:string()?
+    local pub = r:string()?
+    if kind ~= "ssh-ed25519" or len(pub) ~= 32 then
+        return error("ssh: the public key is damaged")
+    end
+    local out = {}
+    out.blob = blob
+    out.public = pub
+    out.fingerprint = M.fingerprint(blob)
+    out.comment = m.groups[2]
+    return out
+end
+
+-- ssh.keygen([comment]) → {private, public, fingerprint, comment}: a new Ed25519 key, the private one in
+-- OpenSSH's file format (no passphrase) and the public one as an authorized_keys line
+function M.keygen(comment)
+    comment = comment or ""
+    local k = ssl.keygen({type = "ed25519"})
+    if k == nil then return error("ssh: cannot generate a key") end
+    local seed = ssl.key_raw(k, "private")
+    local pub = ssl.key_raw(k, "public")
+    ssl.key_free(k)
+    local blob = public_blob(pub)
+    local check = ssl.rand_bytes(4)
+    local priv = check .. check .. str("ssh-ed25519") .. str(pub) .. str(seed .. pub) .. str(comment)
+    local pad = 1
+    while len(priv) % 8 ~= 0 do
+        priv ..= byte(pad)
+        pad += 1
+    end
+    local raw = MAGIC .. str("none") .. str("none") .. str("") .. u32(1) .. str(blob) .. str(priv)
+    local text = encoding.base64_encode(raw)
+    local lines = ["-----BEGIN OPENSSH PRIVATE KEY-----"]
+    local i = 1
+    while i <= len(text) do
+        lines[] = string.sub(text, i, i + 69)
+        i += 70
+    end
+    lines[] = "-----END OPENSSH PRIVATE KEY-----"
+    local out = {}
+    out.private = string.join(lines, "\n") .. "\n"
+    out.public = "ssh-ed25519 " .. encoding.base64_encode(blob) .. (comment ~= ""
+        and (" " .. comment)
+        or "")
+    out.fingerprint = M.fingerprint(blob)
+    out.comment = comment
+    return out
+end
+
+-- ---- the transport (RFC 4253) ----
+
+local MSG = {
+    DISCONNECT = 1, IGNORE = 2, UNIMPLEMENTED = 3, DEBUG = 4, SERVICE_REQUEST = 5, SERVICE_ACCEPT = 6,
+    KEXINIT = 20, NEWKEYS = 21, KEX_INIT = 30, KEX_REPLY = 31,
+    USERAUTH_REQUEST = 50, USERAUTH_FAILURE = 51, USERAUTH_SUCCESS = 52, USERAUTH_BANNER = 53,
+    GLOBAL_REQUEST = 80, REQUEST_SUCCESS = 81, REQUEST_FAILURE = 82,
+    CHANNEL_OPEN = 90, CHANNEL_OPEN_CONFIRMATION = 91, CHANNEL_OPEN_FAILURE = 92, CHANNEL_WINDOW_ADJUST = 93,
+    CHANNEL_DATA = 94, CHANNEL_EXTENDED_DATA = 95, CHANNEL_EOF = 96, CHANNEL_CLOSE = 97,
+    CHANNEL_REQUEST = 98, CHANNEL_SUCCESS = 99, CHANNEL_FAILURE = 100,
+}
+
+local KEX = "curve25519-sha256"
+local KEX_ALT = "curve25519-sha256@libssh.org"
+local HOSTKEY = "ssh-ed25519"
+local CIPHER = "aes256-gcm@openssh.com"
+
+local Conn = {}
+
+function Conn.fill(c, n)
+    while len(c.buf) < n do
+        local chunk = net.read(c.fd, 65536, c.timeout)
+        if is_error(chunk) then return error("ssh: " .. chunk.message) end
+        if chunk == "" then return error("ssh: the connection was closed") end
+        c.buf ..= chunk
+    end
+    return true
+end
+
+function Conn.take(c, n)
+    local _ = c:fill(n)?
+    local s = string.sub(c.buf, 1, n)
+    c.buf = string.sub(c.buf, n + 1)
+    return s
+end
+
+function Conn.write(c, data)
+    local w = net.write(c.fd, data, c.timeout)
+    if is_error(w) then return error("ssh: " .. w.message) end
+    return true
+end
+
+-- the nonce of AES-GCM: 4 fixed bytes and a counter of 8 bytes that grows with each packet
+local function nonce(side)
+    local n = side.iv .. u32(side.hi) .. u32(side.lo)
+    side.lo += 1
+    if side.lo > 4294967295 then
+        side.lo = 0
+        side.hi = (side.hi + 1) & 4294967295
+    end
+    return n
+end
+
+-- send(payload): one binary packet
+function Conn.send(c, payload)
+    if c.out == nil then
+        local pad = 8 - ((5 + len(payload)) % 8)
+        if pad < 4 then pad += 8 end
+        local packet = u32(1 + len(payload) + pad) .. byte(pad) .. payload .. string.rep("\0", pad)
+        return c:write(packet)
+    end
+    local pad = 16 - ((1 + len(payload)) % 16)
+    if pad < 4 then pad += 16 end
+    local body = byte(pad) .. payload .. ssl.rand_bytes(pad)
+    local head = u32(len(body))
+    local e = ssl.encrypt("aes-256-gcm", c.out.key, body, nonce(c.out), head)
+    if e == nil then return error("ssh: cannot encrypt a packet") end
+    return c:write(head .. e.data .. e.tag)
+end
+
+-- recv() → payload: the next packet, decrypted
+function Conn.recv(c)
+    local payload = nil
+    if c.inn == nil then
+        local head = c:take(4)?
+        local n = read_u32(head, 1)
+        if n < 5 or n > 262144 then return error("ssh: a packet of a bad size") end
+        local body = c:take(n)?
+        local pad = string.byte(body, 1)
+        if pad + 1 > n then return error("ssh: a packet with bad padding") end
+        payload = string.sub(body, 2, n - pad)
+    else
+        local head = c:take(4)?
+        local n = read_u32(head, 1)
+        if n < 16 or n > 262144 or n % 16 ~= 0 then return error("ssh: a packet of a bad size") end
+        local body = c:take(n)?
+        local tag = c:take(16)?
+        local plain = ssl.decrypt("aes-256-gcm", c.inn.key, nonce(c.inn), body, tag, head)
+        if plain == nil then return error("ssh: a packet failed authentication") end
+        local pad = string.byte(plain, 1)
+        if pad + 1 > n then return error("ssh: a packet with bad padding") end
+        payload = string.sub(plain, 2, n - pad)
+    end
+    return payload
+end
+
+-- next() → payload: the next message that is not transport housekeeping
+function Conn.next(c)
+    while true do
+        local p = c:recv()?
+        local t = string.byte(p, 1)
+        if t == MSG.IGNORE or t == MSG.DEBUG or t == MSG.USERAUTH_BANNER then
+            -- nothing to do
+        elseif t == MSG.DISCONNECT then
+            local r = reader(p, 2)
+            local _ = r:u32()?
+            local why = r:string()?
+            return error("ssh: the server disconnected: " .. why)
+        elseif t == MSG.UNIMPLEMENTED then
+            -- nothing to do
+        elseif t == MSG.GLOBAL_REQUEST then
+            local r = reader(p, 2)
+            local _ = r:string()?
+            local want = r:byte()?
+            if want ~= 0 then
+                local _ = c:send(byte(MSG.REQUEST_FAILURE))?
+            end
+        else
+            return p
+        end
+    end
+end
+
+-- next_of(types...) → payload: the next message, an error if it is not one of the types
+local function expect(p, t, what)
+    if string.byte(p, 1) ~= t then
+        return error(`ssh: expected ${what}, the peer sent message ${string.byte(p, 1)}`)
+    end
+    return p
+end
+
+local function kexinit_payload()
+    return byte(MSG.KEXINIT) .. ssl.rand_bytes(16) ..
+        namelist([KEX, KEX_ALT]) .. namelist([HOSTKEY]) ..
+            namelist([CIPHER]) .. namelist([CIPHER]) ..
+                namelist(["hmac-sha2-256"]) .. namelist(["hmac-sha2-256"]) ..
+                    namelist(["none"]) .. namelist(["none"]) .. namelist([]) .. namelist([]) ..
+                        byte(0) .. u32(0)
+end
+
+local function has(list_, want)
+    for _, x in list_ do if x == want then return true end end
+    return false
+end
+
+-- the peer's KEXINIT must offer what this speaks
+local function check_kexinit(p)
+    local r = reader(p, 18)
+    local lists = []
+    for i = 0, 9 do lists[] = string.split(r:string()?, ",") end
+    if not (has(lists[0], KEX) or has(lists[0], KEX_ALT)) then
+        return error("ssh: the peer has no curve25519-sha256 key exchange (it offers: " .. string.join(lists[0],
+            ",") .. ")")
+    end
+    if not has(lists[1], HOSTKEY) then
+        return error("ssh: the peer has no ssh-ed25519 host key (it offers: " .. string.join(lists[1],
+            ",") .. ")")
+    end
+    if not (has(lists[2], CIPHER) and has(lists[3], CIPHER)) then
+        return error("ssh: the peer has no aes256-gcm@openssh.com cipher (it offers: " .. string.join(lists[2],
+            ",") .. ")")
+    end
+    return true
+end
+
+local function hash_of(parts)
+    return ssl.hash_raw("sha256", string.join(parts, ""))
+end
+
+-- the keys of the two directions, from the shared secret and the exchange hash (RFC 4253 section 7.2)
+local function derive(k, h, session_id, letter)
+    return ssl.hash_raw("sha256", mpint(k) .. h .. letter .. session_id)
+end
+
+-- version exchange: sends ours, reads the peer's (lines before it are banners)
+local function versions(c)
+    local _ = c:write(M.VERSION .. "\r\n")?
+    for i = 1, 64 do
+        while not string.contains(c.buf, "\n") do
+            local chunk = net.read(c.fd, 4096, c.timeout)
+            if is_error(chunk) then return error("ssh: " .. chunk.message) end
+            if chunk == "" then return error("ssh: the connection was closed") end
+            c.buf ..= chunk
+        end
+        local k = string.find(c.buf, "\n")
+        local line = string.trim(string.sub(c.buf, 1, k - 1))
+        c.buf = string.sub(c.buf, k + 1)
+        if string.sub(line, 1, 4) == "SSH-" then
+            if string.sub(line, 1, 8) ~= "SSH-2.0-" and string.sub(line, 1, 8) ~= "SSH-1.99" then
+                return error("ssh: the peer speaks " .. line)
+            end
+            return line
+        end
+    end
+    return error("ssh: the peer did not send its version")
+end
+
+-- the key exchange, as the client; returns the host key's blob (already checked by the signature)
+local function kex_client(c, v_s)
+    local i_c = kexinit_payload()
+    local _ = c:send(i_c)?
+    local i_s = expect(c:next()?, MSG.KEXINIT, "the key exchange")?
+    local _ = check_kexinit(i_s)?
+    local mine = ssl.keygen({type = "x25519"})
+    local q_c = ssl.key_raw(mine, "public")
+    local _ = c:send(byte(MSG.KEX_INIT) .. str(q_c))?
+    local p = expect(c:next()?, MSG.KEX_REPLY, "the key exchange reply")?
+    local r = reader(p, 2)
+    local k_s = r:string()?
+    local q_s = r:string()?
+    local sig = r:string()?
+    if len(q_s) ~= 32 then return error("ssh: the server's exchange key is bad") end
+    local peer = ssl.key_from_raw("x25519", q_s, false)
+    local k = ssl.x25519(mine, peer)
+    ssl.key_free(mine)
+    ssl.key_free(peer)
+    if k == nil then return error("ssh: the key exchange failed") end
+    local h = hash_of([
+        str(M.VERSION), str(v_s), str(i_c), str(i_s), str(k_s), str(q_c), str(q_s), mpint(k),
+    ])
+    -- the host key signed the hash
+    local hk = reader(k_s)
+    local kind = hk:string()?
+    local pub = hk:string()?
+    if kind ~= HOSTKEY or len(pub) ~= 32 then
+        return error("ssh: the server's host key is not ssh-ed25519")
+    end
+    local sg = reader(sig)
+    local sk = sg:string()?
+    local sv = sg:string()?
+    local vk = ssl.key_from_raw("ed25519", pub, false)
+    local ok = sk == HOSTKEY and ssl.verify("ed25519", vk, h, sv)
+    ssl.key_free(vk)
+    if not ok then return error("ssh: the host key's signature is wrong") end
+    c.session_id = c.session_id or h
+    c.k = k
+    c.h = h
+    return k_s
+end
+
+-- NEWKEYS both ways, and the ciphers from then on (client: c2s out, s2c in; server: the other way)
+local function new_keys(c, is_server)
+    local _ = c:send(byte(MSG.NEWKEYS))?
+    local _ = expect(c:next()?, MSG.NEWKEYS, "NEWKEYS")?
+    -- the IV is 12 bytes: 4 fixed and the counter starts at the next 8
+    local function with_counter(letter, key_letter)
+        local raw = derive(c.k, c.h, c.session_id, letter)
+        local s = {}
+        s.iv = string.sub(raw, 1, 4)
+        s.hi = read_u32(raw, 5)
+        s.lo = read_u32(raw, 9)
+        s.key = derive(c.k, c.h, c.session_id, key_letter)
+        return s
+    end
+    local c2s = with_counter("A", "C")
+    local s2c = with_counter("B", "D")
+    if is_server then
+        c.out = s2c
+        c.inn = c2s
+    else
+        c.out = c2s
+        c.inn = s2c
+    end
+    return true
+end
+
+local function new_conn(fd, timeout)
+    local c = {}
+    c.fd = fd
+    c.buf = ""
+    c.timeout = timeout
+    for k, f in Conn do c[k] = f end
+    return c
+end
+
+local function split_addr(addr, opts)
+    local m = re.match("^(.*):(\\d+)$", addr)
+    if m ~= nil then return m.groups[1], tonumber(m.groups[2]) end
+    return addr, opts.port or 22
+end
+
+local function open(addr, opts)
+    opts = opts or {}
+    local host, port = split_addr(addr, opts)
+    local timeout = opts.timeout or M.TIMEOUT
+    local fd = net.connect(host, port, timeout)
+    if is_error(fd) then return error(`ssh: cannot connect to ${host}:${port}: ${fd.message}`) end
+    local c = new_conn(fd, timeout)
+    local v = versions(c)
+    if is_error(v) then
+        net.close(fd)
+        return v
+    end
+    local k_s = kex_client(c, v)
+    if is_error(k_s) then
+        net.close(fd)
+        return k_s
+    end
+    c.host_blob = k_s
+    c.fingerprint = M.fingerprint(k_s)
+    return c
+end
+
+-- ssh.hostkey(addr [, opts]) → {type, fingerprint, blob} | error: the host key the server presents (nothing
+-- is sent after the key exchange). Compare the fingerprint with the real one before trusting it.
+function M.hostkey(addr, opts)
+    local c = open(addr, opts)?
+    net.close(c.fd)
+    local out = {}
+    out.type = HOSTKEY
+    out.fingerprint = c.fingerprint
+    out.blob = encoding.base64_encode(c.host_blob)
+    return out
+end
+
+-- ssh.dial(addr, opts) → conn | error. addr: "host:port" (port 22 without it). opts: user, key (the
+-- private key's text), host_key (the fingerprint to expect) or verify(fingerprint, blob) → bool, timeout.
+function M.dial(addr, opts)
+    opts = opts or {}
+    if opts.user == nil or opts.key == nil then
+        return error("ssh: dial needs opts.user and opts.key")
+    end
+    if opts.host_key == nil and opts.verify == nil and not opts.insecure_any_host_key then
+        return error("ssh: dial needs opts.host_key (the fingerprint), opts.verify, or insecure_any_host_key")
+    end
+    local me = M.parse_key(opts.key)?
+    local c = open(addr, opts)
+    if is_error(c) then
+        ssl.key_free(me.key)
+        return c
+    end
+    local function fail(e)
+        if me.key ~= nil then ssl.key_free(me.key) end
+        net.close(c.fd)
+        return e
+    end
+    -- the host key
+    if opts.host_key ~= nil and opts.host_key ~= c.fingerprint then
+        return fail(error(`ssh: the host key is not the expected one (it is ${c.fingerprint}, expected ${opts.host_key})`))
+    end
+    if opts.verify ~= nil and not opts.verify(c.fingerprint, c.host_blob) then
+        return fail(error(`ssh: the host key ${c.fingerprint} was not accepted`))
+    end
+    local nk = new_keys(c, false)
+    if is_error(nk) then return fail(nk) end
+    -- user authentication by public key
+    local sr = c:send(byte(MSG.SERVICE_REQUEST) .. str("ssh-userauth"))
+    if is_error(sr) then return fail(sr) end
+    local sp = c:next()
+    if is_error(sp) then return fail(sp) end
+    local sa = expect(sp, MSG.SERVICE_ACCEPT, "the user authentication service")
+    if is_error(sa) then return fail(sa) end
+    local head = str(opts.user) .. str("ssh-connection") .. str("publickey") .. byte(1) .. str(HOSTKEY) .. str(me.blob)
+    local signed = str(c.session_id) .. byte(MSG.USERAUTH_REQUEST) .. head
+    local sig = ssl.sign("ed25519", me.key, signed)
+    ssl.key_free(me.key)
+    me.key = nil
+    if sig == nil then return fail(error("ssh: cannot sign")) end
+    local ar = c:send(byte(MSG.USERAUTH_REQUEST) .. head .. str(str(HOSTKEY) .. str(sig)))
+    if is_error(ar) then return fail(ar) end
+    local ap = c:next()
+    if is_error(ap) then return fail(ap) end
+    local t = string.byte(ap, 1)
+    if t == MSG.USERAUTH_FAILURE then
+        return fail(error(`ssh: the server refused the key of ${opts.user}`))
+    end
+    local au = expect(ap, MSG.USERAUTH_SUCCESS, "the authentication result")
+    if is_error(au) then return fail(au) end
+    c.next_channel = 0
+    return c
+end
+
+-- conn:close()
+function Conn.close(c)
+    if c.fd ~= nil then
+        local _ = c:send(byte(MSG.DISCONNECT) .. u32(11) .. str("bye") .. str(""))
+        net.close(c.fd)
+        c.fd = nil
+    end
+end
+
+-- conn:exec(command [, opts]) → {code, signal, stdout, stderr} | error. opts: stdin (a string sent to the
+-- command, then end of input), max_output (bytes of stdout + stderr, default 16 MB), timeout (per wait, ms).
+-- code is nil when the command ended on a signal (named in signal).
+function Conn.exec(c, command, opts)
+    opts = opts or {}
+    local maxout = opts.max_output or 16777216
+    if opts.timeout ~= nil then c.timeout = opts.timeout end
+    local mine = c.next_channel
+    c.next_channel += 1
+    local window = 2097152
+    local _ = c:send(byte(MSG.CHANNEL_OPEN) .. str("session") .. u32(mine) .. u32(window) .. u32(32768))?
+    local p = c:next()?
+    if string.byte(p, 1) == MSG.CHANNEL_OPEN_FAILURE then
+        return error("ssh: the server refused to open a channel")
+    end
+    local _ = expect(p, MSG.CHANNEL_OPEN_CONFIRMATION, "the channel")?
+    local r = reader(p, 2)
+    local _ = r:u32()?
+    local remote = r:u32()?
+    local rwindow = r:u32()?
+    local rmax = r:u32()?
+    local _ = c:send(byte(MSG.CHANNEL_REQUEST) .. u32(remote) .. str("exec") .. byte(1) .. str(command))?
+    local out = {}
+    local stdout, stderr = [], []
+    local total = 0
+    local consumed = 0
+    local started = false
+    local stdin = opts.stdin or ""
+    local sent = 0
+    local eof_sent = false
+    out.code = nil
+    out.signal = nil
+    while true do
+        -- stdin goes out as the server's window allows, once the command started
+        if started and not eof_sent then
+            while sent < len(stdin) and rwindow > 0 do
+                local n = math.min(len(stdin) - sent, rwindow, rmax)
+                local _ = c:send(byte(MSG.CHANNEL_DATA) .. u32(remote) .. str(string.sub(stdin,
+                    sent + 1, sent + n)))?
+                sent += n
+                rwindow -= n
+            end
+            if sent >= len(stdin) then
+                local _ = c:send(byte(MSG.CHANNEL_EOF) .. u32(remote))?
+                eof_sent = true
+            end
+        end
+        local m = c:next()?
+        local t = string.byte(m, 1)
+        local r = reader(m, 2)
+        if t == MSG.CHANNEL_SUCCESS then
+            started = true
+        elseif t == MSG.CHANNEL_FAILURE then
+            return error("ssh: the server refused to run the command")
+        elseif t == MSG.CHANNEL_WINDOW_ADJUST then
+            local _ = r:u32()?
+            rwindow += r:u32()?
+        elseif t == MSG.CHANNEL_DATA or t == MSG.CHANNEL_EXTENDED_DATA then
+            local _ = r:u32()?
+            local kind = 0
+            if t == MSG.CHANNEL_EXTENDED_DATA then kind = r:u32()? end
+            local data = r:string()?
+            total += len(data)
+            if total > maxout then return error("ssh: the command wrote more than max_output") end
+            if kind == 0 then stdout[] = data else stderr[] = data end
+            consumed += len(data)
+            if consumed >= 1048576 then
+                local _ = c:send(byte(MSG.CHANNEL_WINDOW_ADJUST) .. u32(remote) .. u32(consumed))?
+                consumed = 0
+            end
+        elseif t == MSG.CHANNEL_REQUEST then
+            local _ = r:u32()?
+            local name = r:string()?
+            local want = r:byte()?
+            if name == "exit-status" then
+                out.code = r:u32()?
+            elseif name == "exit-signal" then
+                out.signal = r:string()?
+            end
+            if want ~= 0 then
+                local _ = c:send(byte(MSG.CHANNEL_FAILURE) .. u32(remote))?
+            end
+        elseif t == MSG.CHANNEL_EOF then
+            -- the output is complete; the close follows
+        elseif t == MSG.CHANNEL_CLOSE then
+            -- the answer may find the server gone: the command's result is already here
+            local _ = c:send(byte(MSG.CHANNEL_CLOSE) .. u32(remote))
+            break
+        end
+    end
+    out.stdout = string.join(stdout, "")
+    out.stderr = string.join(stderr, "")
+    return out
+end
+
+-- ---- a small server: for tests, and for a deploy test against nothing real ----
+
+-- ssh.serve(fd, opts) → true | error: serves one accepted connection (net.accept). opts: host_key (an OpenSSH
+-- private key's text), authorized (public key lines: who may log in), handler(user, command, stdin) →
+-- {stdout, stderr, code}, timeout. Runs the commands through the handler only: it executes nothing itself.
+function M.serve(fd, opts)
+    local host = M.parse_key(opts.host_key)?
+    local allowed = []
+    for _, line in opts.authorized or [] do allowed[] = M.parse_public(line)?.blob end
+    local c = new_conn(fd, opts.timeout or M.TIMEOUT)
+    local v_c = versions(c)?
+    local i_s = kexinit_payload()
+    local _ = c:send(i_s)?
+    local i_c = expect(c:next()?, MSG.KEXINIT, "the key exchange")?
+    local _ = check_kexinit(i_c)?
+    local p = expect(c:next()?, MSG.KEX_INIT, "the key exchange")?
+    local q_c = reader(p, 2):string()?
+    local mine = ssl.keygen({type = "x25519"})
+    local q_s = ssl.key_raw(mine, "public")
+    local peer = ssl.key_from_raw("x25519", q_c, false)
+    local k = ssl.x25519(mine, peer)
+    ssl.key_free(mine)
+    ssl.key_free(peer)
+    if k == nil then return error("ssh: the key exchange failed") end
+    local k_s = host.blob
+    local h = hash_of([
+        str(v_c), str(M.VERSION), str(i_c), str(i_s), str(k_s), str(q_c), str(q_s), mpint(k),
+    ])
+    local sig = ssl.sign("ed25519", host.key, h)
+    ssl.key_free(host.key)
+    c.session_id = h
+    c.k = k
+    c.h = h
+    local _ = c:send(byte(MSG.KEX_REPLY) .. str(k_s) .. str(q_s) .. str(str(HOSTKEY) .. str(sig)))?
+    local _ = new_keys(c, true)?
+    local _ = expect(c:next()?, MSG.SERVICE_REQUEST, "the service request")?
+    local _ = c:send(byte(MSG.SERVICE_ACCEPT) .. str("ssh-userauth"))?
+    -- the user: one attempt with a signature
+    local user = nil
+    while user == nil do
+        local m = expect(c:next()?, MSG.USERAUTH_REQUEST, "the authentication")?
+        local r = reader(m, 2)
+        local name = r:string()?
+        local _ = r:string()?
+        local method = r:string()?
+        local ok = false
+        if method == "publickey" then
+            local has_sig = r:byte()?
+            local _ = r:string()?
+            local blob = r:string()?
+            if has_sig ~= 0 and has(allowed, blob) then
+                local sigblob = r:string()?
+                local sg = reader(sigblob)
+                local _ = sg:string()?
+                local sv = sg:string()?
+                -- the signed bytes: the session id and the request up to its last field, the signature
+                local signed = str(c.session_id) .. string.sub(m, 1, len(m) - 4 - len(sigblob))
+                local hk = reader(blob)
+                local _ = hk:string()?
+                local pub = hk:string()?
+                local vk = ssl.key_from_raw("ed25519", pub, false)
+                ok = ssl.verify("ed25519", vk, signed, sv)
+                ssl.key_free(vk)
+            end
+        end
+        if ok then
+            user = name
+            local _ = c:send(byte(MSG.USERAUTH_SUCCESS))?
+        else
+            local _ = c:send(byte(MSG.USERAUTH_FAILURE) .. namelist(["publickey"]) .. byte(0))?
+        end
+    end
+    -- one session channel with one exec
+    local m = expect(c:next()?, MSG.CHANNEL_OPEN, "a channel")?
+    local r = reader(m, 2)
+    local _ = r:string()?
+    local remote = r:u32()?
+    local _ = c:send(byte(MSG.CHANNEL_OPEN_CONFIRMATION) .. u32(remote) .. u32(0) .. u32(2097152) .. u32(32768))?
+    local command = nil
+    local stdin = []
+    while true do
+        local m = c:next()?
+        local t = string.byte(m, 1)
+        local r = reader(m, 2)
+        if t == MSG.CHANNEL_REQUEST then
+            local _ = r:u32()?
+            local name = r:string()?
+            local want = r:byte()?
+            if name == "exec" then
+                command = r:string()?
+                local _ = c:send(byte(MSG.CHANNEL_SUCCESS) .. u32(remote))?
+            elseif want ~= 0 then
+                local _ = c:send(byte(MSG.CHANNEL_FAILURE) .. u32(remote))?
+            end
+        elseif t == MSG.CHANNEL_DATA then
+            local _ = r:u32()?
+            stdin[] = r:string()?
+        elseif t == MSG.CHANNEL_EOF then
+            break
+        elseif t == MSG.CHANNEL_CLOSE then
+            return true
+        end
+    end
+    local res = opts.handler(user, command or "", string.join(stdin, ""))
+    local function out_of(kind, data)
+        local i = 1
+        while i <= len(data) do
+            local piece = string.sub(data, i, i + 16383)
+            if kind == 0 then
+                local _ = c:send(byte(MSG.CHANNEL_DATA) .. u32(remote) .. str(piece))?
+            else
+                local _ = c:send(byte(MSG.CHANNEL_EXTENDED_DATA) .. u32(remote) .. u32(1) .. str(piece))?
+            end
+            i += 16384
+        end
+        return true
+    end
+    local _ = out_of(0, res.stdout or "")?
+    local _ = out_of(1, res.stderr or "")?
+    local _ = c:send(byte(MSG.CHANNEL_REQUEST) .. u32(remote) .. str("exit-status") .. byte(0) .. u32(res.code
+        or 0))?
+    local _ = c:send(byte(MSG.CHANNEL_EOF) .. u32(remote))?
+    local _ = c:send(byte(MSG.CHANNEL_CLOSE) .. u32(remote))?
+    -- the client's close (after the window adjustments it sent meanwhile)
+    while true do
+        local m = c:recv()
+        if is_error(m) or string.byte(m, 1) == MSG.CHANNEL_CLOSE then break end
+    end
+    net.close(fd)
+    return true
+end
+
+return M

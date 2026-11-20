@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `libs/ssh`: an SSH 2 client in pure Sea (curve25519-sha256, ssh-ed25519, aes256-gcm, public-key login, `exec`), with
+  `ssh.keygen`, `ssh.hostkey` and a small test server; checked against OpenSSH 9.7.
+- `libs/ssl`: Ed25519 and X25519 (`keygen`, `key_raw`, `key_from_raw`, `x25519`, `sign`/`verify` with `"ed25519"`).
 - `sea fmt`: a `for` or `while` loop whose body is one simple statement (or an `if` on one line) and has no
   comment goes on one line when it fits the width.
 - `re`: Unicode classes `\p{L}` `\p{Lu}` `\p{Ll}` `\p{N}`/`\p{Nd}` `\p{P}` and the scripts Latin, Greek,

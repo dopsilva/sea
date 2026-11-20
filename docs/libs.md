@@ -37,6 +37,7 @@ pure-Sea libraries work out of the box.
 | `clickhouse` | `libs/clickhouse/clickhouse` | pure Sea (HTTP interface, uses `libs/http`) | `make -C libs/http` |
 | `websocket` | `libs/websocket/websocket` | Sea + native | `make -C libs/websocket` (and `libs/http`, `libs/ssl`) |
 | `smtp` | `libs/smtp/smtp` | pure Sea (`net`; `libs/ssl` for TLS) | `make -C libs/ssl` |
+| `ssh` | `libs/ssh/ssh` | pure Sea (`net`; `libs/ssl` for the cryptography) | `make -C libs/ssl` |
 
 Require a library by its name: `require("http")`, `require("yaml")`. An installed `sea`
 (`make install`, see the README) finds it in `lib/sea/`; a `sea` run from the source tree
@@ -933,7 +934,10 @@ TLS runs over sockets from the built-in `net` module (see `docs/reference.md`): 
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `ssl.keygen` | `keygen(opts) → key\|nil` | Generate key pair. `opts`: `{type="rsa"\|"ec", bits=2048, curve="P-256"\|"P-384"\|"P-521"}` |
+| `ssl.keygen` | `keygen(opts) → key\|nil` | Generate key pair. `opts`: `{type="rsa"\|"ec"\|"ed25519"\|"x25519", bits=2048, curve="P-256"\|"P-384"\|"P-521"}` |
+| `ssl.key_raw` | `key_raw(key, which) → string\|nil` | The 32 raw bytes of an Ed25519 or X25519 key; `which` is `"public"` or `"private"` |
+| `ssl.key_from_raw` | `key_from_raw(type, bytes, is_private) → key\|nil` | An Ed25519 (`"ed25519"`) or X25519 (`"x25519"`) key from its raw bytes (free it with `key_free`) |
+| `ssl.x25519` | `x25519(private_key, peer_public_key) → string\|nil` | The shared secret (32 bytes) of an X25519 exchange |
 | `ssl.key_load` | `key_load(path [, password]) → key\|nil` | Load private key from PEM file |
 | `ssl.key_parse` | `key_parse(pem [, password]) → key\|nil` | Parse private key from PEM string |
 | `ssl.key_pem` | `key_pem(key [, password]) → string\|nil` | Serialize private key to PEM (AES-256-CBC encrypted if password given) |
@@ -2284,6 +2288,45 @@ with AUTH PLAIN, or AUTH LOGIN when that is all the server offers.
 (`{name = value}`), `id` (a Message-ID; one is made otherwise). `opts`:
 `timeout` (ms per operation, default 20000), `helo` (default `localhost`) and
 the `ssl.connect` options (`verify`, `ca`, ...).
+
+---
+
+## `ssh`
+
+An SSH 2 client in pure Sea over `net`, with the cryptography from `libs/ssl` (`make -C libs/ssl`). Every wait goes
+through the netpoller, so a connection parks only its goroutine. Speaks: key exchange `curve25519-sha256`, host key
+`ssh-ed25519`, cipher `aes256-gcm@openssh.com`, no compression, user authentication by public key (`ssh-ed25519`), the
+`session` channel with `exec`. No shell, pty, forwarding or SFTP; private keys must be unencrypted OpenSSH keys
+(`BEGIN OPENSSH PRIVATE KEY`). Tested against OpenSSH 9.7.
+
+```sea
+local ssh = require("ssh")
+
+local k = ssh.keygen("deploy@ci")           -- {private, public, fingerprint, comment}
+local seen = ssh.hostkey("host:22")?         -- what the server presents: compare its fingerprint with the real one
+local c = ssh.dial("host:22", {user = "deploy", key = k.private, host_key = seen.fingerprint})?
+local r = c:exec("systemctl is-active promptus")?
+print(r.code, r.stdout, r.stderr)
+c:close()
+```
+
+A server's host key is never taken on trust: `dial` wants `opts.host_key` (the fingerprint, `SHA256:...`) or
+`opts.verify(fingerprint, blob) → bool`; `opts.insecure_any_host_key = true` skips the check (tests only).
+
+| Function | Description |
+|----------|-------------|
+| `ssh.dial(addr, opts) → conn\|error` | `addr` is `"host:port"` (port 22 without it). `opts`: `user`, `key` (the private key's text), `host_key` or `verify`, `timeout` (ms per wait, default 30000) |
+| `conn:exec(command [, opts]) → {code, signal, stdout, stderr}\|error` | Runs a command. `opts`: `stdin` (a string, then end of input), `max_output` (bytes, default 16 MB), `timeout`. `code` is nil when the command ended on a signal, named in `signal`. A connection runs one command at a time |
+| `conn:close()` | Disconnect |
+| `ssh.hostkey(addr [, opts]) → {type, fingerprint, blob}\|error` | The host key the server presents (nothing is sent after the key exchange) |
+| `ssh.keygen([comment]) → {private, public, fingerprint, comment}` | A new Ed25519 key: the private one in OpenSSH's file format (no passphrase), the public one as an `authorized_keys` line |
+| `ssh.parse_key(pem) → {key, public, blob, comment}\|error` | Reads an OpenSSH private key; `key` is a `libs/ssl` handle (free it with `ssl.key_free`) |
+| `ssh.parse_public(line) → {blob, public, fingerprint, comment}\|error` | Reads an `ssh-ed25519 AAAA... comment` line |
+| `ssh.fingerprint(blob) → string` | `SHA256:...` of a public key's wire blob |
+| `ssh.serve(fd, opts) → true\|error` | Serves one accepted connection (`net.accept`): `host_key` (an OpenSSH private key), `authorized` (public key lines), `handler(user, command, stdin) → {stdout, stderr, code}`. It executes nothing itself; it is for tests |
+
+The tests run against `ssh.serve`; `SSH_TEST_ADDR=host:port SSH_TEST_USER=name SSH_TEST_KEY=path bin/sea test libs/ssh` adds
+the ones against a real sshd.
 
 ---
 

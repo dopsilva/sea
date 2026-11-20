@@ -993,6 +993,9 @@ static SeaValue fn_key_generate(SeaVM *vm, int argc, SeaValue *args) {
                 EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, nid) > 0)
                 EVP_PKEY_keygen(ctx, &pkey);
         }
+    } else if (!strcmp(type, "ed25519") || !strcmp(type, "x25519")) {
+        ctx = EVP_PKEY_CTX_new_id(!strcmp(type, "ed25519") ? EVP_PKEY_ED25519 : EVP_PKEY_X25519, NULL);
+        if (ctx && EVP_PKEY_keygen_init(ctx) > 0) EVP_PKEY_keygen(ctx, &pkey);
     }
 
     if (ctx) EVP_PKEY_CTX_free(ctx);
@@ -1079,6 +1082,51 @@ static SeaValue fn_key_free(SeaVM *vm, int argc, SeaValue *args) {
     (void)vm;
     if (argc >= 1 && sea_is_int(args[0])) EVP_PKEY_free(UNPACK(args[0], EVP_PKEY*));
     return SEA_NIL_VAL;
+}
+
+/* Raw keys (Ed25519 and X25519, as SSH carries them): key_raw(key, "public"|"private") → 32 bytes,
+ * key_from_raw(type, bytes, is_private) → key, x25519(private_key, peer_public_key) → shared secret */
+static SeaValue fn_key_raw(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm;
+    if (argc < 2 || !sea_is_int(args[0])) return SEA_NIL_VAL;
+    char which[16];
+    if (!val_to_cstr(args[1], which, sizeof(which))) return SEA_NIL_VAL;
+    EVP_PKEY *key = UNPACK(args[0], EVP_PKEY*);
+    unsigned char buf[64];
+    size_t n = sizeof(buf);
+    int ok = !strcmp(which, "private") ? EVP_PKEY_get_raw_private_key(key, buf, &n)
+                                       : EVP_PKEY_get_raw_public_key(key, buf, &n);
+    return ok == 1 ? make_str((char*)buf, n) : SEA_NIL_VAL;
+}
+
+static SeaValue fn_key_from_raw(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm;
+    if (argc < 3) return SEA_NIL_VAL;
+    char type[16];
+    if (!val_to_cstr(args[0], type, sizeof(type))) return SEA_NIL_VAL;
+    int id = !strcmp(type, "ed25519") ? EVP_PKEY_ED25519 : !strcmp(type, "x25519") ? EVP_PKEY_X25519 : 0;
+    if (!id) return SEA_NIL_VAL;
+    SeaString *raw = sea_value_get_flat_string(args[1]);
+    if (!raw) return SEA_NIL_VAL;
+    int priv = sea_is_truthy(args[2]);
+    EVP_PKEY *key = priv ? EVP_PKEY_new_raw_private_key(id, NULL, (const unsigned char*)raw->data, raw->len)
+                         : EVP_PKEY_new_raw_public_key(id, NULL, (const unsigned char*)raw->data, raw->len);
+    sea_obj_release(&raw->obj);
+    return key ? PACK_PTR(key) : SEA_NIL_VAL;
+}
+
+static SeaValue fn_x25519(SeaVM *vm, int argc, SeaValue *args) {
+    (void)vm;
+    if (argc < 2 || !sea_is_int(args[0]) || !sea_is_int(args[1])) return SEA_NIL_VAL;
+    EVP_PKEY *mine = UNPACK(args[0], EVP_PKEY*);
+    EVP_PKEY *peer = UNPACK(args[1], EVP_PKEY*);
+    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(mine, NULL);
+    unsigned char out[32];
+    size_t n = sizeof(out);
+    int ok = ctx && EVP_PKEY_derive_init(ctx) > 0 && EVP_PKEY_derive_set_peer(ctx, peer) > 0 &&
+             EVP_PKEY_derive(ctx, out, &n) > 0;
+    if (ctx) EVP_PKEY_CTX_free(ctx);
+    return ok ? make_str((char*)out, n) : SEA_NIL_VAL;
 }
 
 /* =========================================================================
@@ -1362,11 +1410,22 @@ static SeaValue fn_sign(SeaVM *vm, int argc, SeaValue *args) {
     if (argc < 3 || !sea_is_int(args[1])) return SEA_NIL_VAL;
     char algo[32];
     if (!val_to_cstr(args[0], algo, sizeof(algo))) return SEA_NIL_VAL;
-    const EVP_MD *md = lookup_sign_md(algo);
-    if (!md) return SEA_NIL_VAL;
+    int is_ed = !strcmp(algo, "ed25519");
+    const EVP_MD *md = is_ed ? NULL : lookup_sign_md(algo);
+    if (!md && !is_ed) return SEA_NIL_VAL;
     EVP_PKEY  *key  = UNPACK(args[1], EVP_PKEY*);
     SeaString *data = sea_value_get_flat_string(args[2]);
     if (!data) return SEA_NIL_VAL;
+    if (is_ed) {
+        EVP_MD_CTX *ectx = EVP_MD_CTX_new();
+        unsigned char esig[64];
+        size_t en = sizeof(esig);
+        int eok = ectx && EVP_DigestSignInit(ectx, NULL, NULL, NULL, key) == 1 &&
+                  EVP_DigestSign(ectx, esig, &en, (const unsigned char*)data->data, data->len) == 1;
+        if (ectx) EVP_MD_CTX_free(ectx);
+        sea_obj_release(&data->obj);
+        return eok ? make_str((char*)esig, en) : SEA_NIL_VAL;
+    }
 
     EVP_MD_CTX   *ctx  = EVP_MD_CTX_new();
     EVP_PKEY_CTX *pctx = NULL;
@@ -1396,8 +1455,9 @@ static SeaValue fn_verify(SeaVM *vm, int argc, SeaValue *args) {
     if (argc < 4 || !sea_is_int(args[1])) return SEA_FALSE_VAL;
     char algo[32];
     if (!val_to_cstr(args[0], algo, sizeof(algo))) return SEA_FALSE_VAL;
-    const EVP_MD *md = lookup_sign_md(algo);
-    if (!md) return SEA_FALSE_VAL;
+    int is_ed = !strcmp(algo, "ed25519");
+    const EVP_MD *md = is_ed ? NULL : lookup_sign_md(algo);
+    if (!md && !is_ed) return SEA_FALSE_VAL;
     EVP_PKEY  *key  = UNPACK(args[1], EVP_PKEY*);
     SeaString *data = sea_value_get_flat_string(args[2]);
     SeaString *sig  = sea_value_get_flat_string(args[3]);
@@ -1405,6 +1465,15 @@ static SeaValue fn_verify(SeaVM *vm, int argc, SeaValue *args) {
         if (data) sea_obj_release(&data->obj);
         if (sig)  sea_obj_release(&sig->obj);
         return SEA_FALSE_VAL;
+    }
+    if (is_ed) {
+        EVP_MD_CTX *ectx = EVP_MD_CTX_new();
+        int eok = ectx && EVP_DigestVerifyInit(ectx, NULL, NULL, NULL, key) == 1 &&
+                  EVP_DigestVerify(ectx, (const unsigned char*)sig->data, sig->len, (const unsigned char*)data->data, data->len) == 1;
+        if (ectx) EVP_MD_CTX_free(ectx);
+        sea_obj_release(&data->obj);
+        sea_obj_release(&sig->obj);
+        return sea_bool_val(eok);
     }
 
     EVP_MD_CTX   *ctx  = EVP_MD_CTX_new();
@@ -1633,6 +1702,9 @@ SEA_EXPORT SeaValue sea_open(SeaVM *vm) {
     sea_mod_set(mod, "key_pub_pem",   fn_key_pub_pem);
     sea_mod_set(mod, "key_save",      fn_key_save);
     sea_mod_set(mod, "key_free",      fn_key_free);
+    sea_mod_set(mod, "key_raw",       fn_key_raw);
+    sea_mod_set(mod, "key_from_raw",  fn_key_from_raw);
+    sea_mod_set(mod, "x25519",        fn_x25519);
 
     /* CSR */
     sea_mod_set(mod, "csr_new",  fn_csr_new);

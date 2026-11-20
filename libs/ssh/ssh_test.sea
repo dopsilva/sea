@@ -1,0 +1,140 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- libs/ssh tests: bin/sea test libs/ssh. The client talks to ssh.serve in a goroutine;
+-- SSH_TEST_ADDR=host:port SSH_TEST_USER=name SSH_TEST_KEY=path adds the tests against a real sshd.
+
+local t = require("sea/test")
+local ssh = require("./ssh")
+
+-- a server for one connection: the commands it was given go to the channel
+local function server(user_key, host, handler)
+    local fd = t.no_error(net.listen(0, "127.0.0.1"))
+    local port = net.local_port(fd)
+    local done = chan(1)
+    go (function()
+        local conn = net.accept(fd, 10000)
+        if is_error(conn) then
+            done <- conn
+            return
+        end
+        done <- ssh.serve(
+            conn,
+            {
+                host_key = host.private,
+                authorized = [user_key.public],
+                handler = handler,
+                timeout = 10000,
+            })
+        net.close(conn)
+        net.close(fd)
+    end)()
+    return `127.0.0.1:${port}`, done
+end
+
+t.describe("ssh", function()
+    local user = ssh.keygen("deploy@test")
+    local host = ssh.keygen("host")
+
+    t.it("makes keys in OpenSSH's formats, and reads them back", function()
+        t.ok(string.contains(user.private, "BEGIN OPENSSH PRIVATE KEY"))
+        t.ok(string.sub(user.public, 1, 12) == "ssh-ed25519 ")
+        t.eq(ssh.parse_public(user.public).fingerprint, user.fingerprint)
+        t.ok(string.sub(user.fingerprint, 1, 7) == "SHA256:")
+        local k = t.no_error(ssh.parse_key(user.private))
+        t.eq(k.comment, "deploy@test")
+        t.eq(ssh.fingerprint(k.blob), user.fingerprint)
+        t.ok(is_error(ssh.parse_key("nothing")))
+    end)
+
+    t.it("runs a command: stdout, stderr and the exit status, with stdin", function()
+        local addr, done = server(user, host, function(who, cmd, stdin)
+            return {
+                stdout = `${who} ran ${cmd} with ${len(stdin)} bytes`,
+                stderr = "warn",
+                code = 3,
+            }
+        end)
+        local c = t.no_error(ssh.dial(
+            addr,
+            {user = "deploy", key = user.private, host_key = host.fingerprint, timeout = 10000}
+        ))
+        local big = string.rep("x", 100000)
+        local r = t.no_error(c:exec("echo hi", {stdin = big}))
+        t.eq(r.stdout, "deploy ran echo hi with 100000 bytes")
+        t.eq(r.stderr, "warn")
+        t.eq(r.code, 3)
+        c:close()
+        t.eq(<-done, true)
+    end)
+
+    t.it("carries large outputs over many packets", function()
+        local addr, done = server(
+            user,
+            host,
+            function() return {stdout = string.rep("abcdefgh", 400000), code = 0} end
+        )
+        local c = t.no_error(ssh.dial(
+            addr,
+            {user = "deploy", key = user.private, host_key = host.fingerprint, timeout = 10000}
+        ))
+        local r = t.no_error(c:exec("big"))
+        t.eq(len(r.stdout), 3200000)
+        t.eq(string.sub(r.stdout, 1, 8), "abcdefgh")
+        c:close()
+        local _ = <-done
+    end)
+
+    t.it("refuses a host key that is not the expected one, and one nobody vouched for", function()
+        local addr, done = server(user, host, function() return {code = 0} end)
+        local e = ssh.dial(
+            addr,
+            {user = "deploy", key = user.private, host_key = "SHA256:other", timeout = 10000}
+        )
+        t.ok(is_error(e))
+        t.contains(e.message, "not the expected one")
+        local _ = <-done
+        t.ok(is_error(ssh.dial("127.0.0.1:1", {user = "deploy", key = user.private})))
+        local no_check = ssh.dial("127.0.0.1:1", {user = "deploy", key = user.private})
+        t.contains(no_check.message, "host_key")
+    end)
+
+    t.it("shows the host key a server presents, without logging in", function()
+        local addr, done = server(user, host, function() return {code = 0} end)
+        local k = t.no_error(ssh.hostkey(addr, {timeout = 10000}))
+        t.eq(k.fingerprint, host.fingerprint)
+        t.eq(k.type, "ssh-ed25519")
+        local _ = <-done
+    end)
+
+    t.it("is refused when the server does not know the key", function()
+        local other = ssh.keygen("other")
+        local addr, done = server(other, host, function() return {code = 0} end)
+        local e = ssh.dial(
+            addr,
+            {user = "deploy", key = user.private, host_key = host.fingerprint, timeout = 10000}
+        )
+        t.ok(is_error(e))
+        t.contains(e.message, "refused the key")
+        local _ = <-done
+    end)
+
+    local real = os.getenv("SSH_TEST_ADDR")
+    if real ~= nil and real ~= "" then
+        t.it("runs a command on a real sshd", function()
+            local key = fs.read(os.getenv("SSH_TEST_KEY"))
+            local h = t.no_error(ssh.hostkey(real))
+            local c = t.no_error(ssh.dial(
+                real,
+                {user = os.getenv("SSH_TEST_USER"), key = key, host_key = h.fingerprint}
+            ))
+            local r = t.no_error(c:exec("echo hello; echo oops >&2; exit 7"))
+            t.eq(r.stdout, "hello\n")
+            t.eq(r.stderr, "oops\n")
+            t.eq(r.code, 7)
+            local cat = t.no_error(c:exec("cat", {stdin = string.rep("z", 300000)}))
+            t.eq(len(cat.stdout), 300000)
+            c:close()
+        end)
+    end
+end)
