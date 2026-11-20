@@ -49,3 +49,19 @@ Everyday scripts are written in Sea (one binary, fast start): array literals, te
 `json`/`csv` as globals, `sea -e 'code'`, `time.parse`, `sea/stream`, `sea/flags`. `docs/scripts.md` compares five everyday scripts
 with Python (`tests/compare/scripts/run_scripts.sh`); benchmarks here are noisy (±10% from code layout alone): compare the minimum of
 N runs in one process, and against a worktree build of the previous commit.
+
+## Notes on some libraries
+
+- **libs/cockroach and libs/clickhouse** (pure Sea): the PostgreSQL wire protocol over `net` (SCRAM, TLS by `ssl.handshake_client`, a pool,
+  a retry on 40001) and ClickHouse's HTTP interface. Their tests run with `bin/sea test libs/cockroach libs/clickhouse`; the server parts need
+  `COCKROACH_URL` / `CLICKHOUSE_URL` (a local `cockroach` binary with `--insecure`, or a clickhouse-server container).
+- **libs/ndarray** (NumPy-like): an array is a table `{data, dtype, shape, strides (elements), offset, ndim, size}` plus methods copied into each
+  array (the prototype is cloned by memcpy of its hash entries, keys and functions pinned: about 3 us per small op). Only methods, no operator
+  overloading (`a:add(b)`, `a:get("1, 1:")`, `a:set(":, 0", v)`), by the user's choice. Options are struct literals (`{axis = 0}`). float32, complex128,
+  einsum, as_strided and linalg.eig exist. Not done: fft, complex64, complex qr/svd/eigh, nan-min/max, a faster small-array path.
+- **libs/embed**: GGUF embedding models in-process through llama.cpp (`fetch.sh` builds release b11119 into `vendor/`, needs cmake). Threads default
+  to cores - 1 (all cores on a busy 4-core machine made a short text 10x slower). Ollama's embeddinggemma blob fails in llama.cpp ("wrong number of
+  tensors"): the lib falls back to the HF ggml-org GGUF. A module first required inside a goroutine used to be freed with that goroutine's VM
+  (fixed: chunks live in `SeaShared`).
+- Moved out of this repo on purpose: the LLM experiments (`~/projects/conceitos`, not a git repo, uses `../sea_vm`); `libs/llm` and `libs/strands`
+  are parked in `~/projects/sea_vm_parked/` (with the docs and the steps to restore them). Do not add LLM material back under `examples/`.
