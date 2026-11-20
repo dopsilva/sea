@@ -176,26 +176,9 @@ at that point. Natives should still report failures as error values.
 
 ## Sea Language — Key Gotchas
 
-`docs/sea-for-ai.md` is the complete guide for writing Sea (rules, syntax, stdlib, translations;
-its examples are checked by `tests/unit/132_ai_guide`): keep it in sync when the language changes.
+The gotchas of the language (0-based arrays, sealed structs, 48-bit ints, `[[`, `re.gsub` argument order, name shadowing, ...)
+live in the skill `.claude/skills/sea/SKILL.md`; load it when writing or reviewing Sea. `docs/sea-for-ai.md` is the complete guide
+(its examples are checked by `tests/unit/132_ai_guide`): keep it and the skill in sync when the language changes.
 
-- **Arrays are 0-indexed.** Create them with `[]` or `[a, b, c]` and append with `arr[] = v` (there is no `array()`/`push()`); nested: `[ [1, 2], [3] ]` with a space, since `[[` opens a long string. `{1, 2, 3}` is a positional *table* with keys 0, 1, 2, not an array. Use `len()`, not `#`. (`[n]` is a one-element array; the old capacity form is gone.)
-- **`for-in`** works on arrays (`for i, v in arr do` → 0-based index, value), maps/tables/structs (key, value) and channels (value until closed).
-- **Numeric for is inclusive on both ends:** `for i = 0, n-1 do` iterates n times. When n=0 this becomes `for i = 0, -1 do` — correctly executes zero iterations (fixed 2026-05; no guard needed).
-- **Loop variables are fresh per iteration** (numeric `for` and `for-in`, as in Lua 5.4 / Go 1.22): closures and goroutines created in a loop body capture that iteration's value — no `local j = i` copy needed (changed 2026-10).
-- **String indexing is 1-based** in `string.sub`, `string.find`, `string.byte` (matching Lua convention), but array/table indexing is 0-based.
-- **Strings are bytes; source is UTF-8.** `len` and `string.*` count bytes (`len("é")` is 2); the built-in `utf8` module counts characters (`utf8.len`, `utf8.sub`, `utf8.upper`, ...). A `.sea` file with invalid UTF-8 is a compile error; `"\u{E9}"` writes a code point. Native code uses `src/sea_utf8.h`.
-- **Cycles** are freed by the cycle collector (automatically, or `gc.collect()`), except cycles of objects shared between goroutines, which still leak; break those by setting a field to nil (see `docs/memory.md`).
-- **`int` is 48-bit** (±140 737 488 355 327). Wider integers are `bigint`s, an explicit type: `bigint.new("…")` and `bigint.add/sub/mul/div/mod/pow` (the operators `+ - *` do not take bigints; comparisons, `==`, `tostring`, `..` and `sort` do).
-- **`//` and `%` floor** (toward minus infinity) for ints and floats: `-7 // 2` is `-4`, `-7 % 2` is `1`.
-- **Compound assignment** `+= -= *= /= //= %= ^= ..=`: for a simple target the parser builds `a = a op b` (assign.op_wrapped), so every analysis sees the real value; `t[f()] += 1` goes through compile_compound_assign (hidden locals `(o)`, `(k)`).
-- **Template strings** use backquotes: `` `total: ${n}` `` (NODE_TEMPLATE, compiled to one OP_CONCAT). `"${x}"` is plain text (re.gsub uses `${name}` in replacements) and `f"x"` is a call.
-- **`string.find` is plain text**; regular expressions are the built-in `re` module (RE2 syntax, linear time, no backreferences or lookaround).
-- **`isnan` / `isinf`** are registered as bare globals (in addition to `math.isnan` / `math.isinf`).
-- **Runtime errors are panics**: `recover()` in a deferred call catches them (Go semantics: the recovering function returns nil). The message starts with `file:line:`. Unrecovered, they print a traceback of `file:line: in main chunk` / `file:line: in function 'name'` lines (each function knows its source file: `SeaChunk.source`).
-- **`{a = 1}` is a sealed struct**: adding a field fails at run time ("attempt to add field ... to a sealed struct"). Build with `{}` and assign every field (or give all fields up front); `sea check` reports it as `[sealed]`. This also bites option tables passed to natives such as `process.run` (`stdin`, `env`, `timeout`).
-- **Small API facts that cost time**: there is no `string.rfind` (find the tail by length instead); stderr is `io.write_err(...)`, not `io.stderr`; `"\1"` is an invalid escape (use `\x01`); `\0` is valid; `[[` opens a long string, so a nested array literal needs a space (`[ [1], [2] ]`); `re.gsub(pattern, s, repl)` takes the subject second; captures are `m.groups[1]`; statements need their own line (`a() b()` on one line is an error); `local _ = f()?` can be repeated in one scope.
-- **Ints are 48-bit**: a 64-bit protocol counter (SSH's AES-GCM invocation counter) must be kept as two 32-bit halves, not one int.
-- **A project file with the same name as a lib shadows it** (`lib/ssh.sea` doing `require("ssh")` got itself back, with a nil upvalue). Name project modules differently (domus has `lib/remote.sea`).
 - **`libs/ssh`** (pure Sea SSH client, `ssh.serve` test server) rides on `libs/ssl`, which gained Ed25519/X25519 (`keygen`, `key_raw`, `key_from_raw`, `x25519`, `sign`/`verify` with `"ed25519"`). Its tests run against `ssh.serve`; `SSH_TEST_ADDR/USER/KEY` adds a real sshd (a Docker alpine/ubuntu container with `openssh-server` does, no root needed). Only curve25519-sha256, ssh-ed25519, aes256-gcm@openssh.com, public-key auth and `exec`; unencrypted OpenSSH keys. A host key is never trusted implicitly (`host_key` fingerprint or `verify`).
 - **Shell hygiene when running Sea tools**: `pkill -f pattern` kills the shell that carries the pattern in its own command line (use `kill $(pgrep -f "[p]attern")`); run long test suites in the background and never two suites at once against the same test database (they time out each other); `sea fmt` rewrites files in place (`-l` only lists).
