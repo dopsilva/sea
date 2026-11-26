@@ -295,7 +295,10 @@ static SeaNode* parse_primary(SeaParser *p) {
         }
         case TK_LPAREN: {
             advance(p);
+            int fence_was = p->fence;
+            p->fence = 0;
             SeaNode *inner = parse_expr(p);
+            p->fence = fence_was;
             expect(p, TK_RPAREN);
             if (inner) inner->paren = true;
             return inner;
@@ -311,6 +314,8 @@ static SeaNode* parse_primary(SeaParser *p) {
             SeaNode **keys = NULL;
             SeaNode **vals = NULL;
             int count = 0, keys_cap = 0, vals_cap = 0;
+            int fence_was = p->fence;
+            p->fence = 1;
 
             while (!check(p, TK_RBRACE) && !check(p, TK_EOF)) {
                 SeaNode *key = NULL;
@@ -354,6 +359,7 @@ static SeaNode* parse_primary(SeaParser *p) {
 
                 if (!match(p, TK_COMMA)) match(p, TK_SEMICOLON);
             }
+            p->fence = fence_was;
             n->table.end_line = cur(p).line;
             expect(p, TK_RBRACE);
 
@@ -382,15 +388,47 @@ static SeaNode* parse_primary(SeaParser *p) {
                 expect(p, TK_RBRACKET);
                 return node_new(NODE_MAP_LIT, line, col);
             }
-            // [] or [e1, e2, ...] → array literal (a trailing comma is allowed)
+            // [] or [e1, e2, ...] → array literal (a trailing comma is allowed);
+            // [k = v, ...] → map literal (elems holds k0, v0, k1, v1, ...)
             SeaNode *n = node_new(NODE_ARRAY_LIT, line, col);
             SeaNode **elems = NULL;
             int count = 0, cap = 0;
+            bool is_map = false;
+            int fence_was = p->fence;
+            p->fence = 1;
             while (!check(p, TK_RBRACKET) && !check(p, TK_EOF)) {
                 SeaNode *e = parse_expr(p);
                 if (!e || p->had_error) {
                     sea_node_free(e);
                     break;
+                }
+                if (count == 0 && check(p, TK_ASSIGN)) {
+                    is_map = true;
+                    n->type = NODE_MAP_LIT;
+                }
+                if (is_map) {
+                    if (!check(p, TK_ASSIGN)) {
+                        sea_node_free(e);
+                        parser_error(p, "a map literal needs 'key = value' in every entry");
+                        break;
+                    }
+                    advance(p);
+                    SeaNode *v = parse_expr(p);
+                    if (!v || p->had_error) {
+                        sea_node_free(e);
+                        sea_node_free(v);
+                        break;
+                    }
+                    if (count + 2 > cap) {
+                        int old = cap;
+                        cap = old < 8 ? 8 : old * 2;
+                        elems = SEA_REALLOC_N(elems, SeaNode*, old, cap);
+                    }
+                    elems[count++] = e;
+                    elems[count++] = v;
+                    // the comma may be left out at the end of a line
+                    if (!match(p, TK_COMMA) && !(cur(p).line > p->last_line && !check(p, TK_RBRACKET))) break;
+                    continue;
                 }
                 if (count >= cap) {
                     int old = cap;
@@ -398,8 +436,9 @@ static SeaNode* parse_primary(SeaParser *p) {
                     elems = SEA_REALLOC_N(elems, SeaNode*, old, cap);
                 }
                 elems[count++] = e;
-                if (!match(p, TK_COMMA)) break;
+                if (!match(p, TK_COMMA) && !(cur(p).line > p->last_line && !check(p, TK_RBRACKET))) break;
             }
+            p->fence = fence_was;
             if (elems && count < cap) elems = SEA_REALLOC_N(elems, SeaNode*, cap, count);
             if (elems && count == 0) { sea_free(elems, sizeof(SeaNode*) * (size_t)cap); elems = NULL; }
             n->array_lit.elems = elems;
@@ -566,7 +605,18 @@ static SeaNode* parse_template(SeaParser *p, SeaToken t) {
 
 // Parse a function body (after 'function')
 // Called either from function statement or function expression
+static SeaNode* parse_func_body_inner(SeaParser *p, int line, int col, const char *name);
+
+// a function body is made of statements: a line break means nothing special in it
 static SeaNode* parse_func_body(SeaParser *p, int line, int col, const char *name) {
+    int fence_was = p->fence;
+    p->fence = 0;
+    SeaNode *n = parse_func_body_inner(p, line, col, name);
+    p->fence = fence_was;
+    return n;
+}
+
+static SeaNode* parse_func_body_inner(SeaParser *p, int line, int col, const char *name) {
     SeaNode *n = node_new(NODE_FUNC, line, col);
     n->func.name = name ? dup_cstr(name) : NULL;
 
@@ -625,6 +675,7 @@ static SeaNode* parse_postfix(SeaParser *p, SeaNode *left) {
     for (;;) {
         SeaToken t = cur(p);
         int line = t.line, col = t.col;
+        if (p->fence && t.line > p->last_line) break;
 
         if (t.type == TK_DOT) {
             advance(p);
@@ -641,9 +692,12 @@ static SeaNode* parse_postfix(SeaParser *p, SeaNode *left) {
         } else if (t.type == TK_LBRACKET) {
             advance(p);
             SeaNode *key = NULL;
+            int fence_was = p->fence;
+            p->fence = 0;
             if (!check(p, TK_RBRACKET)) {
                 key = parse_expr(p);  // expr[expr] — normal indexing
             }
+            p->fence = fence_was;
             // key=NULL means arr[] — append lvalue (only valid on assignment LHS)
             expect(p, TK_RBRACKET);
             SeaNode *n = node_new(NODE_INDEX, line, col);
@@ -653,7 +707,10 @@ static SeaNode* parse_postfix(SeaParser *p, SeaNode *left) {
         } else if (t.type == TK_LPAREN) {
             advance(p);
             int argc = 0;
+            int fence_was = p->fence;
+            p->fence = 0;
             SeaNode **args = parse_arg_list(p, &argc);
+            p->fence = fence_was;
             int end_line = cur(p).line;
             expect(p, TK_RPAREN);
             SeaNode *n = node_new(NODE_CALL, line, col);
@@ -673,7 +730,10 @@ static SeaNode* parse_postfix(SeaParser *p, SeaNode *left) {
             advance(p);
             expect(p, TK_LPAREN);
             int argc = 0;
+            int fence_was = p->fence;
+            p->fence = 0;
             SeaNode **args = parse_arg_list(p, &argc);
+            p->fence = fence_was;
             int end_line = cur(p).line;
             expect(p, TK_RPAREN);
             SeaNode *n = node_new(NODE_METHOD_CALL, line, col);
@@ -800,6 +860,7 @@ static SeaNode* parse_expr_prec_at(SeaParser *p, Prec min_prec) {
     // Infix / binary
     while (!p->had_error) {
         SeaTK op_tk = cur(p).type;
+        if (p->fence && cur(p).line > p->last_line) break;
         Prec prec = token_infix_prec(op_tk);
         if (prec <= min_prec) break;
 
@@ -1566,6 +1627,7 @@ void sea_parser_init(SeaParser *p, const char *source) {
     p->func_depth = 0;
     p->depth      = 0;
     p->last_line  = 0;
+    p->fence      = 0;
 }
 
 void sea_parser_free(SeaParser *p) {

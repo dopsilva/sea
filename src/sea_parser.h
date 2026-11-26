@@ -21,6 +21,7 @@ typedef struct {
     int       loop_depth;    // for break/continue validation
     int       func_depth;    // for return validation
     int       depth;         // expression/block nesting (limited)
+    int       fence;         // inside a [..]/{..} literal: an operand ends at the end of its line
     int       last_line;     // line of the last consumed token (for same-line check)
     int       last_tk;       // type of the last consumed token (for hints)
 } SeaParser;

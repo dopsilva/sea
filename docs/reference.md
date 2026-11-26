@@ -1578,7 +1578,16 @@ end
 
 ### Map operations
 
+A map literal lists its entries as `key = value`; `[=]` is the empty map. Inside a `[...]` or `{...}` literal the
+commas may be left out when each entry is on its own line (an operand then ends at the end of its line, so a line that
+starts with `-1` or `(x)` is a new element, not a continuation; wrap a multi-line operand in parentheses).
+
 ```sea
+local PARTE = [
+    "ano" = "ano",
+    "mês" = "mes",
+    "dia" = "dia",
+]
 local m = [=]
 m[k] = v              -- set key k to value v (any type for k)
 v = m[k]              -- get; returns nil if missing

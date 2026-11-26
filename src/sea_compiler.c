@@ -900,6 +900,7 @@ static void esc_walk_captures(SeaEscapeInfo *ei, SeaNode *n, bool mark_idents) {
         }
         break;
     case NODE_ARRAY_LIT:
+    case NODE_MAP_LIT:
         for (int i = 0; i < n->array_lit.count; i++)
             esc_walk_captures(ei, n->array_lit.elems[i], mark_idents);
         break;
@@ -1032,6 +1033,7 @@ static void esc_scan(SeaEscapeInfo *ei, SeaNode *n) {
         }
         break;
     case NODE_ARRAY_LIT:
+    case NODE_MAP_LIT:
         for (int i = 0; i < n->array_lit.count; i++)
             esc_scan(ei, n->array_lit.elems[i]);
         break;
@@ -1349,6 +1351,7 @@ static bool name_assigned_in(SeaNode *n, const char *name) {
             if (name_assigned_in(n->table.vals[i], name)) return true;
         return false;
     case NODE_ARRAY_LIT:
+    case NODE_MAP_LIT:
         for (int i = 0; i < n->array_lit.count; i++)
             if (name_assigned_in(n->array_lit.elems[i], name)) return true;
         return false;
@@ -2216,6 +2219,16 @@ static int compile_expr(SeaCompiler *c, SeaNode *node, int dst) {
         case NODE_MAP_LIT: {
             if (dst < 0) dst = alloc_reg(c);
             emit_abc(c, OP_NEW_MAP, dst, 0, 0, line);
+            /* [k = v, ...]: one set per entry (the map retains what it stores) */
+            for (int i = 0; i + 1 < node->array_lit.count; i += 2) {
+                int key_reg = compile_expr(c, node->array_lit.elems[i], -1);
+                int val_reg = compile_expr(c, node->array_lit.elems[i + 1], -1);
+                emit_abc(c, OP_SET_TABLE, dst, key_reg, val_reg, line);
+                drop_temp(c, val_reg, line);
+                if (!reg_is_named_local(c, val_reg)) free_reg(c, val_reg);
+                drop_temp(c, key_reg, line);
+                if (!reg_is_named_local(c, key_reg)) free_reg(c, key_reg);
+            }
             reg_clear_int(c, dst);
             c->reg_meta[dst].is_owned = 1;
             break;

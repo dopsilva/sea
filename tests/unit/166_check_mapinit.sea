@@ -1,0 +1,55 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- sea check: the `mapinit` hint (an empty map filled by the lines right after it)
+local check = require("sea/check")
+
+local function run(src)
+    local out = check.source(src, {name = "t.sea", dir = "."})
+    for _, d in out do print(d.line .. ":" .. d.col .. " " .. d.code .. " " .. d.message) end
+    if len(out) == 0 then print("clean") end
+end
+
+print("-- three entries")
+run([==[
+local M = [=]
+M["a"] = 1
+M["b"] = 2
+M[3] = 3
+print(M)
+]==])
+print("-- two entries (fine)")
+run([==[
+local M = [=]
+M["a"] = 1
+M["b"] = 2
+print(M)
+]==])
+print("-- a statement in between ends the run")
+run([==[
+local M = [=]
+M["a"] = 1
+print(M)
+M["b"] = 2
+M["c"] = 3
+print(M)
+]==])
+print("-- already a literal, or another map")
+run([==[
+local M = ["a" = 1, "b" = 2, "c" = 3]
+local N = [=]
+local O = [=]
+O["a"] = 1
+N["b"] = 2
+N["c"] = 3
+N["d"] = 4
+print(M, N, O)
+]==])
+print("-- ignored")
+run([==[
+local M = [=] -- check:ignore mapinit
+M["a"] = 1
+M["b"] = 2
+M["c"] = 3
+print(M)
+]==])

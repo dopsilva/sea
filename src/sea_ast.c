@@ -78,6 +78,7 @@ void sea_node_free(SeaNode *n) {
             free_node_array(n->table.vals, n->table.count);
             break;
         case NODE_MAP_LIT:
+            free_node_array(n->array_lit.elems, n->array_lit.count);
             break;
         case NODE_TEMPLATE:
             for (int i = 0; i <= n->tmpl.count; i++) {

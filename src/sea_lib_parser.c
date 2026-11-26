@@ -295,8 +295,22 @@ static SeaValue node_to_val(SeaNode *n, const SrcIndex *ix) {
 
     switch (n->type) {
         case NODE_NIL: case NODE_BREAK: case NODE_CONTINUE:
-        case NODE_VARARG: case NODE_MAP_LIT:
+        case NODE_VARARG:
             break;
+
+        case NODE_MAP_LIT: {
+            int pairs = n->array_lit.count / 2;
+            SeaArray *keys = sea_array_new(pairs);
+            SeaArray *vals = sea_array_new(pairs);
+            for (int i = 0; i < pairs; i++) {
+                apush(keys, node_to_val(n->array_lit.elems[2 * i], ix));
+                apush(vals, node_to_val(n->array_lit.elems[2 * i + 1], ix));
+            }
+            tset(t, "keys", sea_obj_val(&keys->obj));
+            tset(t, "vals", sea_obj_val(&vals->obj));
+            tset(t, "end_line", sea_int_val(n->array_lit.end_line));
+            break;
+        }
 
         case NODE_BOOL:
             tset(t, "value", sea_bool_val(n->boolean));
@@ -732,6 +746,7 @@ static const struct { const char *type; const char *fields[4]; } CHILD_FIELDS[] 
     {"func",        {"body"}},
     {"table",       {"fields%"}},
     {"array_lit",   {"elems*"}},
+    {"map_lit",     {"keys*", "vals*"}},
     {"template",    {"exprs*"}},
     {"chan_recv",   {"channel"}},
     {"chan_send",   {"channel", "value"}},
@@ -1630,6 +1645,55 @@ static void print_array(Printer *P, Obj *t) {
     outc(P, ']');
 }
 
+/* `[=]`, or `[k = v, ...]` on one line when it was written so and fits, else one entry per line */
+static void print_map(Printer *P, Obj *t) {
+    SeaArray *keys = tget_arr(t, "keys");
+    SeaArray *vals = tget_arr(t, "vals");
+    uint32_t n = keys ? keys->len : 0;
+    if (n == 0) { outs(P, "[=]"); return; }
+    if (!vals || vals->len != n) { fail(P, "'map_lit' node needs as many vals as keys"); return; }
+    int tline = node_line(t);
+    bool multi = tline > 0 && node_end(t) > tline;
+    if (!multi) {
+        Snap sn = snap(P);
+        bool trial = !P->dry && P->width > 0;
+        if (trial) P->dry++;
+        outc(P, '[');
+        for (uint32_t i = 0; i < n && !P->failed; i++) {
+            if (i > 0) outs(P, ", ");
+            print_expr(P, keys->data[i]);
+            outs(P, " = ");
+            print_expr(P, vals->data[i]);
+        }
+        outc(P, ']');
+        if (trial) P->dry--;
+        if (!trial || P->failed || !too_wide(P)) return;
+        unsnap(P, &sn);
+    }
+    outc(P, '[');
+    attach_trailing(P, tline, tline);
+    outc(P, '\n');
+    P->depth++;
+    P->at_start = true;
+    for (uint32_t i = 0; i < n && !P->failed; i++) {
+        Obj *k = as_node(keys->data[i]);
+        int line = k ? min_line(k, 0) : 0;
+        if (line > 0) flush_before(P, line);
+        begin_item(P, line);
+        print_expr(P, keys->data[i]);
+        outs(P, " = ");
+        print_expr(P, vals->data[i]);
+        outc(P, ',');
+        attach_trailing(P, line, line);
+        outc(P, '\n');
+        note_line(P, line);
+    }
+    if (node_end(t) > 0) flush_before(P, node_end(t));
+    P->depth--;
+    indent(P);
+    outc(P, ']');
+}
+
 /* `text ${expr} text`: the texts as written (raws), or escaped from the
  * decoded parts for a tree built by hand. */
 static void print_template(Printer *P, Obj *n) {
@@ -1701,7 +1765,7 @@ static void print_expr(Printer *P, SeaValue v) {
     else if (strcmp(type, "number") == 0) print_number_node(P, n);
     else if (strcmp(type, "string") == 0) print_string_node(P, n);
     else if (strcmp(type, "ident") == 0) print_name(P, tget_str(n, "name"), "variable");
-    else if (strcmp(type, "map_lit") == 0) outs(P, "[=]");
+    else if (strcmp(type, "map_lit") == 0) print_map(P, n);
     else if (strcmp(type, "array_lit") == 0) {
         print_array(P, n);
     } else if (strcmp(type, "template") == 0) {

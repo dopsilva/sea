@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `sea check`: the `mapinit` hint for `local m = [=]` filled by three or more `m[k] = v` lines right after it.
+- Map literals with entries: `[k = v, ...]` (`[=]` stays the empty map). In `[...]` and `{...}` literals the commas may be
+  left out when each entry is on its own line: an operand ends at the end of its line there (wrap a multi-line operand in
+  parentheses). `sea fmt` and `sea/parser` know the new `map_lit` shape (`keys`, `vals`).
+
 - `libs/ssh`: an SSH 2 client in pure Sea (curve25519-sha256, ssh-ed25519, aes256-gcm, public-key login, `exec`), with
   `ssh.keygen`, `ssh.hostkey` and a small test server; checked against OpenSSH 9.7.
 - `libs/ssl`: Ed25519 and X25519 (`keygen`, `key_raw`, `key_from_raw`, `x25519`, `sign`/`verify` with `"ed25519"`).

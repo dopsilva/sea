@@ -1,0 +1,10 @@
+-- three entries
+1:1 mapinit 'M' is filled right after it is made: write [key = value, ...] (3 entries)
+-- two entries (fine)
+clean
+-- a statement in between ends the run
+clean
+-- already a literal, or another map
+clean
+-- ignored
+clean

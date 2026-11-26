@@ -122,7 +122,7 @@ changing anything else.
 21. **Numeric `for` includes both ends**: `for i = 1, 3` runs 1, 2, 3;
     `for i = 0, n - 1` runs n times (none when n is 0). The step is the
     optional third value.
-22. **Maps are `[=]`.** A map takes keys of any type and supports the
+22. **Maps are `[=]`, or `[k = v, ...]` with entries.** A map takes keys of any type and supports the
     two-value lookup `local v, ok = m[k]` (or `m.name`; `ok` is true when
     the key is there, even holding `nil`, as a JSON `null` decodes). Tables
     (`{}`) also take most keys; prefer maps for dictionaries with
@@ -241,7 +241,8 @@ print(len(a), a[1], a[9])             -- → 2  z  nil
 for idx, v in a do io.write(idx, "=", v, " ") end
 print()                               -- → 0=x 1=z
 
--- map: any key type, two-value lookup
+-- map: any key type; [k = v, ...] fills it (commas optional at line ends), [=] is empty
+local ages = ["ana" = 30, "bia" = 25]
 local m = [=]
 m["apple"] = 3
 m[42] = "answer"

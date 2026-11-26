@@ -26,6 +26,7 @@
 --   selfassign   x = x
 --   sealed       x.k = v where x was built from a {a = 1} literal that has no field k (a runtime error)
 --   longstring   [[a, b], [c, d]]: `[[` opens a long string, not a nested array
+--   mapinit      `local m = [=]` followed by three or more `m[k] = v` lines: write `[k = v, ...]`
 --
 -- A line ending with the comment `-- check:ignore` gets no diagnostics; with
 -- `-- check:ignore code1 code2` only those codes are skipped there.
@@ -36,7 +37,7 @@ local M = {}
 
 M.CODES = {
     "syntax", "undefined", "unused", "redeclared", "shadow", "unreachable", "args", "format", "require",
-    "dupkey", "selfassign", "longstring", "sealed",
+    "dupkey", "selfassign", "longstring", "sealed", "mapinit",
 }
 
 local ERRORS = {}
@@ -731,12 +732,33 @@ function M.source(src, opts)
 
     -- same_scope: the block's names go in the scope already open (a function
     -- or loop body), else it opens its own
+    -- a map made empty and filled by the statements right after it: the entries belong in the literal
+    local function map_init(stmts, i)
+        local s = stmts[i]
+        if s.type ~= "local" or len(s.names) ~= 1 or len(s.values) ~= 1 or s.values[0].type ~= "map_lit" then return end
+        if len(s.values[0].keys) > 0 then return end
+        local n = 0
+        local j = i + 1
+        while j < len(stmts) do
+            local a = stmts[j]
+            if a.type ~= "assign" or len(a.targets) ~= 1 or len(a.values) ~= 1 then break end
+            local tg = a.targets[0]
+            if tg.type ~= "index" or tg.object.type ~= "ident" or tg.object.name ~= s.names[0] or tg.index == nil then break end
+            n += 1
+            j += 1
+        end
+        if n >= 3 then
+            report("mapinit", s, "'" .. s.names[0] .. "' is filled right after it is made: write [key = value, ...] (" .. n .. " entries)")
+        end
+    end
+
     block = function(b, same_scope)
         if b == nil then return end
         if not same_scope then open_scope(false) end
         local dead = false
         local told = false
-        for _, s in b.stmts do
+        for i, s in b.stmts do
+            map_init(b.stmts, i)
             -- only the first unreachable statement is reported
             if dead and not told then
                 report("unreachable", s, "unreachable code")

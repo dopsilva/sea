@@ -1,0 +1,59 @@
+-- Copyright (c) 2026 The Sea Authors
+-- SPDX-License-Identifier: BSD-3-Clause
+
+local PARTE_DATA = [
+    "ano" = "ano",
+    "mês" = "mes",
+    "mes" = "mes",
+    "dia" = "dia",
+    "data" = "data",
+]
+print(len(PARTE_DATA), PARTE_DATA["mês"], PARTE_DATA["data"])
+local one = ["a" = 1, "b" = 2 + 3]
+print(one.a, one["b"])
+local mixed = [1 = "x", 2 = string.upper("y"), "t" = {k = [=]}]
+print(mixed[1], mixed[2], mixed["t"].k ~= nil)
+local empty = [=]
+print(len(empty))
+local x = 7
+local byvar = [x = "seven"]
+print(byvar[7])
+local nested = ["in" = ["z" = 1]]
+print(nested["in"]["z"])
+local function f() return ["r" = 9] end
+print(f()["r"])
+
+-- entries separated by line breaks, no commas
+local nocomma = [
+    "ano" = "ano"
+    "dia" = "dia"
+    "n" = 3
+]
+print(len(nocomma), nocomma["dia"])
+local arr = [
+    1
+    -1
+    f()["r"]
+    (2)
+]
+print(len(arr), arr[0], arr[1], arr[2], arr[3])
+local st = {
+    a = 1
+    b = 2
+    -3
+}
+print(st.a, st.b, st[0])
+local calls = [
+    "k" = string.format("%d-%d",
+        1,
+        2)
+    "w" = (1
+        + 2)
+    "f" = function()
+        return 5
+    end
+]
+print(calls["k"], calls["w"], calls["f"]())
+local same = [1 -
+    1, 5]
+print(same[0], same[1])
