@@ -122,7 +122,9 @@ changing anything else.
 21. **Numeric `for` includes both ends**: `for i = 1, 3` runs 1, 2, 3;
     `for i = 0, n - 1` runs n times (none when n is 0). The step is the
     optional third value.
-22. **Maps are `[=]`, or `[k = v, ...]` with entries.** A map takes keys of any type and supports the
+22. **Maps are `[=]`, or `[k = v, ...]` with entries.** When the entries are known, write
+    the literal, one entry per line (commas optional at the end of a line), never `local m = [=]`
+    followed by `m[k] = v` lines (`sea check` warns with `mapinit` from three). A map takes keys of any type and supports the
     two-value lookup `local v, ok = m[k]` (or `m.name`; `ok` is true when
     the key is there, even holding `nil`, as a JSON `null` decodes). Tables
     (`{}`) also take most keys; prefer maps for dictionaries with
